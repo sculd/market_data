@@ -3,6 +3,7 @@
 import os, datetime
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
+
 _client = None
 
 
@@ -108,4 +109,3 @@ def get_full_table_id(dataset_mode, export_mode):
     elif export_mode is EXPORT_MODE.ORDERBOOK_LIQUIDITY_IMBALANCE:
         t_id = _TABLE_ID_ORDERBOOK_LIQUIDITY_IMBALANCE
     return '{p}.{d}.{t}'.format(p=_PROJECT_ID, d=ds_id, t=t_id)
-
