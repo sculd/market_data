@@ -2,12 +2,15 @@ import pandas as pd, numpy as np
 import datetime
 import logging
 import typing
+from enum import Enum
 
 import util.time
 
 import ingest.bq.util
+from ingest.bq.util import AGGREGATION_MODE
 
-_query_template = """
+
+_query_template_take_latest = """
     WITH LATEST AS (
     SELECT timestamp, max(ingestion_timestamp) AS max_ingestion_timestamp
     FROM `{t_id}` 
@@ -26,12 +29,31 @@ _query_template = """
     ORDER BY T.timestamp ASC
 """
 
+_query_template_collect_all_updates = """
+    SELECT imestamp, symbol, open, high, low, close, volume
+    FROM `{t_id}` 
+    WHERE TRUE
+    AND timestamp >= "{t_str_from}"
+    AND timestamp < "{t_str_to}"
+    ORDER BY T.timestamp ASC
+"""
 
-def _fetch_minute_candle_datetime(t_id, t_from, t_to) -> pd.DataFrame:
+
+def _get_query_template(aggregation_mode: AGGREGATION_MODE) -> str:
+    if aggregation_mode == AGGREGATION_MODE.TAKE_LASTEST:
+        return _query_template_take_latest
+    elif aggregation_mode == AGGREGATION_MODE.COLLECT_ALL_UPDATES:
+        return _query_template_collect_all_updates
+    else:
+        raise Exception(f"{aggregation_mode=} is not valid")
+
+
+def _fetch_minute_candle_datetime(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> pd.DataFrame:
     logging.debug(
         f'fetching prices from {t_from} to {t_to}')
 
-    query_str = _query_template.format(
+    query_template = _get_query_template(aggregation_mode)
+    query_str = query_template.format(
         t_id=t_id,
         t_str_from=util.time.t_to_bq_t_str(t_from),
         t_str_to=util.time.t_to_bq_t_str(t_to),
@@ -42,6 +64,7 @@ def _fetch_minute_candle_datetime(t_id, t_from, t_to) -> pd.DataFrame:
 
 def fetch_minute_candle(
         t_id: str,
+        aggregation_mode: AGGREGATION_MODE,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -58,5 +81,5 @@ def fetch_minute_candle(
         date_str_to=date_str_to,
     )
 
-    return _fetch_minute_candle_datetime(t_id, t_from, t_to)
+    return _fetch_minute_candle_datetime(t_id, aggregation_mode, t_from, t_to)
 

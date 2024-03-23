@@ -7,6 +7,7 @@ import os
 
 import ingest.bq.candle
 import ingest.bq.orderbook1l
+from ingest.bq.util import AGGREGATION_MODE
 import util.time
 
 # the cache will be stored per day.
@@ -21,10 +22,10 @@ except FileExistsError:
 _cache_timezone = pytz.timezone('America/New_York')
 
 
-def _to_filename_prefix(t_id: str, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
+def _to_filename_prefix(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
     t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
     t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
-    return f'{t_id}_{t_str_from}_{t_str_to}'
+    return f'{t_id}_{aggregation_mode}_{t_str_from}_{t_str_to}'
 
 
 def _split_t_range(t_from: datetime.datetime, t_to: datetime.datetime, interval: datetime.timedelta = _cache_interval) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
@@ -50,11 +51,11 @@ def _is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime)
     return True
 
 
-def _cache_df(df: pd.DataFrame, t_id: str, t_from: datetime.datetime, t_to: datetime.datetime, overwrite=True):
+def _cache_df(df: pd.DataFrame, aggregation_mode: AGGREGATION_MODE, t_id: str, t_from: datetime.datetime, t_to: datetime.datetime, overwrite=True):
     if not _is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from}-{t_to} does not match {_cache_interval=} thus will not be cached.")
         return None
-    filename_prefix = _to_filename_prefix(t_id, t_from, t_to)
+    filename_prefix = _to_filename_prefix(t_id, aggregation_mode, t_from, t_to)
     filename = os.path.join(_cache_base_path, f"{filename_prefix}.parquet")
     if os.path.exists(filename):
         logging.info(f"{filename} already exists.")
@@ -67,11 +68,11 @@ def _cache_df(df: pd.DataFrame, t_id: str, t_from: datetime.datetime, t_to: date
         df.to_parquet(filename)
 
 
-def _fetch_from_cache(t_id: str, t_from: datetime.datetime, t_to: datetime.datetime) -> typing.Optional[pd.DataFrame]:
+def _fetch_from_cache(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> typing.Optional[pd.DataFrame]:
     if not _is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from} to {t_to} does not match {_cache_interval=} thus not read from cache.")
         return None
-    filename_prefix = _to_filename_prefix(t_id, t_from, t_to)
+    filename_prefix = _to_filename_prefix(t_id, aggregation_mode, t_from, t_to)
     filename = os.path.join(_cache_base_path, f"{filename_prefix}.parquet")
     if not os.path.exists(filename):
         return None
@@ -81,6 +82,7 @@ def _fetch_from_cache(t_id: str, t_from: datetime.datetime, t_to: datetime.datet
 def fetch_and_cache(
         dataset_mode: ingest.bq.util.DATASET_MODE,
         export_mode: ingest.bq.util.EXPORT_MODE,
+        aggregation_mode: AGGREGATION_MODE,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -98,7 +100,6 @@ def fetch_and_cache(
         date_str_to=date_str_to,
     )
 
-
     t_id = ingest.bq.util.get_full_table_id(dataset_mode, export_mode)
     if export_mode == ingest.bq.util.EXPORT_MODE.BY_MINUTE:
         fetch_function = ingest.bq.candle.fetch_minute_candle
@@ -111,10 +112,10 @@ def fetch_and_cache(
     t_ranges = _split_t_range(t_from, t_to, interval = _cache_interval)
     df_concat = None
     for t_range in t_ranges:
-        df_cache = _fetch_from_cache(t_id, t_range[0], t_range[1])
+        df_cache = _fetch_from_cache(t_id, aggregation_mode, t_range[0], t_range[1])
         if overwirte_cache or df_cache is None:
-            df = fetch_function(t_id, t_from=t_range[0], t_to=t_range[1])
-            _cache_df(df, t_id, t_range[0], t_range[1])
+            df = fetch_function(t_id, aggregation_mode, t_from=t_range[0], t_to=t_range[1])
+            _cache_df(df, aggregation_mode, t_id, t_range[0], t_range[1])
         else:
             df = df_cache
 
