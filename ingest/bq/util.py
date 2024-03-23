@@ -1,8 +1,9 @@
 # Lint as: python3
 
-import os, datetime
+import os, datetime , logging
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
+import pandas as pd
 
 _client = None
 
@@ -34,6 +35,8 @@ _WRITE_QUEUE_SIZE_THRESHOLD_PER_MINUTE_NO_OVERWRITE = 100
 _WRITE_QUEUE_SIZE_THRESHOLD_LIQUIDITY_IMBALANCE = 100
 _LOCK_TIMEOUT_SECONDS = 10
 
+from enum import Enum
+
 
 def get_big_query_client():
   global _client
@@ -53,7 +56,17 @@ def does_table_exist(table_name):
   return False
 
 
-from enum import Enum
+def run_query(query_str, timestamp_columnname) -> pd.DataFrame:
+    print(query_str)
+
+    bq_query_job = get_big_query_client().query(query_str)
+    df = bq_query_job.to_dataframe().set_index(timestamp_columnname)
+    df.index = df.index.tz_convert('America/New_York')
+
+    logging.debug(f'fetched {len(df)} rows')
+    del bq_query_job
+    return df
+
 
 class EXPORT_MODE(Enum):
     BY_MINUTE = 1

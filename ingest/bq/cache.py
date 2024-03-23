@@ -5,7 +5,8 @@ import logging
 import typing
 import os
 
-import ingest.bq.query
+import ingest.bq.candle
+import ingest.bq.orderbook1l
 import util.time
 
 # the cache will be stored per day.
@@ -66,7 +67,7 @@ def _cache_df(df: pd.DataFrame, t_id: str, t_from: datetime.datetime, t_to: date
         df.to_parquet(filename)
 
 
-def _fetch_from_cache_minute_candle(t_id: str, t_from: datetime.datetime, t_to: datetime.datetime) -> typing.Optional[pd.DataFrame]:
+def _fetch_from_cache(t_id: str, t_from: datetime.datetime, t_to: datetime.datetime) -> typing.Optional[pd.DataFrame]:
     if not _is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from} to {t_to} does not match {_cache_interval=} thus not read from cache.")
         return None
@@ -77,8 +78,9 @@ def _fetch_from_cache_minute_candle(t_id: str, t_from: datetime.datetime, t_to: 
     return pd.read_parquet(filename)
 
 
-def fetch_and_cache_minute_candle(
-        t_id: str,
+def fetch_and_cache(
+        dataset_mode: ingest.bq.util.DATASET_MODE,
+        export_mode: ingest.bq.util.EXPORT_MODE,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -96,12 +98,22 @@ def fetch_and_cache_minute_candle(
         date_str_to=date_str_to,
     )
 
+
+    t_id = ingest.bq.util.get_full_table_id(dataset_mode, export_mode)
+    if export_mode == ingest.bq.util.EXPORT_MODE.BY_MINUTE:
+        fetch_function = ingest.bq.candle.fetch_minute_candle
+
+    elif export_mode == ingest.bq.util.EXPORT_MODE.ORDERBOOK_LEVEL1:
+        fetch_function = ingest.bq.orderbook1l.fetch_orderbook1l
+    else:
+        raise Exception(f"{dataset_mode=}, {export_mode=} is not available for ingestion")
+
     t_ranges = _split_t_range(t_from, t_to, interval = _cache_interval)
     df_concat = None
     for t_range in t_ranges:
-        df_cache = _fetch_from_cache_minute_candle(t_id, t_range[0], t_range[1])
+        df_cache = _fetch_from_cache(t_id, t_range[0], t_range[1])
         if overwirte_cache or df_cache is None:
-            df = ingest.bq.query.fetch_minute_candle(t_id, t_from=t_range[0], t_to=t_range[1])
+            df = fetch_function(t_id, t_from=t_range[0], t_to=t_range[1])
             _cache_df(df, t_id, t_range[0], t_range[1])
         else:
             df = df_cache

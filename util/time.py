@@ -45,3 +45,6 @@ def to_t(
         raise Exception("the time range must be specified.")
 
     return t_from, t_to
+
+def t_to_bq_t_str(t: datetime.datetime) -> str:
+    return t.strftime("%Y-%m-%dT%H:%M:%S%z")
