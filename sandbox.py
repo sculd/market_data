@@ -1,7 +1,4 @@
-import pandas as pd, numpy as np
-import datetime, time
 import logging
-import typing
 
 import sys
 
@@ -16,10 +13,8 @@ logging.basicConfig(
 import os
 os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(os.getcwd(), 'credential.json')
 
-import ingest.bq.util
-import ingest.bq.orderbook1l
+import ingest.bq.common
 import ingest.bq.cache
-import util.time
 
 _PROJECT_ID = os.getenv('GOOGLE_CLOUD_PROJECT')
 
@@ -29,8 +24,8 @@ _PROJECT_ID = os.getenv('GOOGLE_CLOUD_PROJECT')
 #'''
 
 df = ingest.bq.cache.fetch_and_cache(
-    ingest.bq.util.DATASET_MODE.OKX, ingest.bq.util.EXPORT_MODE.BY_MINUTE, ingest.bq.util.AGGREGATION_MODE.TAKE_LASTEST,
-    date_str_from='2024-01-01', date_str_to='2024-03-21')
+    ingest.bq.common.DATASET_MODE.OKX, ingest.bq.common.EXPORT_MODE.BY_MINUTE, ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    date_str_from='2024-03-11', date_str_to='2024-03-15')
 
 #df = ingest.bq.cache.fetch_and_cache(ingest.bq.util.DATASET_MODE.BITHUMB, ingest.bq.util.EXPORT_MODE.ORDERBOOK_LEVEL1, date_str_from='2024-03-21', date_str_to='2024-03-22')
 

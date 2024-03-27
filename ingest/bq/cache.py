@@ -1,14 +1,15 @@
-import pandas as pd, numpy as np
+import pandas as pd
 import datetime
 import pytz
 import logging
 import typing
 import os
 
-import ingest.bq.candle
-import ingest.bq.orderbook1l
-from ingest.bq.util import AGGREGATION_MODE
-import util.time
+from . import candle
+from . import orderbook1l
+from . import common
+from .common import AGGREGATION_MODE
+from ..util import time as util_time
 
 # the cache will be stored per day.
 _cache_interval = datetime.timedelta(days=1)
@@ -78,10 +79,9 @@ def _fetch_from_cache(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: dat
         return None
     return pd.read_parquet(filename)
 
-
 def fetch_and_cache(
-        dataset_mode: ingest.bq.util.DATASET_MODE,
-        export_mode: ingest.bq.util.EXPORT_MODE,
+        dataset_mode: common.DATASET_MODE,
+        export_mode: common.EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
@@ -91,7 +91,7 @@ def fetch_and_cache(
         date_str_to: str = None,
         overwirte_cache = False,
         ) -> pd.DataFrame:
-    t_from, t_to = util.time.to_t(
+    t_from, t_to = util_time.to_t(
         t_from=t_from,
         t_to=t_to,
         epoch_seconds_from=epoch_seconds_from,
@@ -100,12 +100,12 @@ def fetch_and_cache(
         date_str_to=date_str_to,
     )
 
-    t_id = ingest.bq.util.get_full_table_id(dataset_mode, export_mode)
-    if export_mode == ingest.bq.util.EXPORT_MODE.BY_MINUTE:
-        fetch_function = ingest.bq.candle.fetch_minute_candle
+    t_id = common.get_full_table_id(dataset_mode, export_mode)
+    if export_mode == common.EXPORT_MODE.BY_MINUTE:
+        fetch_function = candle.fetch_minute_candle
 
-    elif export_mode == ingest.bq.util.EXPORT_MODE.ORDERBOOK_LEVEL1:
-        fetch_function = ingest.bq.orderbook1l.fetch_orderbook1l
+    elif export_mode == common.EXPORT_MODE.ORDERBOOK_LEVEL1:
+        fetch_function = orderbook1l.fetch_orderbook1l
     else:
         raise Exception(f"{dataset_mode=}, {export_mode=} is not available for ingestion")
 

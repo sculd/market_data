@@ -1,13 +1,11 @@
-import pandas as pd, numpy as np
+import pandas as pd
 import datetime
 import logging
-import typing
-from enum import Enum
 
-import util.time
+from ..util import time as util_time
 
-import ingest.bq.util
-from ingest.bq.util import AGGREGATION_MODE
+from . import common
+from .common import AGGREGATION_MODE
 
 
 _query_template_take_latest = """
@@ -55,10 +53,10 @@ def _fetch_minute_candle_datetime(t_id: str, aggregation_mode: AGGREGATION_MODE,
     query_template = _get_query_template(aggregation_mode)
     query_str = query_template.format(
         t_id=t_id,
-        t_str_from=util.time.t_to_bq_t_str(t_from),
-        t_str_to=util.time.t_to_bq_t_str(t_to),
+        t_str_from=util_time.t_to_bq_t_str(t_from),
+        t_str_to=util_time.t_to_bq_t_str(t_to),
     )
-    df = ingest.bq.util.run_query(query_str, timestamp_columnname="timestamp")
+    df = common.run_query(query_str, timestamp_columnname="timestamp")
     return df
 
 
@@ -72,7 +70,7 @@ def fetch_minute_candle(
         date_str_from: str = None,
         date_str_to: str = None,
         ) -> pd.DataFrame:
-    t_from, t_to = util.time.to_t(
+    t_from, t_to = util_time.to_t(
         t_from=t_from,
         t_to=t_to,
         epoch_seconds_from=epoch_seconds_from,
