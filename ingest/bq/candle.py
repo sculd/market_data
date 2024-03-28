@@ -10,17 +10,17 @@ from .common import AGGREGATION_MODE
 
 _query_template_take_latest = """
     WITH LATEST AS (
-    SELECT timestamp, max(ingestion_timestamp) AS max_ingestion_timestamp
+    SELECT timestamp, symbol, max(ingestion_timestamp) AS max_ingestion_timestamp
     FROM `{t_id}` 
     WHERE TRUE
     AND timestamp >= "{t_str_from}"
     AND timestamp < "{t_str_to}"
-    GROUP BY timestamp
+    GROUP BY timestamp, symbol
     )
 
     SELECT T.timestamp, T.symbol, open, high, low, close, volume
     FROM `{t_id}` AS T JOIN 
-        LATEST ON T.timestamp = LATEST.timestamp AND T.ingestion_timestamp = LATEST.max_ingestion_timestamp
+        LATEST ON T.timestamp = LATEST.timestamp AND T.symbol = LATEST.symbol AND T.ingestion_timestamp = LATEST.max_ingestion_timestamp
     WHERE TRUE
     AND T.timestamp >= "{t_str_from}"
     AND T.timestamp < "{t_str_to}"

@@ -9,17 +9,17 @@ from .common import AGGREGATION_MODE
 
 _query_template_take_latest = """
     WITH LATEST AS (
-    SELECT timestamp_floored_by_minute, max(ingestion_timestamp) AS max_ingestion_timestamp
+    SELECT timestamp_floored_by_minute, symbol, max(ingestion_timestamp) AS max_ingestion_timestamp
     FROM `{t_id}` 
     WHERE TRUE
     AND timestamp >= "{t_str_from}"
     AND timestamp < "{t_str_to}"
-    GROUP BY timestamp_floored_by_minute
+    GROUP BY timestamp_floored_by_minute, symbol
     )
 
     SELECT T.timestamp_floored_by_minute as timestamp, symbol, price_ask, qty_ask, price_bid, qty_bid
     FROM `{t_id}` AS T JOIN 
-        LATEST ON T.timestamp_floored_by_minute = LATEST.timestamp_floored_by_minute AND T.ingestion_timestamp = LATEST.max_ingestion_timestamp
+        LATEST ON T.timestamp_floored_by_minute = LATEST.timestamp_floored_by_minute AND T.symbol = LATEST.symbol AND T.ingestion_timestamp = LATEST.max_ingestion_timestamp
     WHERE TRUE
     AND T.timestamp >= "{t_str_from}"
     AND T.timestamp < "{t_str_to}"
