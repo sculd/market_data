@@ -29,12 +29,17 @@ def _to_filename_prefix(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: d
     return f'{t_id}_{aggregation_mode}_{t_str_from}_{t_str_to}'
 
 
-def _split_t_range(t_from: datetime.datetime, t_to: datetime.datetime, interval: datetime.timedelta = _cache_interval) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
+def _anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
+    return _cache_timezone.localize(datetime.datetime(year=t.year, month=t.month, day=t.day, hour=0, minute=0, second=0))
+
+
+def _split_t_range(t_from: datetime.datetime, t_to: datetime.datetime) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
     ret = []
-    t1, t2 = t_from, t_from + interval
+    t1, t2 = _anchor_to_begin_of_day(t_from), _anchor_to_begin_of_day(t_from + _cache_interval)
     ret.append((t1, t2))
     while t2 < t_to:
-        t1, t2 = t2, t2 + interval
+        t1, t2 = t2, t2 + _cache_interval
+        t1, t2 = _anchor_to_begin_of_day(t1), _anchor_to_begin_of_day(t2)
         ret.append((t1, t2))
 
     last = (ret[-1][0], min(ret[-1][1], t_to))
@@ -43,12 +48,19 @@ def _split_t_range(t_from: datetime.datetime, t_to: datetime.datetime, interval:
 
 
 def _is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) -> bool:
-    t_from_cache_tiemzoned = t_from.astimezone(_cache_timezone)
-    t_to_cache_tiemzoned = t_to.astimezone(_cache_timezone)
-    if t_to_cache_tiemzoned - t_from_cache_tiemzoned != datetime.timedelta(days=1):
+    t_from_plus_a_day = _anchor_to_begin_of_day(t_from + datetime.timedelta(days=1))
+    if t_to != t_from_plus_a_day:
         return False
-    if t_from_cache_tiemzoned.hour != 0 or t_from_cache_tiemzoned.minute != 0 or t_from_cache_tiemzoned.second != 0:
+
+    def at_begin_of_day(t: datetime.datetime) -> bool:
+        return t.hour == 0 and t.minute == 0 and t.second == 0
+
+    if not at_begin_of_day(t_from):
         return False
+
+    if not at_begin_of_day(t_to):
+        return False
+
     return True
 
 
@@ -109,7 +121,7 @@ def fetch_and_cache(
     else:
         raise Exception(f"{dataset_mode=}, {export_mode=} is not available for ingestion")
 
-    t_ranges = _split_t_range(t_from, t_to, interval = _cache_interval)
+    t_ranges = _split_t_range(t_from, t_to)
     df_concat = None
     for t_range in t_ranges:
         df_cache = _fetch_from_cache(t_id, aggregation_mode, t_range[0], t_range[1])
