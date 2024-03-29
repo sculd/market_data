@@ -138,6 +138,7 @@ def fetch_and_cache(
 
         del df
 
+    df_concat = df_concat.groupby('symbol').apply(lambda x: x.set_index('timestamp').resample('1min').asfreq().ffill()).drop(columns='symbol').reset_index()
     return df_concat
 
 
