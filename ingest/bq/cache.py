@@ -23,17 +23,20 @@ except FileExistsError:
 _cache_timezone = pytz.timezone('America/New_York')
 
 
-def _to_filename_prefix(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
-    t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
-    t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
-    return f'{t_id}_{aggregation_mode}_{t_str_from}_{t_str_to}'
+def to_filename(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
+    def _to_filename_prefix(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
+        t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
+        t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
+        return f'{t_id}_{aggregation_mode}_{t_str_from}_{t_str_to}'
+    filename_prefix = _to_filename_prefix(t_id, aggregation_mode, t_from, t_to)
+    return os.path.join(_cache_base_path, f"{filename_prefix}.parquet")
 
 
 def _anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
     return _cache_timezone.localize(datetime.datetime(year=t.year, month=t.month, day=t.day, hour=0, minute=0, second=0))
 
 
-def _split_t_range(t_from: datetime.datetime, t_to: datetime.datetime) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
+def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
     ret = []
     t1, t2 = _anchor_to_begin_of_day(t_from), _anchor_to_begin_of_day(t_from + _cache_interval)
     ret.append((t1, t2))
@@ -68,8 +71,7 @@ def _cache_df(df: pd.DataFrame, aggregation_mode: AGGREGATION_MODE, t_id: str, t
     if not _is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from}-{t_to} does not match {_cache_interval=} thus will not be cached.")
         return None
-    filename_prefix = _to_filename_prefix(t_id, aggregation_mode, t_from, t_to)
-    filename = os.path.join(_cache_base_path, f"{filename_prefix}.parquet")
+    filename = to_filename(t_id, aggregation_mode, t_from, t_to)
     if os.path.exists(filename):
         logging.info(f"{filename} already exists.")
         if overwrite:
@@ -85,8 +87,7 @@ def _fetch_from_cache(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: dat
     if not _is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from} to {t_to} does not match {_cache_interval=} thus not read from cache.")
         return None
-    filename_prefix = _to_filename_prefix(t_id, aggregation_mode, t_from, t_to)
-    filename = os.path.join(_cache_base_path, f"{filename_prefix}.parquet")
+    filename = to_filename(t_id, aggregation_mode, t_from, t_to)
     if not os.path.exists(filename):
         return None
     return pd.read_parquet(filename)
@@ -121,7 +122,7 @@ def fetch_and_cache(
     else:
         raise Exception(f"{dataset_mode=}, {export_mode=} is not available for ingestion")
 
-    t_ranges = _split_t_range(t_from, t_to)
+    t_ranges = split_t_range(t_from, t_to)
     df_concat = None
     for t_range in t_ranges:
         df_cache = _fetch_from_cache(t_id, aggregation_mode, t_range[0], t_range[1])
