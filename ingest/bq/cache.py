@@ -103,7 +103,7 @@ def fetch_and_cache(
         date_str_from: str = None,
         date_str_to: str = None,
         overwirte_cache = False,
-        skip_first_day = True,
+        skip_first_day = False,
         ) -> pd.DataFrame:
     t_from, t_to = util_time.to_t(
         t_from=t_from,
