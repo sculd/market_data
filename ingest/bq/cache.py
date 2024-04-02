@@ -103,6 +103,7 @@ def fetch_and_cache(
         date_str_from: str = None,
         date_str_to: str = None,
         overwirte_cache = False,
+        skip_first_day = True,
         ) -> pd.DataFrame:
     t_from, t_to = util_time.to_t(
         t_from=t_from,
@@ -124,7 +125,9 @@ def fetch_and_cache(
 
     t_ranges = split_t_range(t_from, t_to)
     df_concat = None
-    for t_range in t_ranges:
+    for i, t_range in enumerate(t_ranges):
+        if skip_first_day and i == 0:
+            continue
         df_cache = _fetch_from_cache(t_id, aggregation_mode, t_range[0], t_range[1])
         if overwirte_cache or df_cache is None:
             df = fetch_function(t_id, aggregation_mode, t_from=t_range[0], t_to=t_range[1])
