@@ -61,11 +61,14 @@ def run_query(query_str, timestamp_columnname) -> pd.DataFrame:
 
     bq_query_job = get_big_query_client().query(query_str)
     df = bq_query_job.to_dataframe().drop_duplicates([timestamp_columnname, 'symbol'])
+    del bq_query_job
+    logging.debug(f'fetched {len(df)} rows')
+    if len(df) == 0:
+        return df
+
     df = df.set_index(timestamp_columnname)
     df.index = df.index.tz_convert('America/New_York')
 
-    logging.debug(f'fetched {len(df)} rows')
-    del bq_query_job
     return df
 
 
