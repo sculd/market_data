@@ -17,7 +17,7 @@ _query_template_take_latest = """
     GROUP BY timestamp_floored_by_minute, symbol
     )
 
-    SELECT T.timestamp_floored_by_minute as timestamp, symbol, price_ask, qty_ask, price_bid, qty_bid
+    SELECT T.timestamp_floored_by_minute as timestamp, T.symbol, price_ask, qty_ask, price_bid, qty_bid
     FROM `{t_id}` AS T JOIN 
         LATEST ON T.timestamp_floored_by_minute = LATEST.timestamp_floored_by_minute AND T.symbol = LATEST.symbol AND T.ingestion_timestamp = LATEST.max_ingestion_timestamp
     WHERE TRUE
