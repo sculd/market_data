@@ -71,6 +71,9 @@ def _cache_df(df: pd.DataFrame, aggregation_mode: AGGREGATION_MODE, t_id: str, t
     if not _is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from}-{t_to} does not match {_cache_interval=} thus will not be cached.")
         return None
+    if len(df) == 0:
+        logging.info("df for {t_from}-{t_to} is empty thus will not be cached.")
+        return None
     filename = to_filename(t_id, aggregation_mode, t_from, t_to)
     if os.path.exists(filename):
         logging.info(f"{filename} already exists.")
