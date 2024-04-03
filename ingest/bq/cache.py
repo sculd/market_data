@@ -95,6 +95,42 @@ def _fetch_from_cache(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: dat
         return None
     return pd.read_parquet(filename)
 
+
+def read_from_cache(
+        dataset_mode: common.DATASET_MODE,
+        export_mode: common.EXPORT_MODE,
+        aggregation_mode: AGGREGATION_MODE,
+        t_from: datetime.datetime = None,
+        t_to: datetime.datetime = None,
+        epoch_seconds_from: int = None,
+        epoch_seconds_to: int = None,
+        date_str_from: str = None,
+        date_str_to: str = None,
+        ) -> pd.DataFrame:
+    t_from, t_to = util_time.to_t(
+        t_from=t_from,
+        t_to=t_to,
+        epoch_seconds_from=epoch_seconds_from,
+        epoch_seconds_to=epoch_seconds_to,
+        date_str_from=date_str_from,
+        date_str_to=date_str_to,
+    )
+
+    t_id = common.get_full_table_id(dataset_mode, export_mode)
+    t_ranges = split_t_range(t_from, t_to)
+    df_concat = None
+    for t_range in t_ranges:
+        df = _fetch_from_cache(t_id, aggregation_mode, t_range[0], t_range[1])
+        if df_concat is None:
+            df_concat = df.copy()
+        else:
+            df_concat = pd.concat([df_concat, df])
+        del df
+
+    df_concat = df_concat.reset_index().groupby('symbol').apply(lambda x: x.set_index('timestamp').resample('1min').asfreq().ffill()).drop(columns='symbol').reset_index()
+    return df_concat
+
+
 def fetch_and_cache(
         dataset_mode: common.DATASET_MODE,
         export_mode: common.EXPORT_MODE,
