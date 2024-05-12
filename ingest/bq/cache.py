@@ -174,6 +174,10 @@ def fetch_and_cache(
         else:
             df = df_cache
 
+        if len(df) == 0:
+            continue
+        if 'timestamp' in df.columns:
+            df = df.set_index('timestamp')
         if df_concat is None:
             df_concat = df.copy()
         else:
