@@ -121,6 +121,8 @@ def read_from_cache(
     df_concat = None
     for t_range in t_ranges:
         df = _fetch_from_cache(t_id, aggregation_mode, t_range[0], t_range[1])
+        if df is None:
+            continue
         if df_concat is None:
             df_concat = df.copy()
         else:
