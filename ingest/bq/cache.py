@@ -129,6 +129,8 @@ def read_from_cache(
             df_concat = pd.concat([df_concat, df])
         del df
 
+    if df_concat is None:
+        return None
     df_concat = df_concat.reset_index().groupby('symbol').apply(lambda x: x.set_index('timestamp').resample('1min').asfreq().ffill()).drop(columns='symbol').reset_index()
     return df_concat
 
@@ -176,6 +178,8 @@ def fetch_and_cache(
         else:
             df = df_cache
 
+        if df is None:
+            continue
         if len(df) == 0:
             continue
         if 'timestamp' in df.columns:
