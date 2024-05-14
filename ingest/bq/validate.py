@@ -15,7 +15,7 @@ def verify_data_cache(
     export_mode: common.EXPORT_MODE,
     aggregation_mode: AGGREGATION_MODE,
 ):
-    logging.info(f"veryfing the data for {date_str_from=} and {date_str_to=}")
+    logging.info(f"veryfing the data for {dataset_mode} {export_mode} {date_str_from=} and {date_str_to=}")
     t_id = common.get_full_table_id(dataset_mode, export_mode)
     t_from, t_to = util_time.to_t(
         date_str_from=date_str_from,
