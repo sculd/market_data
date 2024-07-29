@@ -60,7 +60,8 @@ def run_query(query_str, timestamp_columnname) -> pd.DataFrame:
     print(query_str)
 
     bq_query_job = get_big_query_client().query(query_str)
-    df = bq_query_job.to_dataframe().drop_duplicates([timestamp_columnname, 'symbol'])
+    df = bq_query_job.to_dataframe()
+    df = df.drop_duplicates([timestamp_columnname, 'symbol'])
     del bq_query_job
     logging.debug(f'fetched {len(df)} rows')
     if len(df) == 0:
