@@ -20,7 +20,8 @@ _query_template_take_latest = """
 
     SELECT T.timestamp, T.symbol, open, high, low, close, volume
     FROM `{t_id}` AS T JOIN 
-        LATEST ON T.timestamp = LATEST.timestamp AND T.symbol = LATEST.symbol AND T.ingestion_timestamp = LATEST.max_ingestion_timestamp
+        LATEST ON T.timestamp = LATEST.timestamp AND T.symbol = LATEST.symbol 
+        AND IFNULL(T.ingestion_timestamp, PARSE_TIMESTAMP("%c", "Thu Dec 25 07:30:00 2008")) = IFNULL(LATEST.max_ingestion_timestamp, PARSE_TIMESTAMP("%c", "Thu Dec 25 07:30:00 2008"))
     WHERE TRUE
     AND T.timestamp >= "{t_str_from}"
     AND T.timestamp < "{t_str_to}"
