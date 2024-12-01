@@ -29,12 +29,12 @@ _query_template_take_latest = """
 """
 
 _query_template_collect_all_updates = """
-    SELECT imestamp, symbol, open, high, low, close, volume
+    SELECT imestamp, symbol, open, high, low, close, volume, ingestion_timestamp
     FROM `{t_id}` 
     WHERE TRUE
     AND timestamp >= "{t_str_from}"
     AND timestamp < "{t_str_to}"
-    ORDER BY T.timestamp ASC
+    ORDER BY timestamp ASC
 """
 
 
@@ -49,7 +49,7 @@ def _get_query_template(aggregation_mode: AGGREGATION_MODE) -> str:
 
 def _fetch_minute_candle_datetime(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> pd.DataFrame:
     logging.debug(
-        f'fetching prices from {t_from} to {t_to}')
+        f'fetching minute candles from {t_from} to {t_to}')
 
     query_template = _get_query_template(aggregation_mode)
     query_str = query_template.format(
