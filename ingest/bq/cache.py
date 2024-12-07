@@ -32,7 +32,7 @@ def to_filename(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.
     return os.path.join(_cache_base_path, f"{filename_prefix}.parquet")
 
 
-def _anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
+def anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
     return _cache_timezone.localize(datetime.datetime(year=t.year, month=t.month, day=t.day, hour=0, minute=0, second=0))
 
 
@@ -41,11 +41,11 @@ def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime) -> typing.
     split an interval into a list of daily intervals.
     '''
     ret = []
-    t1, t2 = _anchor_to_begin_of_day(t_from), _anchor_to_begin_of_day(t_from + _cache_interval)
+    t1, t2 = anchor_to_begin_of_day(t_from), anchor_to_begin_of_day(t_from + _cache_interval)
     ret.append((t1, t2))
     while t2 < t_to:
         t1, t2 = t2, t2 + _cache_interval
-        t1, t2 = _anchor_to_begin_of_day(t1), _anchor_to_begin_of_day(t2)
+        t1, t2 = anchor_to_begin_of_day(t1), anchor_to_begin_of_day(t2)
         ret.append((t1, t2))
 
     last = (ret[-1][0], min(ret[-1][1], t_to))
@@ -54,7 +54,7 @@ def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime) -> typing.
 
 
 def _is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) -> bool:
-    t_from_plus_a_day = _anchor_to_begin_of_day(t_from + datetime.timedelta(days=1))
+    t_from_plus_a_day = anchor_to_begin_of_day(t_from + datetime.timedelta(days=1))
     if t_to != t_from_plus_a_day:
         return False
 
