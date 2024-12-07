@@ -13,7 +13,7 @@ from ..util import time as util_time
 
 # the cache will be stored per day.
 _cache_interval = datetime.timedelta(days=1)
-_cache_base_path = os.path.expanduser('~/market_data')
+_cache_base_path = os.path.expanduser('~/market_data_cache')
 try:
     os.mkdir(_cache_base_path)
 except FileExistsError:
@@ -28,6 +28,7 @@ def to_filename(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.
         t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
         t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
         return f'{t_id}_{aggregation_mode}_{t_str_from}_{t_str_to}'
+
     filename_prefix = _to_filename_prefix(t_id, aggregation_mode, t_from, t_to)
     return os.path.join(_cache_base_path, f"{filename_prefix}.parquet")
 
@@ -37,9 +38,9 @@ def anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
 
 
 def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
-    '''
+    """
     split an interval into a list of daily intervals.
-    '''
+    """
     ret = []
     t1, t2 = anchor_to_begin_of_day(t_from), anchor_to_begin_of_day(t_from + _cache_interval)
     ret.append((t1, t2))
@@ -53,7 +54,10 @@ def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime) -> typing.
     return ret
 
 
-def _is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) -> bool:
+def is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) -> bool:
+    """
+    returns if the range is one-day interval anchored at the zero hour.
+    """
     t_from_plus_a_day = anchor_to_begin_of_day(t_from + datetime.timedelta(days=1))
     if t_to != t_from_plus_a_day:
         return False
@@ -71,7 +75,7 @@ def _is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime)
 
 
 def _cache_df(df: pd.DataFrame, aggregation_mode: AGGREGATION_MODE, t_id: str, t_from: datetime.datetime, t_to: datetime.datetime, overwrite=True):
-    if not _is_exact_cache_interval(t_from, t_to):
+    if not is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from}-{t_to} does not match {_cache_interval=} thus will not be cached.")
         return None
     if len(df) == 0:
@@ -90,7 +94,7 @@ def _cache_df(df: pd.DataFrame, aggregation_mode: AGGREGATION_MODE, t_id: str, t
 
 
 def _fetch_from_cache(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> typing.Optional[pd.DataFrame]:
-    if not _is_exact_cache_interval(t_from, t_to):
+    if not is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from} to {t_to} does not match {_cache_interval=} thus not read from cache.")
         return None
     filename = to_filename(t_id, aggregation_mode, t_from, t_to)
