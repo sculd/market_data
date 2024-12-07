@@ -76,10 +76,14 @@ def run_query(query_str, timestamp_columnname) -> pd.DataFrame:
 class EXPORT_MODE(Enum):
     BY_MINUTE = 1
     RAW = 2
-    ORDERBOOK_LEVEL10 = 3
-    ORDERBOOK = 4
-    ORDERBOOK_LIQUIDITY_IMBALANCE = 5
-    ORDERBOOK_LEVEL1 = 6
+    # by update means the bar will be constructed each time
+    # the exchange sends out an update.
+    # by update is not yet implemented.
+    BY_UPDATE = 3
+    ORDERBOOK_LEVEL10 = 13
+    ORDERBOOK = 14
+    ORDERBOOK_LIQUIDITY_IMBALANCE = 15
+    ORDERBOOK_LEVEL1 = 16
 
 class DATASET_MODE(Enum):
     EQUITY = 1

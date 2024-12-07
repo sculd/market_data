@@ -37,6 +37,9 @@ def _anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
 
 
 def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
+    '''
+    split an interval into a list of daily intervals.
+    '''
     ret = []
     t1, t2 = _anchor_to_begin_of_day(t_from), _anchor_to_begin_of_day(t_from + _cache_interval)
     ret.append((t1, t2))
