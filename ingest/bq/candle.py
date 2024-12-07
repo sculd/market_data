@@ -34,7 +34,7 @@ _query_template_collect_all_updates = """
     WHERE TRUE
     AND timestamp >= "{t_str_from}"
     AND timestamp < "{t_str_to}"
-    ORDER BY timestamp ASC
+    ORDER BY ingestion_timestamp ASC
 """
 
 
