@@ -18,19 +18,23 @@ try:
     os.mkdir(_cache_base_path)
 except FileExistsError:
     pass
+_label_no_label = ""
 
 # the timezone of dividing range into days.
 _cache_timezone = pytz.timezone('America/New_York')
 
 
-def to_filename(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
-    def _to_filename_prefix(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
-        t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
-        t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
-        return f'{t_id}_{aggregation_mode}_{t_str_from}_{t_str_to}'
+def to_filename(basedir: str, label: str, t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
+    t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
+    t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
+    fn = os.path.join(basedir, label, f"{t_id}_{aggregation_mode}", f"{t_str_from}_{t_str_to}.parquet")
+    dir = os.path.dirname(fn)
+    try:
+        os.makedirs(dir, exist_ok=True)
+    except FileExistsError:
+        pass
 
-    filename_prefix = _to_filename_prefix(t_id, aggregation_mode, t_from, t_to)
-    return os.path.join(_cache_base_path, f"{filename_prefix}.parquet")
+    return fn
 
 
 def anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
@@ -81,7 +85,7 @@ def _cache_df(df: pd.DataFrame, aggregation_mode: AGGREGATION_MODE, t_id: str, t
     if len(df) == 0:
         logging.info(f"df for {t_from}-{t_to} is empty thus will not be cached.")
         return None
-    filename = to_filename(t_id, aggregation_mode, t_from, t_to)
+    filename = to_filename(_cache_base_path, _label_no_label, t_id, aggregation_mode, t_from, t_to)
     if os.path.exists(filename):
         logging.info(f"{filename} already exists.")
         if overwrite:
@@ -97,7 +101,7 @@ def _fetch_from_cache(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: dat
     if not is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from} to {t_to} does not match {_cache_interval=} thus not read from cache.")
         return None
-    filename = to_filename(t_id, aggregation_mode, t_from, t_to)
+    filename = to_filename(_cache_base_path, _label_no_label, t_id, aggregation_mode, t_from, t_to)
     if not os.path.exists(filename):
         return None
     return pd.read_parquet(filename)
