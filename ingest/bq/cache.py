@@ -242,3 +242,38 @@ def query_and_cache(
     return df_concat
 
 
+def validate_df(
+        label: str,
+        dataset_mode: common.DATASET_MODE,
+        export_mode: common.EXPORT_MODE,
+        t_from: datetime.datetime = None,
+        t_to: datetime.datetime = None,
+        epoch_seconds_from: int = None,
+        epoch_seconds_to: int = None,
+        date_str_from: str = None,
+        date_str_to: str = None,
+        ) -> None:
+    t_id = common.get_full_table_id(dataset_mode, export_mode)
+    t_from, t_to = util_time.to_t(
+        t_from=t_from,
+        t_to=t_to,
+        epoch_seconds_from=epoch_seconds_from,
+        epoch_seconds_to=epoch_seconds_to,
+        date_str_from=date_str_from,
+        date_str_to=date_str_to,
+    )
+    t_ranges = split_t_range(t_from, t_to)
+    for t_range in t_ranges:
+        t_from, t_to = t_range[0], t_range[-1]
+        filename = to_filename(_cache_base_path, label, t_id, t_from, t_to)
+        if not os.path.exists(filename):
+            blob_name = get_gcsblobname(label, t_id, t_from, t_to)
+            blob_exist = if_blob_exist(blob_name)
+            logging.info(f"{filename=} does not exist in local cache. For gcs, {blob_exist=}.")
+            if blob_exist:
+                download_gcs_blob(blob_name, filename)
+                print(f'after download from gcs, file exist: {os.path.exists(filename)}')
+            else:
+                print(f'{filename} does not exist in the gcs bucket either ({blob_name} does not exist')
+
+
