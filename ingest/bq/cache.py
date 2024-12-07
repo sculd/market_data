@@ -97,20 +97,36 @@ def _cache_df(df: pd.DataFrame, aggregation_mode: AGGREGATION_MODE, t_id: str, t
         df.to_parquet(filename)
 
 
-def _fetch_from_cache(t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> typing.Optional[pd.DataFrame]:
+def _fetch_from_cache(
+        t_id: str,
+        label: str,
+        aggregation_mode: AGGREGATION_MODE,
+        t_from: datetime.datetime,
+        t_to: datetime.datetime,
+        columns: typing.List[str] = None,
+) -> typing.Optional[pd.DataFrame]:
     if not is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from} to {t_to} does not match {_cache_interval=} thus not read from cache.")
         return None
-    filename = to_filename(_cache_base_path, _label_no_label, t_id, aggregation_mode, t_from, t_to)
+    filename = to_filename(_cache_base_path, label, t_id, aggregation_mode, t_from, t_to)
     if not os.path.exists(filename):
         return None
-    return pd.read_parquet(filename)
+    df = pd.read_parquet(filename)
+    if len(df) == 0:
+        return None
+
+    if columns is None:
+        return df
+    else:
+        columns = [c for c in columns if c in df.columns]
+        return df[columns]
 
 
 def read_from_cache(
         dataset_mode: common.DATASET_MODE,
         export_mode: common.EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
+        label: str = _label_no_label,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -131,7 +147,7 @@ def read_from_cache(
     t_ranges = split_t_range(t_from, t_to)
     df_concat = None
     for t_range in t_ranges:
-        df = _fetch_from_cache(t_id, aggregation_mode, t_range[0], t_range[1])
+        df = _fetch_from_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
         if df is None:
             continue
         if df_concat is None:
@@ -150,6 +166,7 @@ def fetch_and_cache(
         dataset_mode: common.DATASET_MODE,
         export_mode: common.EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
+        label: str = _label_no_label,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -182,7 +199,7 @@ def fetch_and_cache(
     for i, t_range in enumerate(t_ranges):
         if skip_first_day and i == 0:
             continue
-        df_cache = _fetch_from_cache(t_id, aggregation_mode, t_range[0], t_range[1])
+        df_cache = _fetch_from_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
         if overwirte_cache or df_cache is None:
             df = fetch_function(t_id, aggregation_mode, t_from=t_range[0], t_to=t_range[1])
             _cache_df(df, aggregation_mode, t_id, t_range[0], t_range[1])
