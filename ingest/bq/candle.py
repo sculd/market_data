@@ -29,7 +29,7 @@ _query_template_take_latest = """
 """
 
 _query_template_collect_all_updates = """
-    SELECT imestamp, symbol, open, high, low, close, volume, ingestion_timestamp
+    SELECT timestamp, symbol, open, high, low, close, volume, ingestion_timestamp
     FROM `{t_id}` 
     WHERE TRUE
     AND timestamp >= "{t_str_from}"
