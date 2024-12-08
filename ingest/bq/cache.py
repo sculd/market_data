@@ -83,7 +83,10 @@ def is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) 
     return True
 
 
-def _cache_df_daily(df: pd.DataFrame, label: str, aggregation_mode: AGGREGATION_MODE, t_id: str, t_from: datetime.datetime, t_to: datetime.datetime, overwrite=True):
+def _cache_daily_df(df: pd.DataFrame, label: str, aggregation_mode: AGGREGATION_MODE, t_id: str, t_from: datetime.datetime, t_to: datetime.datetime, overwrite=True):
+    """
+    Cache a DataFrame that covers one-day range exactly.
+    """
     if not is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from}-{t_to} does not match {_cache_interval=} thus will not be cached.")
         return None
@@ -105,6 +108,42 @@ def _cache_df_daily(df: pd.DataFrame, label: str, aggregation_mode: AGGREGATION_
 
     blob_name = get_gcsblobname(label, t_id, t_from, t_to)
     upload_file_to_public_gcs_bucket(filename, blob_name, rewrite=overwrite)
+
+
+def cache_df(
+        df: pd.DataFrame,
+        label: str,
+        aggregation_mode: AGGREGATION_MODE,
+        dataset_mode: common.DATASET_MODE,
+        export_mode: common.EXPORT_MODE,
+        overwrite = False,
+        warm_up_period_days = 1,
+) -> None:
+    """
+    Cache a DataFrame.
+
+    Chop it into daily pieces and cache them one-by-one.
+    skip_first_day is present as the first day of data is often incomplete due to warm-up period.
+    """
+    if len(df) == 0:
+        logging.info(f"df is empty for {label} thus will be skipped.")
+        return
+    t_id = common.get_full_table_id(dataset_mode, export_mode)
+
+    def _split_df_by_day() -> typing.List[pd.DataFrame]:
+        dfs = [group[1] for group in df.groupby(df.index.get_level_values(_timestamp_index_name).date)]
+        return dfs
+
+    df_dailys = _split_df_by_day()
+    for i, df_daily in enumerate(df_dailys):
+        if i < warm_up_period_days:
+            continue
+
+        timestamps = df_daily.index.get_level_values(_timestamp_index_name).unique()
+        t_begin = anchor_to_begin_of_day(timestamps[0])
+        t_end = anchor_to_begin_of_day(t_begin + _cache_interval)
+        _cache_daily_df(df_daily, label, aggregation_mode, t_id, t_begin, t_end, overwrite=overwrite)
+        del df_daily
 
 
 def _fetch_from_daily_cache(
@@ -220,7 +259,7 @@ def query_and_cache(
         df_cache = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
         if overwirte_cache or df_cache is None:
             df = fetch_function(t_id, aggregation_mode, t_from=t_range[0], t_to=t_range[1])
-            _cache_df_daily(df, label, aggregation_mode, t_id, t_range[0], t_range[1])
+            _cache_daily_df(df, label, aggregation_mode, t_id, t_range[0], t_range[1])
         else:
             df = df_cache
 
