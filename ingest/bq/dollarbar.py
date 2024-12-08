@@ -5,18 +5,18 @@ def df_bar_to_dollar_bar(df):
     dollar_bar_rows = []
     dollar_bar_size = 20000
     cumulative_dollar_volume_per_symbol = defaultdict(float)
-    prev_volume_per_symbol = defaultdict(float)
+    prev_dollar_volume_per_symbol = defaultdict(float)
     prev_minute_per_symbol = {}
 
     for timestamp, row in df.iterrows():
         symbol = row['symbol']
         if symbol not in prev_minute_per_symbol or prev_minute_per_symbol[symbol] != timestamp:
             prev_minute_per_symbol[symbol] = timestamp
-            prev_volume_per_symbol[symbol] = 0
+            prev_dollar_volume_per_symbol[symbol] = 0
 
-        incremented_volume = row['volume'] - prev_volume_per_symbol[symbol]
-        cumulative_dollar_volume_per_symbol[symbol] += incremented_volume
-        prev_volume_per_symbol[symbol] = row['volume']
+        incremented_dollar_volume = row['volume'] * row['close'] - prev_dollar_volume_per_symbol[symbol]
+        cumulative_dollar_volume_per_symbol[symbol] += incremented_dollar_volume
+        prev_dollar_volume_per_symbol[symbol] = row['volume'] * row['close']
         if cumulative_dollar_volume_per_symbol[symbol] >= dollar_bar_size:
             dollar_bar_row = {
                 'timestamp': row['ingestion_timestamp'],
