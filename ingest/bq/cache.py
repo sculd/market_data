@@ -95,7 +95,7 @@ def _cache_daily_df(df: pd.DataFrame, label: str, aggregation_mode: AGGREGATION_
         logging.info(f"df for {t_from}-{t_to} is empty thus will not be cached.")
         return None
 
-    filename = to_filename(_cache_base_path, _label_market_data, t_id, aggregation_mode, t_from, t_to)
+    filename = to_filename(_cache_base_path, label, t_id, aggregation_mode, t_from, t_to)
     if os.path.exists(filename):
         logging.info(f"{filename} already exists.")
         if overwrite:
@@ -279,6 +279,52 @@ def query_and_cache(
         df_concat = df_concat.reset_index().groupby('symbol').apply(
             lambda x: x.set_index(_timestamp_index_name).resample(resample_interval_str).asfreq().ffill()).drop(columns='symbol').reset_index()
     return df_concat
+
+
+def read_from_cache_or_query_and_cache(
+        dataset_mode: common.DATASET_MODE,
+        export_mode: common.EXPORT_MODE,
+        aggregation_mode: AGGREGATION_MODE,
+        label: str = _label_market_data,
+        resample_interval_str = None,
+        t_from: datetime.datetime = None,
+        t_to: datetime.datetime = None,
+        epoch_seconds_from: int = None,
+        epoch_seconds_to: int = None,
+        date_str_from: str = None,
+        date_str_to: str = None,
+        overwirte_cache = False,
+        skip_first_day = False,
+        ) -> pd.DataFrame:
+    df = read_from_cache(
+            dataset_mode,
+            export_mode,
+            aggregation_mode,
+            label = label,
+            resample_interval_str=resample_interval_str,
+            t_from = t_from,
+            t_to = t_to,
+            epoch_seconds_from = epoch_seconds_from,
+            epoch_seconds_to = epoch_seconds_to,
+            date_str_from = date_str_from,
+            date_str_to = date_str_to,
+    )
+    if df is not None:
+        return df
+
+    return query_and_cache(
+            dataset_mode,
+            export_mode,
+            aggregation_mode,
+            label = label,
+            resample_interval_str=resample_interval_str,
+            t_from = t_from,
+            t_to = t_to,
+            epoch_seconds_from = epoch_seconds_from,
+            epoch_seconds_to = epoch_seconds_to,
+            date_str_from = date_str_from,
+            date_str_to = date_str_to,
+    )
 
 
 def validate_df(
