@@ -285,6 +285,7 @@ def validate_df(
         label: str,
         dataset_mode: common.DATASET_MODE,
         export_mode: common.EXPORT_MODE,
+        aggregation_mode: common.AGGREGATION_MODE,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -304,7 +305,7 @@ def validate_df(
     t_ranges = split_t_range(t_from, t_to)
     for t_range in t_ranges:
         t_from, t_to = t_range[0], t_range[-1]
-        filename = to_filename(_cache_base_path, label, t_id, t_from, t_to)
+        filename = to_filename(_cache_base_path, label, t_id, aggregation_mode, t_from, t_to)
         if not os.path.exists(filename):
             blob_name = get_gcsblobname(label, t_id, t_from, t_to)
             blob_exist = if_blob_exist(blob_name)
