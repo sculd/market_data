@@ -209,6 +209,8 @@ def read_from_cache(
 
     def concat_batch():
         nonlocal df_concat, df_list
+        if len(df_list) == 0:
+            return
         df_batch = pd.concat(df_list)
         if df_concat is None:
             df_concat = df_batch
@@ -270,7 +272,24 @@ def query_and_cache(
         raise Exception(f"{dataset_mode=}, {export_mode=} is not available for ingestion")
 
     t_ranges = split_t_range(t_from, t_to)
+    df_concat: pd.DataFrame = None
     df_list = []
+    # concat every 30 minutes to free up memory
+    concat_interval = 30
+
+    def concat_batch():
+        nonlocal df_concat, df_list
+        if len(df_list) == 0:
+            return
+        df_batch = pd.concat(df_list)
+        if df_concat is None:
+            df_concat = df_batch
+        else:
+            df_concat = pd.concat([df_concat, df_batch])
+        for df in df_list:
+            del df
+        df_list = []
+
     for i, t_range in enumerate(t_ranges):
         if skip_first_day and i == 0:
             continue
@@ -290,9 +309,10 @@ def query_and_cache(
 
         df_list.append(df)
 
-    df_concat = pd.concat(df_list)
-    for df in df_list:
-        del df
+        if len(df_list) > 0 and len(df_list) % concat_interval == 0:
+            concat_batch()
+
+    concat_batch()
 
 
     if df_concat is not None and resample_interval_str is not None:
