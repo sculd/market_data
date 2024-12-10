@@ -205,19 +205,8 @@ def read_from_cache(
     df_concat = None
     df_list = []
     for t_range in t_ranges:
-        logging.info(f"read_from_cache for {t_range}")
         df = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
         df_list.append(df)
-        '''
-        if df is None:
-            continue
-        if df_concat is None:
-            df_concat = df.copy()
-        else:
-            df_concat = pd.concat([df_concat, df])
-        del df
-        '''
-
     df_concat = pd.concat(df_list)
     for df in df_list:
         del df
