@@ -202,13 +202,30 @@ def read_from_cache(
 
     t_id = common.get_full_table_id(dataset_mode, export_mode)
     t_ranges = split_t_range(t_from, t_to)
+    df_concat: pd.DataFrame = None
     df_list = []
-    for t_range in t_ranges:
+    # concat every 30 minutes to free up memory
+    concat_interval = 30
+
+    def concat_batch():
+        nonlocal df_concat, df_list
+        df_batch = pd.concat(df_list)
+        if df_concat is None:
+            df_concat = df_batch
+        else:
+            df_concat = pd.concat([df_concat, df_batch])
+        for df in df_list:
+            del df
+        df_list = []
+
+    for i, t_range in enumerate(t_ranges):
         df = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
         df_list.append(df)
-    df_concat = pd.concat(df_list)
-    for df in df_list:
-        del df
+
+        if i % concat_interval == 0:
+            concat_batch()
+
+    concat_batch()
 
     if df_concat is not None and resample_interval_str is not None:
         df_concat = df_concat.reset_index().groupby('symbol').apply(
