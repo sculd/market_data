@@ -203,15 +203,23 @@ def read_from_cache(
     t_id = common.get_full_table_id(dataset_mode, export_mode)
     t_ranges = split_t_range(t_from, t_to)
     df_concat = None
+    df_list = []
     for t_range in t_ranges:
         logging.info(f"read_from_cache for {t_range}")
         df = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
+        df_list.append(df)
+        '''
         if df is None:
             continue
         if df_concat is None:
             df_concat = df.copy()
         else:
             df_concat = pd.concat([df_concat, df])
+        del df
+        '''
+
+    df_concat = pd.concat(df_list)
+    for df in df_list:
         del df
 
     if df_concat is not None and resample_interval_str is not None:
