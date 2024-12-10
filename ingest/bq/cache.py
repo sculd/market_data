@@ -220,9 +220,11 @@ def read_from_cache(
 
     for i, t_range in enumerate(t_ranges):
         df = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
+        if df is None:
+            continue
         df_list.append(df)
 
-        if i % concat_interval == 0:
+        if len(df_list) > 0 and len(df_list) % concat_interval == 0:
             concat_batch()
 
     concat_batch()
