@@ -204,6 +204,7 @@ def read_from_cache(
     t_ranges = split_t_range(t_from, t_to)
     df_concat = None
     for t_range in t_ranges:
+        logging.info(f"read_from_cache for {t_range}")
         df = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
         if df is None:
             continue
