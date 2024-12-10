@@ -189,6 +189,7 @@ def read_from_cache(
         epoch_seconds_to: int = None,
         date_str_from: str = None,
         date_str_to: str = None,
+        columns: typing.List[str] = None,
         ) -> pd.DataFrame:
     t_from, t_to = util_time.to_t(
         t_from=t_from,
@@ -215,7 +216,8 @@ def read_from_cache(
     if df_concat is not None and resample_interval_str is not None:
         df_concat = df_concat.reset_index().groupby('symbol').apply(
             lambda x: x.set_index(_timestamp_index_name).resample(resample_interval_str).asfreq().ffill()).drop(columns='symbol').reset_index()
-    return df_concat
+
+    return df_concat if columns is None else df_concat[columns]
 
 
 def query_and_cache(
