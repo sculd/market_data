@@ -202,7 +202,6 @@ def read_from_cache(
 
     t_id = common.get_full_table_id(dataset_mode, export_mode)
     t_ranges = split_t_range(t_from, t_to)
-    df_concat = None
     df_list = []
     for t_range in t_ranges:
         df = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
@@ -252,7 +251,7 @@ def query_and_cache(
         raise Exception(f"{dataset_mode=}, {export_mode=} is not available for ingestion")
 
     t_ranges = split_t_range(t_from, t_to)
-    df_concat = None
+    df_list = []
     for i, t_range in enumerate(t_ranges):
         if skip_first_day and i == 0:
             continue
@@ -269,11 +268,13 @@ def query_and_cache(
             continue
         if _timestamp_index_name in df.columns:
             df = df.set_index(_timestamp_index_name)
-        if df_concat is None:
-            df_concat = df.copy()
-        else:
-            df_concat = pd.concat([df_concat, df])
+
+        df_list.append(df)
+
+    df_concat = pd.concat(df_list)
+    for df in df_list:
         del df
+
 
     if df_concat is not None and resample_interval_str is not None:
         df_concat = df_concat.reset_index().groupby('symbol').apply(
