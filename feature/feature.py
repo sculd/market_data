@@ -104,6 +104,60 @@ class FeatureEngineer:
         else:
             return self.df.copy()
     
+    def create_sequence_features(self, sequence_length: int = 60) -> pd.DataFrame:
+        """
+        Create a DataFrame with sequence features only.
+        Each column contains arrays of past values for each feature.
+        
+        Args:
+            sequence_length: Length of the sequence arrays
+            
+        Returns:
+            DataFrame with sequence features only
+        """
+        # First get the regular features
+        features_df = self.add_all_features()
+        
+        # Create an empty result DataFrame to hold all sequence features
+        all_sequence_features = []
+        
+        # Group by symbol to calculate per-symbol sequences
+        for symbol, group in features_df.groupby('symbol'):
+            # Create a DataFrame to hold sequences for this symbol
+            symbol_sequences = pd.DataFrame(index=group.index)
+            symbol_sequences['symbol'] = symbol
+            
+            # Get feature columns to create sequences for (exclude 'symbol')
+            feature_cols = [col for col in group.columns if col != 'symbol']
+            
+            # Add sequence columns
+            for col in feature_cols:
+                # Initialize the column with object type to hold arrays
+                symbol_sequences[col] = None
+                symbol_sequences[col] = symbol_sequences[col].astype('object')
+                
+                # For each row, create array of past values
+                for i in range(len(group)):
+                    if i < sequence_length - 1:
+                        # Not enough history yet, use available data and pad with NaNs
+                        seq = np.array(group[col].iloc[max(0, i-sequence_length+1):i+1])
+                        padding = np.full(sequence_length - len(seq), np.nan)
+                        symbol_sequences.at[group.index[i], col] = np.concatenate([padding, seq])
+                    else:
+                        # Full history available
+                        symbol_sequences.at[group.index[i], col] = np.array(group[col].iloc[i-sequence_length+1:i+1])
+            
+            # Append to the list of sequence features
+            all_sequence_features.append(symbol_sequences)
+        
+        # Concatenate all symbol sequence features into a single DataFrame
+        if all_sequence_features:
+            result_df = pd.concat(all_sequence_features)
+            return result_df
+        else:
+            # Return empty DataFrame with same index
+            return pd.DataFrame(index=self.df.index)
+    
     @staticmethod
     def calculate_return(df: pd.DataFrame, period: int = 1) -> pd.Series:
         """Calculate return over specified period in minutes."""
@@ -260,3 +314,19 @@ def create_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     engineer = FeatureEngineer(df)
     return engineer.add_all_features()
+
+
+def create_sequence_features(df: pd.DataFrame, sequence_length: int = 60) -> pd.DataFrame:
+    """
+    Convenience function to create sequence features from market data.
+    Each column in the resulting DataFrame contains arrays of the past values.
+    
+    Args:
+        df: DataFrame with timestamp index and OHLCV columns
+        sequence_length: Length of the sequence arrays
+        
+    Returns:
+        DataFrame with sequence features
+    """
+    engineer = FeatureEngineer(df)
+    return engineer.create_sequence_features(sequence_length=sequence_length)
