@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import List, Union, Dict
+from typing import List, Union, Dict, Tuple, Literal
 import logging
 import warnings
 
@@ -57,52 +57,55 @@ class FeatureEngineer:
         Returns:
             DataFrame with all features added (excluding raw OHLCV data)
         """
-        # Create an empty result DataFrame to hold all features
+        # Create an empty list to hold all features DataFrames
         all_features = []
         
         # Group by symbol to calculate per-symbol features
         for symbol, group in self.df.groupby('symbol'):
-            # Initialize a new DataFrame for features, only keeping index and symbol
-            symbol_features = pd.DataFrame(index=group.index)
-            symbol_features['symbol'] = symbol
+            # Create a dictionary to hold all feature columns
+            feature_data = {'symbol': symbol}
             
             # Price indicators
             for period in return_periods:
-                symbol_features[f'return_{period}m'] = self.calculate_return(group, period)
+                feature_data[f'return_{period}m'] = self.calculate_return(group, period)
             
             for period in ema_periods:
-                symbol_features[f'ema_{period}m'] = self.calculate_ema(group, period)
+                ema = self.calculate_ema(group, period)
+                feature_data[f'ema_{period}m'] = ema
                 # Add EMA relative to price (normalized)
-                symbol_features[f'ema_rel_{period}m'] = group['close'] / self.calculate_ema(group, period)
+                feature_data[f'ema_rel_{period}m'] = group['close'] / ema
             
             # Bollinger Bands
             upper, middle, lower = self.calculate_bollinger_bands(group, 20, 2)
             # Add relative positions within bands (normalized)
-            symbol_features['bb_position'] = (group['close'] - lower) / (upper - lower)
-            symbol_features['bb_width'] = (upper - lower) / middle
+            feature_data['bb_position'] = (group['close'] - lower) / (upper - lower)
+            feature_data['bb_width'] = (upper - lower) / middle
             
             # Other price indicators
-            symbol_features['true_range'] = self.calculate_true_range(group)
-            symbol_features['open_close_ratio'] = self.calculate_open_close_ratio(group)
-            symbol_features['rsi'] = self.calculate_rsi(group, 14)
-            symbol_features['autocorr_lag1'] = self.calculate_autocorrelation(group, 1)
-            symbol_features['close_zscore'] = self.calculate_zscore(group['close'])
-            symbol_features['close_minmax'] = self.calculate_minmax_scale(group['close'], 20)
+            feature_data['true_range'] = self.calculate_true_range(group)
+            feature_data['open_close_ratio'] = self.calculate_open_close_ratio(group)
+            feature_data['rsi'] = self.calculate_rsi(group, 14)
+            feature_data['autocorr_lag1'] = self.calculate_autocorrelation(group, 1)
+            feature_data['close_zscore'] = self.calculate_zscore(group['close'])
+            feature_data['close_minmax'] = self.calculate_minmax_scale(group['close'], 20)
             
             # High-Low range as percentage of price
-            symbol_features['hl_range_pct'] = (group['high'] - group['low']) / group['close']
+            feature_data['hl_range_pct'] = (group['high'] - group['low']) / group['close']
             
             # Volume indicators
-            symbol_features['volume_ratio_20m'] = self.calculate_volume_ratio(group, 20)
-            symbol_features['obv'] = self.calculate_obv(group)
+            feature_data['volume_ratio_20m'] = self.calculate_volume_ratio(group, 20)
+            feature_data['obv'] = self.calculate_obv(group)
             # Normalize OBV with a rolling window
-            symbol_features['obv_zscore'] = self.calculate_zscore(symbol_features['obv'], 20)
+            feature_data['obv_zscore'] = self.calculate_zscore(feature_data['obv'], 20)
             
             # Add BTC features if requested
             if add_btc_features and self.btc_df is not None and symbol != 'BTC':
-                btc_features = self.calculate_btc_features(symbol_features.index, return_periods)
-                for col in btc_features.columns:
-                    symbol_features[col] = btc_features[col].values
+                btc_features = self.calculate_btc_features(group.index, return_periods)
+                for col, values in btc_features.items():
+                    feature_data[col] = values
+            
+            # Create a single DataFrame from all features at once
+            symbol_features = pd.DataFrame(feature_data, index=group.index)
             
             # Append to the list of features
             all_features.append(symbol_features)
@@ -114,6 +117,146 @@ class FeatureEngineer:
         else:
             # Return an empty DataFrame with only the symbol column
             return pd.DataFrame({'symbol': []}, index=self.df.index)
+    
+    def add_target_features(self, 
+                           forward_periods: List[int] = [1, 5, 15, 30, 60, 120, 240, 480],
+                           tp_values: List[float] = [0.005, 0.01, 0.02, 0.03, 0.05],
+                           sl_values: List[float] = [0.005, 0.01, 0.02, 0.03, 0.05]) -> pd.DataFrame:
+        """
+        Add target features for machine learning, including forward returns and
+        classification labels based on take-profit and stop-loss levels.
+        
+        Args:
+            forward_periods: Periods (in minutes) for calculating forward returns
+            tp_values: Take-profit threshold values (as decimal)
+            sl_values: Stop-loss threshold values (as decimal)
+            
+        Returns:
+            DataFrame with target features added
+        """
+        # Create an empty list to hold all target DataFrames
+        all_targets = []
+        
+        # Group by symbol to calculate per-symbol targets
+        for symbol, group in self.df.groupby('symbol'):
+            # Create a dictionary to hold all target columns
+            target_data = {'symbol': symbol}
+            
+            # Add forward returns for different periods
+            for period in forward_periods:
+                target_data[f'forward_return_{period}m'] = self.calculate_forward_return(group, period)
+            
+            # Add classification labels for different configurations
+            for period in forward_periods:
+                for tp in tp_values:
+                    for sl in sl_values:
+                        # Long position labels
+                        target_data[f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
+                            self.calculate_tp_sl_labels(group, period, tp, sl, 'long')
+                        
+                        # Short position labels
+                        target_data[f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
+                            self.calculate_tp_sl_labels(group, period, tp, sl, 'short')
+            
+            # Create a single DataFrame from all targets at once
+            symbol_targets = pd.DataFrame(target_data, index=group.index)
+            
+            # Append to the list of targets
+            all_targets.append(symbol_targets)
+        
+        # Concatenate all symbol targets into a single DataFrame
+        if all_targets:
+            result_df = pd.concat(all_targets)
+            return result_df
+        else:
+            # Return an empty DataFrame with only the symbol column
+            return pd.DataFrame({'symbol': []}, index=self.df.index)
+    
+    @staticmethod
+    def calculate_forward_return(df: pd.DataFrame, period: int = 1) -> pd.Series:
+        """
+        Calculate forward return over specified period in minutes.
+        
+        Args:
+            df: DataFrame with OHLCV data
+            period: Number of periods (minutes) to look forward
+            
+        Returns:
+            Series with forward returns
+        """
+        # Reverse the shift direction for forward returns
+        return df['close'].pct_change(period).shift(-period)
+    
+    @staticmethod
+    def calculate_tp_sl_labels(df: pd.DataFrame, 
+                              period: int, 
+                              take_profit: float, 
+                              stop_loss: float, 
+                              position_type: Literal['long', 'short'] = 'long') -> pd.Series:
+        """
+        Calculate classification labels based on take-profit and stop-loss levels.
+        
+        Args:
+            df: DataFrame with OHLCV data
+            period: Number of periods (minutes) to look forward
+            take_profit: Take-profit threshold as decimal (e.g., 0.01 for 1%)
+            stop_loss: Stop-loss threshold as decimal (e.g., 0.01 for 1%)
+            position_type: 'long' or 'short'
+            
+        Returns:
+            Series with classification labels:
+                1: take-profit reached within period
+               -1: stop-loss reached within period
+                0: neither reached within period
+        """
+        # Initialize result series
+        result = pd.Series(0, index=df.index)
+        
+        # Create an array to hold the results
+        labels = np.zeros(len(df))
+        
+        # Setup price levels based on position type
+        if position_type == 'long':
+            # For long positions
+            tp_prices = df['close'] * (1 + take_profit)
+            sl_prices = df['close'] * (1 - stop_loss)
+        else:
+            # For short positions
+            tp_prices = df['close'] * (1 - take_profit)
+            sl_prices = df['close'] * (1 + stop_loss)
+        
+        # Vectorized version not possible due to variable-length forward windows
+        # Process in chunks to reduce the number of individual updates
+        chunk_size = 1000
+        for chunk_start in range(0, len(df) - 1, chunk_size):
+            chunk_end = min(chunk_start + chunk_size, len(df) - 1)
+            
+            for i in range(chunk_start, chunk_end):
+                if i + period >= len(df):
+                    # Not enough future data
+                    continue
+                
+                entry_price = df['close'].iloc[i]
+                future_window = df.iloc[i+1:i+period+1]
+                
+                if position_type == 'long':
+                    # Check if take-profit reached (high price exceeds tp level)
+                    if (future_window['high'] >= tp_prices.iloc[i]).any():
+                        labels[i] = 1
+                    # Check if stop-loss reached (low price below sl level)
+                    elif (future_window['low'] <= sl_prices.iloc[i]).any():
+                        labels[i] = -1
+                else:
+                    # Check if take-profit reached (low price below tp level)
+                    if (future_window['low'] <= tp_prices.iloc[i]).any():
+                        labels[i] = 1
+                    # Check if stop-loss reached (high price exceeds sl level)
+                    elif (future_window['high'] >= sl_prices.iloc[i]).any():
+                        labels[i] = -1
+        
+        # Assign the computed labels to the result series at once
+        result = pd.Series(labels, index=df.index)
+        return result
     
     def create_sequence_features(self, sequence_length: int = 60) -> pd.DataFrame:
         """
@@ -130,34 +273,42 @@ class FeatureEngineer:
         # First get the regular features (which already exclude raw OHLCV)
         features_df = self.add_all_features()
         
-        # Create an empty result DataFrame to hold all sequence features
+        # Create an empty list to hold all sequence features DataFrames
         all_sequence_features = []
         
         # Group by symbol to calculate per-symbol sequences
         for symbol, group in features_df.groupby('symbol'):
-            # Create a DataFrame to hold sequences for this symbol
-            symbol_sequences = pd.DataFrame(index=group.index)
-            symbol_sequences['symbol'] = symbol
-            
             # Get feature columns to create sequences for (exclude 'symbol')
             feature_cols = [col for col in group.columns if col != 'symbol']
             
-            # Add sequence columns
+            # Pre-compute all sequences at once for better performance
+            sequences = {}
             for col in feature_cols:
-                # Initialize the column with object type to hold arrays
-                symbol_sequences[col] = None
-                symbol_sequences[col] = symbol_sequences[col].astype('object')
+                # Create a list of arrays for this column
+                col_sequences = []
+                values = group[col].values
                 
-                # For each row, create array of past values
                 for i in range(len(group)):
                     if i < sequence_length - 1:
                         # Not enough history yet, use available data and pad with NaNs
-                        seq = np.array(group[col].iloc[max(0, i-sequence_length+1):i+1])
+                        seq = values[max(0, i-sequence_length+1):i+1]
                         padding = np.full(sequence_length - len(seq), np.nan)
-                        symbol_sequences.at[group.index[i], col] = np.concatenate([padding, seq])
+                        col_sequences.append(np.concatenate([padding, seq]))
                     else:
                         # Full history available
-                        symbol_sequences.at[group.index[i], col] = np.array(group[col].iloc[i-sequence_length+1:i+1])
+                        col_sequences.append(values[i-sequence_length+1:i+1])
+                
+                sequences[col] = col_sequences
+            
+            # Add symbol column
+            sequences['symbol'] = symbol
+            
+            # Create DataFrame all at once
+            symbol_sequences = pd.DataFrame(sequences, index=group.index)
+            
+            # Convert the list columns to object type containing numpy arrays
+            for col in feature_cols:
+                symbol_sequences[col] = symbol_sequences[col].astype('object')
             
             # Append to the list of sequence features
             all_sequence_features.append(symbol_sequences)
@@ -269,17 +420,27 @@ class FeatureEngineer:
     def calculate_obv(df: pd.DataFrame) -> pd.Series:
         """Calculate On-Balance Volume."""
         close_diff = df['close'].diff()
-        obv = pd.Series(index=df.index)
-        obv.iloc[0] = df['volume'].iloc[0]
+        obv = pd.Series(0, index=df.index)
         
+        # Using a vectorized approach where possible
+        # This is a cumulative sum with conditional adjustments
+        # which is hard to fully vectorize, so we'll use a more efficient loop approach
+        
+        # Pre-allocate the array
+        values = np.zeros(len(df))
+        values[0] = df['volume'].iloc[0]
+        
+        # Process in one pass
         for i in range(1, len(df)):
             if close_diff.iloc[i] > 0:
-                obv.iloc[i] = obv.iloc[i-1] + df['volume'].iloc[i]
+                values[i] = values[i-1] + df['volume'].iloc[i]
             elif close_diff.iloc[i] < 0:
-                obv.iloc[i] = obv.iloc[i-1] - df['volume'].iloc[i]
+                values[i] = values[i-1] - df['volume'].iloc[i]
             else:
-                obv.iloc[i] = obv.iloc[i-1]
+                values[i] = values[i-1]
         
+        # Assign values to Series all at once
+        obv = pd.Series(values, index=df.index)
         return obv
     
     def calculate_btc_features(self, index: pd.DatetimeIndex, return_periods: List[int]) -> pd.DataFrame:
@@ -297,8 +458,8 @@ class FeatureEngineer:
             logger.warning("BTC data not found in DataFrame. Cannot calculate BTC features.")
             return pd.DataFrame(index=index)
         
-        # Calculate BTC returns for each period
-        btc_features = pd.DataFrame(index=index)
+        # Create a dictionary to hold all BTC features
+        btc_data = {}
         
         for period in return_periods:
             # Calculate BTC return
@@ -308,9 +469,10 @@ class FeatureEngineer:
             btc_return = btc_return.reindex(index)
             
             # Add as a feature
-            btc_features[f'btc_return_{period}m'] = btc_return
+            btc_data[f'btc_return_{period}m'] = btc_return
         
-        return btc_features
+        # Create a single DataFrame from all features at once
+        return pd.DataFrame(btc_data, index=index)
 
 
 # Example usage
@@ -326,7 +488,30 @@ def create_features(df: pd.DataFrame) -> pd.DataFrame:
         DataFrame with normalized/relative features only
     """
     engineer = FeatureEngineer(df)
-    return engineer.add_all_features()
+    # Create a copy to defragment
+    return engineer.add_all_features().copy()
+
+
+def create_targets(df: pd.DataFrame, 
+                  forward_periods: List[int] = [2, 10],
+                  tp_values: List[float] = [0.03],
+                  sl_values: List[float] = [0.03]) -> pd.DataFrame:
+    """
+    Convenience function to create ML target features from market data.
+    Includes forward returns and classification labels.
+    
+    Args:
+        df: DataFrame with timestamp index and OHLCV columns
+        forward_periods: Periods (in minutes) for calculating forward returns
+        tp_values: Take-profit threshold values (as decimal)
+        sl_values: Stop-loss threshold values (as decimal)
+        
+    Returns:
+        DataFrame with target features
+    """
+    engineer = FeatureEngineer(df)
+    # Create a copy to defragment
+    return engineer.add_target_features(forward_periods, tp_values, sl_values).copy()
 
 
 def create_sequence_features(df: pd.DataFrame, sequence_length: int = 60) -> pd.DataFrame:
@@ -343,4 +528,5 @@ def create_sequence_features(df: pd.DataFrame, sequence_length: int = 60) -> pd.
         DataFrame with sequence features only
     """
     engineer = FeatureEngineer(df)
-    return engineer.create_sequence_features(sequence_length=sequence_length)
+    # Create a copy to defragment
+    return engineer.create_sequence_features(sequence_length=sequence_length).copy()
