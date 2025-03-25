@@ -55,38 +55,48 @@ class FeatureEngineer:
             add_btc_features: Whether to add BTC-related features
             
         Returns:
-            DataFrame with all features added
+            DataFrame with all features added (excluding raw OHLCV data)
         """
         # Create an empty result DataFrame to hold all features
         all_features = []
         
         # Group by symbol to calculate per-symbol features
         for symbol, group in self.df.groupby('symbol'):
-            # Calculate features
-            symbol_features = group.copy()
+            # Initialize a new DataFrame for features, only keeping index and symbol
+            symbol_features = pd.DataFrame(index=group.index)
+            symbol_features['symbol'] = symbol
             
             # Price indicators
             for period in return_periods:
-                symbol_features[f'return_{period}m'] = self.calculate_return(symbol_features, period)
+                symbol_features[f'return_{period}m'] = self.calculate_return(group, period)
             
             for period in ema_periods:
-                symbol_features[f'ema_{period}m'] = self.calculate_ema(symbol_features, period)
+                symbol_features[f'ema_{period}m'] = self.calculate_ema(group, period)
+                # Add EMA relative to price (normalized)
+                symbol_features[f'ema_rel_{period}m'] = group['close'] / self.calculate_ema(group, period)
             
             # Bollinger Bands
-            symbol_features['bb_upper'], symbol_features['bb_middle'], symbol_features['bb_lower'] = \
-                self.calculate_bollinger_bands(symbol_features, 20, 2)
+            upper, middle, lower = self.calculate_bollinger_bands(group, 20, 2)
+            # Add relative positions within bands (normalized)
+            symbol_features['bb_position'] = (group['close'] - lower) / (upper - lower)
+            symbol_features['bb_width'] = (upper - lower) / middle
             
             # Other price indicators
-            symbol_features['true_range'] = self.calculate_true_range(symbol_features)
-            symbol_features['open_close_ratio'] = self.calculate_open_close_ratio(symbol_features)
-            symbol_features['rsi'] = self.calculate_rsi(symbol_features, 14)
-            symbol_features['autocorr_lag1'] = self.calculate_autocorrelation(symbol_features, 1)
-            symbol_features['close_zscore'] = self.calculate_zscore(symbol_features['close'])
-            symbol_features['close_minmax'] = self.calculate_minmax_scale(symbol_features['close'], 20)
+            symbol_features['true_range'] = self.calculate_true_range(group)
+            symbol_features['open_close_ratio'] = self.calculate_open_close_ratio(group)
+            symbol_features['rsi'] = self.calculate_rsi(group, 14)
+            symbol_features['autocorr_lag1'] = self.calculate_autocorrelation(group, 1)
+            symbol_features['close_zscore'] = self.calculate_zscore(group['close'])
+            symbol_features['close_minmax'] = self.calculate_minmax_scale(group['close'], 20)
+            
+            # High-Low range as percentage of price
+            symbol_features['hl_range_pct'] = (group['high'] - group['low']) / group['close']
             
             # Volume indicators
-            symbol_features['volume_ratio_20m'] = self.calculate_volume_ratio(symbol_features, 20)
-            symbol_features['obv'] = self.calculate_obv(symbol_features)
+            symbol_features['volume_ratio_20m'] = self.calculate_volume_ratio(group, 20)
+            symbol_features['obv'] = self.calculate_obv(group)
+            # Normalize OBV with a rolling window
+            symbol_features['obv_zscore'] = self.calculate_zscore(symbol_features['obv'], 20)
             
             # Add BTC features if requested
             if add_btc_features and self.btc_df is not None and symbol != 'BTC':
@@ -102,12 +112,14 @@ class FeatureEngineer:
             result_df = pd.concat(all_features)
             return result_df
         else:
-            return self.df.copy()
+            # Return an empty DataFrame with only the symbol column
+            return pd.DataFrame({'symbol': []}, index=self.df.index)
     
     def create_sequence_features(self, sequence_length: int = 60) -> pd.DataFrame:
         """
         Create a DataFrame with sequence features only.
         Each column contains arrays of past values for each feature.
+        Raw OHLCV columns are excluded.
         
         Args:
             sequence_length: Length of the sequence arrays
@@ -115,7 +127,7 @@ class FeatureEngineer:
         Returns:
             DataFrame with sequence features only
         """
-        # First get the regular features
+        # First get the regular features (which already exclude raw OHLCV)
         features_df = self.add_all_features()
         
         # Create an empty result DataFrame to hold all sequence features
@@ -305,12 +317,13 @@ class FeatureEngineer:
 def create_features(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convenience function to add all features to a market data DataFrame.
+    Raw OHLCV data is excluded from the result.
     
     Args:
         df: DataFrame with timestamp index and OHLCV columns
         
     Returns:
-        DataFrame with features added
+        DataFrame with normalized/relative features only
     """
     engineer = FeatureEngineer(df)
     return engineer.add_all_features()
@@ -320,13 +333,14 @@ def create_sequence_features(df: pd.DataFrame, sequence_length: int = 60) -> pd.
     """
     Convenience function to create sequence features from market data.
     Each column in the resulting DataFrame contains arrays of the past values.
+    Raw OHLCV data is excluded.
     
     Args:
         df: DataFrame with timestamp index and OHLCV columns
         sequence_length: Length of the sequence arrays
         
     Returns:
-        DataFrame with sequence features
+        DataFrame with sequence features only
     """
     engineer = FeatureEngineer(df)
     return engineer.create_sequence_features(sequence_length=sequence_length)
