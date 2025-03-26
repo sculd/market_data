@@ -90,7 +90,10 @@ def create_sequence_features_with_targets(
     # Create sequence features
     df_sequences = create_sequence_features(
         df,
-        sequence_length=sequence_length
+        sequence_length=sequence_length,
+        return_periods=return_periods,
+        ema_periods=ema_periods,
+        add_btc_features=add_btc_features
     )
     
     # Create targets
