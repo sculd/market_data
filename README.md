@@ -94,6 +94,12 @@ The feature engineering module calculates the following indicators:
 
 **Market Correlation Features:**
 - BTC-specific returns for all time horizons - added to non-BTC symbols (`btc_return_1m`, `btc_return_5m`, etc.)
+- Note: The code identifies Bitcoin data based on symbols containing "BTC" in their name
+  - Different exchanges use different symbols for Bitcoin:
+    - OKCoin uses "BTC-USDT-SWAP"
+    - Other exchanges may use "BTCUSDT", "BTC/USDT", etc.
+  - Ensure your DataFrame includes the appropriate Bitcoin symbol for your exchange
+  - The feature engineering will automatically find the Bitcoin data to calculate correlation features
 
 **Feature Naming Convention:**
 Features are named based on their calculation method and time horizon. For example, `return_30m` represents the 30-minute price return, and `ema_60m` represents the 60-minute exponential moving average.
@@ -145,8 +151,8 @@ combined_df = create_features_with_targets(
     sl_values=[0.01, 0.03]
 )
 
-# For sequence models - get sequence features and targets as separate DataFrames
-seq_features, targets = create_sequence_features_with_targets(
+# For sequence models - get both sequence features and targets in one DataFrame
+combined_seq_df = create_sequence_features_with_targets(
     df,
     sequence_length=60,
     forward_periods=[10, 60]

@@ -25,8 +25,18 @@ class FeatureEngineer:
         self.validate_dataframe(df)
         self.df = df.copy()
         self.btc_df = None
-        if 'BTC' in self.df['symbol'].unique():
-            self.btc_df = self.df[self.df['symbol'] == 'BTC'].copy()
+        
+        # Identify Bitcoin data by looking for common BTC patterns in symbol names
+        # This handles different exchange formats: BTC, BTCUSDT, BTC-USDT-SWAP, BTC/USDT, etc.
+        btc_symbols = [s for s in self.df['symbol'].unique() if 'BTC' in s.upper()]
+        if btc_symbols:
+            # Use the first matching BTC symbol found
+            btc_symbol = btc_symbols[0]
+            logger.info(f"Using {btc_symbol} as Bitcoin reference for BTC features")
+            self.btc_df = self.df[self.df['symbol'] == btc_symbol].copy()
+            # If multiple BTC symbols exist, log a warning
+            if len(btc_symbols) > 1:
+                logger.warning(f"Multiple Bitcoin symbols found: {btc_symbols}. Using {btc_symbol}")
     
     def validate_dataframe(self, df: pd.DataFrame) -> None:
         """Validate that the DataFrame has the required structure."""
@@ -99,7 +109,7 @@ class FeatureEngineer:
             feature_data['obv_zscore'] = self.calculate_zscore(feature_data['obv'], 20)
             
             # Add BTC features if requested
-            if add_btc_features and self.btc_df is not None and symbol != 'BTC':
+            if add_btc_features and self.btc_df is not None and not ('BTC' in symbol.upper()):
                 btc_features = self.calculate_btc_features(group.index, return_periods)
                 for col, values in btc_features.items():
                     feature_data[col] = values
@@ -315,7 +325,8 @@ class FeatureEngineer:
             DataFrame with BTC features
         """
         if self.btc_df is None:
-            logger.warning("BTC data not found in DataFrame. Cannot calculate BTC features.")
+            logger.warning("Bitcoin data not found in DataFrame. Cannot calculate BTC features. "
+                         "Ensure your DataFrame includes a symbol containing 'BTC' (e.g., 'BTC-USDT-SWAP', 'BTCUSDT').")
             return pd.DataFrame(index=index)
         
         # Create a dictionary to hold all BTC features
