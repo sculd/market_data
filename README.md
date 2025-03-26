@@ -57,25 +57,101 @@ features_df = create_features(df)
 
 #### Available Features
 
-The feature engineering module calculates:
+The feature engineering module calculates the following indicators:
 
-**Price Indicators:**
-- Returns over various horizons (1, 5, 15, 30, 60, 120 minutes by default)
-- Exponential moving averages (5, 15, 30, 60, 120, 240 minutes by default)
-- Bollinger Bands (20-minute with 2 standard deviations)
-- True Range
-- Open/Close Ratio
-- RSI (Relative Strength Index)
-- Autocorrelation with lag 1
-- Z-score Normalization
-- Min-Max Scaling
+**Price-Based Features:**
+- **Return Metrics:**
+  - Returns over multiple time horizons (`return_1m`, `return_5m`, `return_15m`, `return_30m`, `return_60m`, `return_120m`)
 
-**Volume Indicators:**
-- Volume Ratio vs. 20-minute average
-- On-Balance Volume (OBV)
+- **Moving Averages:**
+  - Exponential moving averages over multiple time horizons (`ema_5m`, `ema_15m`, `ema_30m`, `ema_60m`, `ema_120m`, `ema_240m`)
+  - EMA relative to current price - normalized ratios (`ema_rel_5m`, `ema_rel_15m`, etc.)
+
+- **Bollinger Bands (20-period, 2 standard deviations):**
+  - Relative position within bands (`bb_position`) - normalized between 0 and 1
+  - Band width as percentage of middle band (`bb_width`)
+
+- **Volatility Metrics:**
+  - True Range (`true_range`)
+  - High-Low range as percentage of price (`hl_range_pct`)
+
+- **Price Ratios:**
+  - Open to Close ratio (`open_close_ratio`)
+
+- **Momentum Indicators:**
+  - Relative Strength Index - 14 period (`rsi`)
+
+- **Statistical Features:**
+  - Price autocorrelation with lag 1 (`autocorr_lag1`)
+  - Z-score normalized price - 20 period window (`close_zscore`)
+  - Min-Max scaled price - 20 period window (`close_minmax`)
+
+**Volume-Based Features:**
+- **Volume Metrics:**
+  - Volume ratio vs. 20-minute average (`volume_ratio_20m`)
+  - On-Balance Volume (`obv`)
+  - Z-score normalized OBV - 20 period window (`obv_zscore`)
 
 **Market Correlation Features:**
-- BTC returns over various horizons (added as features for all non-BTC symbols)
+- BTC-specific returns for all time horizons - added to non-BTC symbols (`btc_return_1m`, `btc_return_5m`, etc.)
+
+**Feature Naming Convention:**
+Features are named based on their calculation method and time horizon. For example, `return_30m` represents the 30-minute price return, and `ema_60m` represents the 60-minute exponential moving average.
+
+### Target Engineering
+
+The project now includes a target engineering module for machine learning purposes, creating prediction targets based on future price movements:
+
+```python
+from feature import create_targets
+
+# Generate target variables for ML
+targets_df = create_targets(df)
+```
+
+#### Available Targets
+
+**Forward Returns:**
+- Future price returns over various horizons (2, 10 minutes by default)
+  
+**Classification Labels:**
+- Take-profit/stop-loss labels for both long and short positions
+- Configurable time horizons, take-profit thresholds, and stop-loss thresholds
+- Labels are 1 (take-profit reached), -1 (stop-loss triggered), or 0 (neither within time horizon)
+
+### Sequence Features
+
+For sequence-based models (LSTMs, Transformers), the module can generate arrays of past values for each feature:
+
+```python
+from feature import create_sequence_features
+
+# Generate sequence features with 60-point history for each feature
+sequence_df = create_sequence_features(df, sequence_length=60)
+```
+
+### Combined Data Preparation
+
+For convenience, the module provides functions to generate both features and targets in one step:
+
+```python
+from feature import create_features_with_targets, create_sequence_features_with_targets
+
+# For regular ML models - get features and targets in one DataFrame
+combined_df = create_features_with_targets(
+    df,
+    forward_periods=[10, 60],
+    tp_values=[0.01, 0.03],
+    sl_values=[0.01, 0.03]
+)
+
+# For sequence models - get sequence features and targets as separate DataFrames
+seq_features, targets = create_sequence_features_with_targets(
+    df,
+    sequence_length=60,
+    forward_periods=[10, 60]
+)
+```
 
 To try the feature engineering module with example data:
 
@@ -91,6 +167,8 @@ python -m feature.example
     - `cache.py`: Caching mechanisms for BigQuery data
 - `feature/`: Feature engineering modules
   - `feature.py`: Main feature engineering class and functions
+  - `target.py`: Target engineering for machine learning
+  - `data.py`: Combined data preparation functions
   - `example.py`: Example usage of the feature engineering module
 
 ## Environment Variables
