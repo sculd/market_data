@@ -18,12 +18,6 @@ from feature.target import (
     TARGET_COLUMNS_FULL
 )
 
-# Import and expose key functions from data module
-from feature.data import (
-    create_features_with_targets,
-    create_sequence_features_with_targets
-)
-
 # Define what gets imported with "from feature import *"
 __all__ = [
     # Feature engineering
@@ -37,8 +31,4 @@ __all__ = [
     'get_target_columns',
     'TARGET_COLUMNS_DEFAULT',
     'TARGET_COLUMNS_FULL',
-    
-    # Data preparation
-    'create_features_with_targets',
-    'create_sequence_features_with_targets'
 ]
