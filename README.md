@@ -159,6 +159,69 @@ combined_seq_df = create_sequence_features_with_targets(
 )
 ```
 
+### Event-Based Resampling for Machine Learning
+
+For machine learning tasks, it's often beneficial to sample data based on significant market events rather than at fixed time intervals. The project includes event-based resampling functionality:
+
+```python
+from machine_learning import get_events_t_multi, create_resampled_dataset, create_resampled_seq_dataset
+
+# Method 1: Manual approach - first identify events, then filter your data
+# Identify timestamps where price moves significantly (1% threshold)
+# Resets cumulative sums for each symbol and date
+events_df = get_events_t_multi(df, 'close', threshold=0.01)
+print(f"Found {len(events_df)} significant price movement events")
+
+# Generate features and targets using the feature engineering system
+combined_df = create_features_with_targets(
+    df,
+    forward_periods=[10, 30],  # Forward returns for 10 and 30 minutes
+    tp_values=[0.02],  # Take-profit threshold of 2%
+    sl_values=[0.01]   # Stop-loss threshold of 1%
+)
+
+# Filter the data to only include the timestamps from events_df
+# First create multi-index DataFrames
+events_multi = events_df.reset_index().set_index(['timestamp', 'symbol'])
+combined_multi = combined_df.reset_index().set_index(['timestamp', 'symbol'])
+
+# Join to get only the rows at event timestamps
+ml_dataset = combined_multi.loc[events_multi.index].reset_index().set_index('timestamp')
+
+# Method 2: Simplified approach using convenience functions
+# For regular features - one function handles everything
+ml_dataset = create_resampled_dataset(
+    df,
+    price_col='close',
+    threshold=0.01,  # 1% price movement
+    forward_periods=[10, 30],  # Forward returns for 10 and 30 minutes
+    tp_values=[0.02],  # Take-profit threshold of 2%
+    sl_values=[0.01]   # Stop-loss threshold of 1%
+)
+print(f"ML dataset has {len(ml_dataset)} samples")
+
+# For sequence features - use the sequence-specific function
+seq_ml_dataset = create_resampled_seq_dataset(
+    df,
+    price_col='close',
+    threshold=0.01,
+    sequence_length=60,
+    forward_periods=[10, 30]
+)
+print(f"Sequence ML dataset has {len(seq_ml_dataset)} samples")
+```
+
+#### Resampling Methodology
+
+The resampling functionality:
+
+1. **Identifies Significant Price Movements**: Uses cumulative price changes to detect meaningful market events
+2. **Provides Symbol Isolation**: Resets cumulative sums for each symbol, ensuring events are specific to each instrument
+3. **Maintains Date Boundaries**: Resets at each new day to prevent cross-day trend dependencies
+4. **Works with Feature Engineering**: Integrated with the feature engineering system through convenient functions
+
+This approach helps create more informative training datasets by focusing on periods of market activity rather than arbitrary time intervals.
+
 To try the feature engineering module with example data:
 
 ```
@@ -176,6 +239,9 @@ python -m feature.example
   - `target.py`: Target engineering for machine learning
   - `data.py`: Combined data preparation functions
   - `example.py`: Example usage of the feature engineering module
+- `machine_learning/`: Machine learning utilities
+  - `resample.py`: Event-based resampling functionality for identifying significant price movements
+  - `data.py`: Data preparation utilities for ML
 
 ## Environment Variables
 

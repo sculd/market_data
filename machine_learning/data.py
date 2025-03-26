@@ -113,3 +113,4 @@ def create_sequence_features_with_targets(
     combined_df = combined_df.reset_index().set_index("timestamp")
     
     return combined_df
+
