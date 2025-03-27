@@ -56,21 +56,12 @@ def get_events_t_multi(df: pd.DataFrame, col: str, threshold: float = 0.05) -> p
             if len(date_df) <= 1:
                 continue
                 
-            # Initialize cumulative sums for this symbol and date
-            s_pos, s_neg = 0, 0
-            diff = date_df[col].pct_change().diff()
+            # Use get_events_t to identify events for this symbol/date
+            events_idx = get_events_t(date_df, col, threshold)
             
-            # Process each timestamp
-            for i in diff.index[1:]:  # Skip first row as diff is NaN
-                s_pos = max(0, s_pos + diff.loc[i])
-                s_neg = min(0, s_neg + diff.loc[i])
-                
-                if s_pos > threshold:
-                    all_events.append({'timestamp': i, 'symbol': symbol})
-                    s_pos = 0
-                elif s_neg < -threshold:
-                    all_events.append({'timestamp': i, 'symbol': symbol})
-                    s_neg = 0
+            # Add to all_events with the corresponding symbol
+            for timestamp in events_idx:
+                all_events.append({'timestamp': timestamp, 'symbol': symbol})
     
     # Convert list of events to DataFrame
     if not all_events:

@@ -118,12 +118,14 @@ targets_df = create_targets(df)
 #### Available Targets
 
 **Forward Returns:**
-- Future price returns over various horizons (2, 10 minutes by default)
+- Future price returns over various horizons (`label_forward_return_2m`, `label_forward_return_10m` by default)
   
 **Classification Labels:**
 - Take-profit/stop-loss labels for both long and short positions
 - Configurable time horizons, take-profit thresholds, and stop-loss thresholds
 - Labels are 1 (take-profit reached), -1 (stop-loss triggered), or 0 (neither within time horizon)
+
+All target columns have the `label_` prefix to easily identify them as machine learning targets.
 
 ### Sequence Features
 
