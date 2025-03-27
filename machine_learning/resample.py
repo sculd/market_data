@@ -76,7 +76,7 @@ def get_events_t_multi(df: pd.DataFrame, col: str, threshold: float = 0.05) -> p
 def create_resampled_dataset(
     df: pd.DataFrame, 
     price_col: str = 'close',
-    threshold: float = 0.01,
+    threshold: float = 0.05,
     forward_periods: List[int] = [2, 10],
     tp_values: List[float] = [0.03],
     sl_values: List[float] = [0.03],
@@ -106,7 +106,7 @@ def create_resampled_dataset(
     Returns:
         Resampled DataFrame with features and targets at event timestamps
     """
-    from feature import create_features_with_targets
+    from machine_learning.feature_target import create_features_with_targets
     
     # Generate features and targets
     combined_df = create_features_with_targets(
@@ -142,7 +142,7 @@ def create_resampled_dataset(
 def create_resampled_seq_dataset(
     df: pd.DataFrame, 
     price_col: str = 'close',
-    threshold: float = 0.01,
+    threshold: float = 0.05,
     sequence_length: int = 60,
     forward_periods: List[int] = [2, 10],
     tp_values: List[float] = [0.03],
@@ -174,7 +174,7 @@ def create_resampled_seq_dataset(
     Returns:
         Resampled DataFrame with sequence features and targets at event timestamps
     """
-    from feature import create_sequence_features_with_targets
+    from machine_learning.feature_target import create_sequence_features_with_targets
     
     # Generate sequence features and targets
     seq_df = create_sequence_features_with_targets(

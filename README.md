@@ -224,6 +224,49 @@ The resampling functionality:
 
 This approach helps create more informative training datasets by focusing on periods of market activity rather than arbitrary time intervals.
 
+### Exporting ML Datasets
+
+The project provides functions to easily export machine learning datasets, with each target variable in a separate file:
+
+```python
+from machine_learning import export_resampled_datasets, export_resampled_sequence_datasets
+
+# Export regular feature datasets (one file per target)
+exported_files = export_resampled_datasets(
+    df,
+    export_dir="ml_datasets",
+    price_col='close',
+    threshold=0.01,  # 1% price movement
+    forward_periods=[10, 30],  # Forward returns for 10 and 30 minutes
+    tp_values=[0.02],  # Take-profit threshold of 2%
+    sl_values=[0.01],  # Stop-loss threshold of 1%
+    forward_return_only=True,  # Only export forward return targets
+    file_format='parquet'  # Export as Parquet files (default)
+)
+
+print(f"Exported {len(exported_files)} datasets to {', '.join(list(exported_files.values())[:2])}...")
+
+# Export sequence datasets (one file per target)
+seq_files = export_resampled_sequence_datasets(
+    df, 
+    export_dir="ml_sequence_datasets",
+    threshold=0.01,
+    sequence_length=60,
+    file_format='pickle'  # For sequence data, pickle is recommended
+)
+```
+
+The export functions:
+1. Create event-based resampled datasets (regular or sequence features)
+2. Split the data by target variable (e.g., separate files for 10m returns, 30m returns, etc.)
+3. Filter out rows with NaN targets to ensure clean training data
+4. Save to the specified format and location with informative filenames
+5. **Regular features**: Exported as Parquet files by default to preserve timestamp precision
+6. **Sequence features**: Automatically detected based on numpy array content and exported as pickle files
+7. **Symbol independence**: The 'symbol' column is excluded from exported datasets, ensuring models focus on price patterns rather than specific cryptocurrencies
+
+This approach simplifies the process of preparing data for training separate models on different target variables, while ensuring all datasets are properly resampled based on significant market events.
+
 To try the feature engineering module with example data:
 
 ```
@@ -243,7 +286,8 @@ python -m feature.example
   - `example.py`: Example usage of the feature engineering module
 - `machine_learning/`: Machine learning utilities
   - `resample.py`: Event-based resampling functionality for identifying significant price movements
-  - `data.py`: Data preparation utilities for ML
+  - `feature_target.py`: Combined features and targets preparation
+  - `data.py`: Dataset export utilities for ML
 
 ## Environment Variables
 

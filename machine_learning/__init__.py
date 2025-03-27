@@ -14,6 +14,11 @@ from machine_learning.resample import (
     create_resampled_dataset,
     create_resampled_seq_dataset
 )
+# Import and expose key functions from data export module
+from machine_learning.data import (
+    export_resampled_datasets,
+    export_resampled_sequence_datasets
+)
 
 # Define what gets imported with "from machine_learning import *"
 __all__ = [
@@ -24,4 +29,7 @@ __all__ = [
     'get_events_t_multi',
     'create_resampled_dataset',
     'create_resampled_seq_dataset',
+    # Data export (resampled only)
+    'export_resampled_datasets',
+    'export_resampled_sequence_datasets',
 ]
