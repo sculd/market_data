@@ -13,7 +13,7 @@ def get_events_t(df: pd.DataFrame, col: str, threshold: float = 0.05) -> pd.Data
     """
     t_events = []
     s_pos, s_neg = 0, 0
-    diff =  df[col].diff()
+    diff =  df[col].pct_change().diff()
     for i in diff.index[1:]:
         s_pos = max(0, s_pos + diff.loc[i])
         s_neg = min(0, s_neg + diff.loc[i])
@@ -58,7 +58,7 @@ def get_events_t_multi(df: pd.DataFrame, col: str, threshold: float = 0.05) -> p
                 
             # Initialize cumulative sums for this symbol and date
             s_pos, s_neg = 0, 0
-            diff = date_df[col].diff()
+            diff = date_df[col].pct_change().diff()
             
             # Process each timestamp
             for i in diff.index[1:]:  # Skip first row as diff is NaN

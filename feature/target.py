@@ -66,7 +66,7 @@ class TargetEngineer:
             
             # Add forward returns for different periods
             for period in forward_periods:
-                target_data[f'forward_return_{period}m'] = self.calculate_forward_return(group, period)
+                target_data[f'label_forward_return_{period}m'] = self.calculate_forward_return(group, period)
             
             # Add classification labels for different configurations
             for period in forward_periods:
@@ -113,7 +113,7 @@ class TargetEngineer:
         
         # Forward return column names
         for period in forward_periods:
-            column_names.append(f'forward_return_{period}m')
+            column_names.append(f'label_forward_return_{period}m')
         
         # Classification label column names
         for period in forward_periods:
