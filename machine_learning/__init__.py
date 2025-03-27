@@ -3,7 +3,7 @@ Machine learning utilities for market data analysis.
 """
 
 # Import and expose key functions from data module
-from machine_learning.data import (
+from machine_learning.feature_target import (
     create_features_with_targets,
     create_sequence_features_with_targets
 )
