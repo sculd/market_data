@@ -31,7 +31,7 @@ if not _PROJECT_ID:
 
 df = ingest.bq.cache.query_and_cache(
     ingest.bq.common.DATASET_MODE.OKX, ingest.bq.common.EXPORT_MODE.BY_MINUTE, ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
-    date_str_from='2024-03-11', date_str_to='2024-03-15')
+    date_str_from='2024-03-18', date_str_to='2025-01-01')
 
 #df = ingest.bq.cache.query_and_cache(ingest.bq.util.DATASET_MODE.BITHUMB, ingest.bq.util.EXPORT_MODE.ORDERBOOK_LEVEL1, date_str_from='2024-03-21', date_str_to='2024-03-22')
 
