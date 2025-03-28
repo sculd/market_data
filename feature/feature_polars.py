@@ -1,6 +1,8 @@
 import pandas as pd
 import polars as pl
 import numpy as np
+# Import numba for JIT compilation
+import numba
 from typing import List, Union, Dict, Tuple, Literal, Optional
 import logging
 import warnings
@@ -276,6 +278,21 @@ class FeatureEngineer:
         Returns:
             DataFrame with sequence features only
         """
+        # Define a JIT-compiled function for creating sequences
+        @numba.njit(parallel=True)
+        def create_sequences_fast(values, sequence_length):
+            n = len(values)
+            sequences = np.zeros((n, sequence_length), dtype=np.float64) * np.nan
+            
+            # Parallel processing of rows
+            for i in numba.prange(n):
+                start_idx = max(0, i - sequence_length + 1)
+                actual_seq_len = i - start_idx + 1
+                if actual_seq_len > 0:
+                    sequences[i, -actual_seq_len:] = values[start_idx:i+1]
+            
+            return sequences
+        
         # First get the regular features (which already exclude raw OHLCV)
         features_df = self.add_all_features(
             return_periods=return_periods,
@@ -286,42 +303,88 @@ class FeatureEngineer:
         # Create an empty list to hold all sequence features DataFrames
         all_sequence_features = []
         
+        # Get feature columns to create sequences for (exclude 'symbol' and 'timestamp')
+        feature_cols = [col for col in features_df.columns if col not in ['symbol', 'timestamp']]
+        
         # Process each symbol
         for symbol in features_df['symbol'].unique():
             # Filter for the current symbol
             symbol_df = features_df.filter(pl.col('symbol') == symbol)
             
-            # Get feature columns to create sequences for (exclude 'symbol' and 'timestamp')
-            feature_cols = [col for col in symbol_df.columns if col not in ['symbol', 'timestamp']]
+            # Extract timestamp and create symbol series
+            timestamp_series = symbol_df.select('timestamp')['timestamp']
             
-            # Create a dataframe with symbol and timestamp
-            seq_df = symbol_df.select(['timestamp', 'symbol'])
+            # Get column types before conversion to numpy
+            column_types = {col: symbol_df[col].dtype for col in symbol_df.columns}
             
-            # For each feature column, create a sequence column
+            # Convert to numpy arrays once for all operations
+            numpy_df = symbol_df.to_numpy()
+            columns = symbol_df.columns
+            
+            # Create a map of column names to indices for fast access
+            col_idx_map = {col: idx for idx, col in enumerate(columns)}
+            
+            # Pre-allocate a dictionary to hold all sequences
+            sequence_dict = {
+                'timestamp': timestamp_series,
+                'symbol': pl.Series([symbol] * len(timestamp_series))
+            }
+            
+            # Process all features at once, directly with numpy
             for col in feature_cols:
-                # We'll handle this differently since Polars' window functions are more limited
-                # We need to create sequence arrays manually
-                
-                # Convert to pandas for sequence creation (more efficient for this specific operation)
-                # In a real implementation, you might want to optimize this further
-                pd_df = symbol_df.select(['timestamp', col]).to_pandas()
-                sequences = []
-                
-                for i in range(len(pd_df)):
-                    if i < sequence_length - 1:
-                        # Not enough history, pad with NaNs
-                        seq = pd_df[col].iloc[max(0, i-sequence_length+1):i+1].values
-                        padding = np.full(sequence_length - len(seq), np.nan)
-                        sequences.append(np.concatenate([padding, seq]))
+                if col in col_idx_map:
+                    # Extract column values as numpy array - zero copy operation
+                    values = numpy_df[:, col_idx_map[col]]
+                    
+                    # Check if the column type is numeric before processing
+                    col_type = column_types.get(col)
+                    is_numeric = (
+                        col_type is not None and 
+                        (col_type.is_numeric() or 
+                         # Handle special case for Polars Float64/etc
+                         'float' in str(col_type).lower() or 
+                         'int' in str(col_type).lower())
+                    )
+                    
+                    if is_numeric:
+                        # Try to safely convert to a numeric type if not already
+                        try:
+                            if not np.issubdtype(values.dtype, np.number):
+                                values = values.astype(np.float64)
+                                
+                            # Handle NaN values - numba doesn't handle NaNs well in some operations
+                            nan_mask = np.isnan(values)
+                            if nan_mask.any():
+                                # Replace NaNs with a sentinel value
+                                masked_values = values.copy()
+                                masked_values[nan_mask] = 0.0
+                                
+                                # Generate sequences using the JIT-compiled function
+                                sequences = create_sequences_fast(masked_values, sequence_length)
+                                
+                                # Restore NaNs
+                                for i in range(len(values)):
+                                    if nan_mask[i]:
+                                        sequences[i, -1] = np.nan
+                            else:
+                                # No NaNs, use values directly
+                                sequences = create_sequences_fast(values, sequence_length)
+                        except (TypeError, ValueError) as e:
+                            # If conversion fails, log warning and skip this column
+                            logger.warning(f"Could not process column {col} as numeric: {e}")
+                            continue
                     else:
-                        # Full history available
-                        sequences.append(pd_df[col].iloc[i-sequence_length+1:i+1].values)
-                
-                # Add this sequence column to the DataFrame
-                seq_df = seq_df.with_columns(
-                    pl.Series(name=col, values=sequences)
-                )
+                        # For non-numeric columns, we'll create sequences of None values
+                        # since we can't meaningfully create numeric sequences
+                        logger.warning(f"Skipping non-numeric column {col} for sequence generation")
+                        # Create empty/NaN sequences for this column
+                        sequences = np.zeros((len(symbol_df), sequence_length)) * np.nan
+                    
+                    # Add to dictionary - convert to list only once at the end
+                    sequence_dict[col] = [row for row in sequences]
             
+            # Create Polars DataFrame in a single operation
+            seq_df = pl.DataFrame(sequence_dict)
             all_sequence_features.append(seq_df)
         
         # Concatenate all sequence DataFrames
