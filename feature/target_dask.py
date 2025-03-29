@@ -6,71 +6,64 @@ from typing import List, Union, Dict, Tuple, Literal
 import logging
 import warnings
 import time
-
-# Try to import numba for accelerated computations
-try:
-    import numba as nb
-    HAVE_NUMBA = True
-except ImportError:
-    HAVE_NUMBA = False
+import numba as nb
 
 logger = logging.getLogger(__name__)
 
 # Numba-accelerated functions for performance-critical calculations
-if HAVE_NUMBA:
-    @nb.njit(cache=True)
-    def calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
-        """
-        Numba-accelerated take-profit/stop-loss label calculation.
+@nb.njit(cache=True)
+def calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
+    """
+    Numba-accelerated take-profit/stop-loss label calculation.
+    
+    Args:
+        closes: Array of close prices
+        highs: Array of high prices
+        lows: Array of low prices
+        period: Forward-looking period
+        take_profit: Take-profit threshold as decimal
+        stop_loss: Stop-loss threshold as decimal
+        position_type: 0 for long, 1 for short
         
-        Args:
-            closes: Array of close prices
-            highs: Array of high prices
-            lows: Array of low prices
-            period: Forward-looking period
-            take_profit: Take-profit threshold as decimal
-            stop_loss: Stop-loss threshold as decimal
-            position_type: 0 for long, 1 for short
+    Returns:
+        Array with classification labels (1=TP hit, -1=SL hit, 0=neither)
+    """
+    n = len(closes)
+    labels = np.zeros(n)
+    
+    for i in range(n - 1):
+        if i + period >= n:
+            # Not enough future data
+            continue
             
-        Returns:
-            Array with classification labels (1=TP hit, -1=SL hit, 0=neither)
-        """
-        n = len(closes)
-        labels = np.zeros(n)
+        entry_price = closes[i]
         
-        for i in range(n - 1):
-            if i + period >= n:
-                # Not enough future data
-                continue
-                
-            entry_price = closes[i]
+        if position_type == 0:  # long position
+            tp_price = entry_price * (1 + take_profit)
+            sl_price = entry_price * (1 - stop_loss)
             
-            if position_type == 0:  # long position
-                tp_price = entry_price * (1 + take_profit)
-                sl_price = entry_price * (1 - stop_loss)
-                
-                # Check forward window for TP/SL hits
-                for j in range(i + 1, min(i + period + 1, n)):
-                    if highs[j] >= tp_price:
-                        labels[i] = 1
-                        break
-                    elif lows[j] <= sl_price:
-                        labels[i] = -1
-                        break
-            else:  # short position
-                tp_price = entry_price * (1 - take_profit)
-                sl_price = entry_price * (1 + stop_loss)
-                
-                # Check forward window for TP/SL hits
-                for j in range(i + 1, min(i + period + 1, n)):
-                    if lows[j] <= tp_price:
-                        labels[i] = 1
-                        break
-                    elif highs[j] >= sl_price:
-                        labels[i] = -1
-                        break
-                
-        return labels
+            # Check forward window for TP/SL hits
+            for j in range(i + 1, min(i + period + 1, n)):
+                if highs[j] >= tp_price:
+                    labels[i] = 1
+                    break
+                elif lows[j] <= sl_price:
+                    labels[i] = -1
+                    break
+        else:  # short position
+            tp_price = entry_price * (1 - take_profit)
+            sl_price = entry_price * (1 + stop_loss)
+            
+            # Check forward window for TP/SL hits
+            for j in range(i + 1, min(i + period + 1, n)):
+                if lows[j] <= tp_price:
+                    labels[i] = 1
+                    break
+                elif highs[j] >= sl_price:
+                    labels[i] = -1
+                    break
+            
+    return labels
 
 class TargetEngineer:
     """
@@ -273,71 +266,19 @@ class TargetEngineer:
                -1: stop-loss reached within period
                 0: neither reached within period
         """
-        # Use Numba-accelerated function if available
-        if HAVE_NUMBA:
-            closes = df['close'].values
-            highs = df['high'].values
-            lows = df['low'].values
-            
-            # Convert position type to integer for Numba
-            pos_type_int = 0 if position_type == 'long' else 1
-            
-            # Call Numba function
-            labels = calculate_tp_sl_labels_numba(
-                closes, highs, lows, period, take_profit, stop_loss, pos_type_int
-            )
-            
-            return pd.Series(labels, index=df.index)
+        closes = df['close'].values
+        highs = df['high'].values
+        lows = df['low'].values
         
-        # Fallback implementation
-        # Initialize result series
-        result = pd.Series(0, index=df.index)
+        # Convert position type to integer for Numba
+        pos_type_int = 0 if position_type == 'long' else 1
         
-        # Create an array to hold the results
-        labels = np.zeros(len(df))
+        # Call Numba function
+        labels = calculate_tp_sl_labels_numba(
+            closes, highs, lows, period, take_profit, stop_loss, pos_type_int
+        )
         
-        # Setup price levels based on position type
-        if position_type == 'long':
-            # For long positions
-            tp_prices = df['close'] * (1 + take_profit)
-            sl_prices = df['close'] * (1 - stop_loss)
-        else:
-            # For short positions
-            tp_prices = df['close'] * (1 - take_profit)
-            sl_prices = df['close'] * (1 + stop_loss)
-        
-        # Vectorized version not possible due to variable-length forward windows
-        # Process in chunks to reduce the number of individual updates
-        chunk_size = 1000
-        for chunk_start in range(0, len(df) - 1, chunk_size):
-            chunk_end = min(chunk_start + chunk_size, len(df) - 1)
-            
-            for i in range(chunk_start, chunk_end):
-                if i + period >= len(df):
-                    # Not enough future data
-                    continue
-                
-                entry_price = df['close'].iloc[i]
-                future_window = df.iloc[i+1:i+period+1]
-                
-                if position_type == 'long':
-                    # Check if take-profit reached (high price exceeds tp level)
-                    if (future_window['high'] >= tp_prices.iloc[i]).any():
-                        labels[i] = 1
-                    # Check if stop-loss reached (low price below sl level)
-                    elif (future_window['low'] <= sl_prices.iloc[i]).any():
-                        labels[i] = -1
-                else:
-                    # Check if take-profit reached (low price below tp level)
-                    if (future_window['low'] <= tp_prices.iloc[i]).any():
-                        labels[i] = 1
-                    # Check if stop-loss reached (high price exceeds sl level)
-                    elif (future_window['high'] >= sl_prices.iloc[i]).any():
-                        labels[i] = -1
-        
-        # Assign the computed labels to the result series at once
-        result = pd.Series(labels, index=df.index)
-        return result
+        return pd.Series(labels, index=df.index)
 
 
 # Convenience functions

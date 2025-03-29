@@ -7,74 +7,67 @@ import logging
 import warnings
 from multiprocessing.pool import ThreadPool
 import time
-
-# Try to import numba for accelerated computations
-try:
-    import numba as nb
-    HAVE_NUMBA = True
-except ImportError:
-    HAVE_NUMBA = False
+import numba as nb
 
 logger = logging.getLogger(__name__)
 
 # Numba-accelerated functions for performance-critical calculations
-if HAVE_NUMBA:
-    @nb.njit(parallel=True, cache=True)
-    def calculate_obv_numba(prices, volumes):
-        """Numba-accelerated On-Balance Volume calculation."""
-        n = len(prices)
-        obv = np.zeros(n)
-        obv[0] = volumes[0]
-        
-        for i in range(1, n):
-            if prices[i] > prices[i-1]:
-                obv[i] = obv[i-1] + volumes[i]
-            elif prices[i] < prices[i-1]:
-                obv[i] = obv[i-1] - volumes[i]
-            else:
-                obv[i] = obv[i-1]
-        
-        return obv
+@nb.njit(parallel=True, cache=True)
+def calculate_obv_numba(prices, volumes):
+    """Numba-accelerated On-Balance Volume calculation."""
+    n = len(prices)
+    obv = np.zeros(n)
+    obv[0] = volumes[0]
     
-    @nb.njit(cache=True)
-    def calculate_rolling_corr_numba(x, y, window_size):
-        """Numba-accelerated rolling correlation calculation."""
-        n = len(x)
-        result = np.full(n, np.nan)
+    for i in range(1, n):
+        if prices[i] > prices[i-1]:
+            obv[i] = obv[i-1] + volumes[i]
+        elif prices[i] < prices[i-1]:
+            obv[i] = obv[i-1] - volumes[i]
+        else:
+            obv[i] = obv[i-1]
+    
+    return obv
+
+@nb.njit(cache=True)
+def calculate_rolling_corr_numba(x, y, window_size):
+    """Numba-accelerated rolling correlation calculation."""
+    n = len(x)
+    result = np.full(n, np.nan)
+    
+    for i in range(window_size, n):
+        x_window = x[i-window_size:i]
+        y_window = y[i-window_size:i]
         
-        for i in range(window_size, n):
-            x_window = x[i-window_size:i]
-            y_window = y[i-window_size:i]
+        # Filter out NaN values
+        valid_mask = ~(np.isnan(x_window) | np.isnan(y_window))
+        if np.sum(valid_mask) < 5:  # Not enough valid points
+            continue
             
-            # Filter out NaN values
-            valid_mask = ~(np.isnan(x_window) | np.isnan(y_window))
-            if np.sum(valid_mask) < 5:  # Not enough valid points
-                continue
-                
-            x_valid = x_window[valid_mask]
-            y_valid = y_window[valid_mask]
+        x_valid = x_window[valid_mask]
+        y_valid = y_window[valid_mask]
+        
+        if len(x_valid) < 2:
+            continue
             
-            if len(x_valid) < 2:
-                continue
-                
-            # Calculate means
-            x_mean = np.mean(x_valid)
-            y_mean = np.mean(y_valid)
+        # Calculate means
+        x_mean = np.mean(x_valid)
+        y_mean = np.mean(y_valid)
+        
+        # Calculate standard deviations
+        x_std = np.std(x_valid)
+        y_std = np.std(y_valid)
+        
+        if x_std == 0 or y_std == 0:
+            continue
             
-            # Calculate standard deviations
-            x_std = np.std(x_valid)
-            y_std = np.std(y_valid)
-            
-            if x_std == 0 or y_std == 0:
-                continue
-                
-            # Calculate correlation
-            cov = np.mean((x_valid - x_mean) * (y_valid - y_mean))
-            corr = cov / (x_std * y_std)
-            
-            result[i] = corr
-            
-        return result
+        # Calculate correlation
+        cov = np.mean((x_valid - x_mean) * (y_valid - y_mean))
+        corr = cov / (x_std * y_std)
+        
+        result[i] = corr
+        
+    return result
 
 class FeatureEngineer:
     """
@@ -381,27 +374,9 @@ class FeatureEngineer:
         shifted = np.roll(close, lag)
         
         # Use numba-accelerated function if available
-        if HAVE_NUMBA:
-            window_size = min(14, len(close) // 2)
-            return pd.Series(calculate_rolling_corr_numba(close, shifted, window_size), index=df.index)
-        
-        # Fallback implementation
-        result = pd.Series(np.nan, index=df.index)
-        window_size = min(14, len(df) // 2)
-        
-        if len(df) < window_size + lag:
-            return result
-            
-        for i in range(window_size, len(df)):
-            window_x = df['close'].iloc[i-window_size:i]
-            window_y = df['close'].shift(lag).iloc[i-window_size:i]
-            valid = ~(pd.isna(window_x) | pd.isna(window_y))
-            if valid.sum() >= 5:
-                if window_x[valid].std() > 0 and window_y[valid].std() > 0:
-                    result.iloc[i] = window_x[valid].corr(window_y[valid])
-        
-        return result
-    
+        window_size = min(14, len(close) // 2)
+        return pd.Series(calculate_rolling_corr_numba(close, shifted, window_size), index=df.index)
+
     @staticmethod
     def calculate_zscore(series: pd.Series, window: int = 20) -> pd.Series:
         """Calculate Z-score normalization over specified window in minutes."""
@@ -426,24 +401,11 @@ class FeatureEngineer:
     def calculate_obv(df: pd.DataFrame) -> pd.Series:
         """Calculate On-Balance Volume."""
         # Use numba-accelerated function if available
-        if HAVE_NUMBA:
-            prices = df['close'].values
-            volumes = df['volume'].values
-            obv_values = calculate_obv_numba(prices, volumes)
-            return pd.Series(obv_values, index=df.index)
-        
-        # Fallback vectorized implementation
-        close_diff = df['close'].diff()
-        
-        sign = np.zeros(len(df))
-        sign[close_diff > 0] = 1
-        sign[close_diff < 0] = -1
-        
-        obv_values = df['volume'] * pd.Series(sign, index=df.index)
-        obv_values.iloc[0] = df['volume'].iloc[0]
-        
-        return obv_values.cumsum()
-    
+        prices = df['close'].values
+        volumes = df['volume'].values
+        obv_values = calculate_obv_numba(prices, volumes)
+        return pd.Series(obv_values, index=df.index)
+
     def calculate_btc_features(self, index: pd.DatetimeIndex, return_periods: List[int]) -> pd.DataFrame:
         """
         Calculate BTC-specific features.
