@@ -78,49 +78,33 @@ if HAVE_NUMBA:
 
 class FeatureEngineer:
     """
-    Class for engineering features from OHLCV market data, using efficient processing.
+    Class for engineering features from OHLCV market data, using efficient Dask-based processing.
     
     The input DataFrame should have:
     - 'timestamp' as index (with minute-level data)
     - Columns: 'symbol', 'open', 'high', 'low', 'close', 'volume'
     """
     
-    def __init__(self, df: Union[pd.DataFrame, dd.DataFrame], use_dask: bool = True):
+    def __init__(self, df: Union[pd.DataFrame, dd.DataFrame]):
         """
         Initialize with a DataFrame of market data.
         
         Args:
             df: DataFrame with timestamp index and OHLCV columns (pandas or Dask)
-            use_dask: Whether to use Dask for processing (if False, uses pandas)
         """
-        self.use_dask = use_dask
-        
-        # Store the original DataFrame type
-        self.is_dask_input = isinstance(df, dd.DataFrame)
-        
-        # If using pandas processing or if df is already a pandas DataFrame
-        if not use_dask or not self.is_dask_input:
-            if self.is_dask_input:
-                # Convert Dask to pandas if needed
-                logger.info("Converting Dask DataFrame to pandas for pandas-based processing")
-                self.df = df.compute()
-            else:
-                # Make a copy to ensure we don't modify the original
-                self.df = df.copy()
+        # Convert to Dask if input is pandas
+        if isinstance(df, pd.DataFrame):
+            # Convert to Dask with efficient partitioning
+            symbols = df['symbol'].unique()
+            npartitions = min(len(symbols), max(4, min(8, len(df) // 50000)))
+            logger.info(f"Converting pandas DataFrame to Dask with {npartitions} partitions")
+
+            # For better performance, sort by symbol to ensure clean partitioning
+            sorted_df = df.sort_values('symbol')
+            self.df = dd.from_pandas(sorted_df, npartitions=npartitions)
         else:
-            # Using Dask and input is already Dask or pandas
-            if not self.is_dask_input:
-                # Convert to Dask with efficient partitioning
-                symbols = df['symbol'].unique()
-                npartitions = min(len(symbols), max(4, min(8, len(df) // 50000)))
-                logger.info(f"Converting pandas DataFrame to Dask with {npartitions} partitions")
-                
-                # For better performance, sort by symbol to ensure clean partitioning
-                sorted_df = df.sort_values('symbol')
-                self.df = dd.from_pandas(sorted_df, npartitions=npartitions)
-            else:
-                # Already a Dask DataFrame
-                self.df = df
+            # Already a Dask DataFrame
+            self.df = df
         
         self.validate_dataframe(self.df)
         
@@ -130,10 +114,7 @@ class FeatureEngineer:
     def _extract_btc_data(self):
         """Extract Bitcoin data for reference features."""
         # Identify Bitcoin data 
-        if self.use_dask and self.is_dask_input:
-            btc_symbols = [s for s in self.df['symbol'].unique().compute() if 'BTC' in s.upper()]
-        else:
-            btc_symbols = [s for s in self.df['symbol'].unique() if 'BTC' in s.upper()]
+        btc_symbols = [s for s in self.df['symbol'].unique().compute() if 'BTC' in s.upper()]
         
         if not btc_symbols:
             logger.warning("No Bitcoin symbol found in the data")
@@ -144,10 +125,7 @@ class FeatureEngineer:
         logger.info(f"Using {btc_symbol} as Bitcoin reference for BTC features")
         
         # Extract BTC data
-        if self.use_dask and self.is_dask_input:
-            btc_df = self.df[self.df['symbol'] == btc_symbol].compute()
-        else:
-            btc_df = self.df[self.df['symbol'] == btc_symbol].copy()
+        btc_df = self.df[self.df['symbol'] == btc_symbol].compute()
         
         # If multiple BTC symbols exist, log a warning
         if len(btc_symbols) > 1:
@@ -155,7 +133,7 @@ class FeatureEngineer:
         
         return btc_df
     
-    def validate_dataframe(self, df: Union[pd.DataFrame, dd.DataFrame]) -> None:
+    def validate_dataframe(self, df: dd.DataFrame) -> None:
         """Validate that the DataFrame has the required structure."""
         required_cols = ['symbol', 'open', 'high', 'low', 'close', 'volume']
         missing_cols = [col for col in required_cols if col not in df.columns]
@@ -163,19 +141,12 @@ class FeatureEngineer:
         if missing_cols:
             raise ValueError(f"DataFrame missing required columns: {missing_cols}")
         
-        # Check index for Dask or pandas appropriately
-        if self.use_dask and self.is_dask_input:
+        # Check index for Dask DataFrame
+        if isinstance(df, dd.DataFrame):
             if not df.index.name and not df.index._meta.name:
                 logger.warning("DataFrame index may not be a DatetimeIndex. Assuming it needs conversion.")
                 try:
                     df = df.map_partitions(lambda pdf: pdf.set_index(pd.to_datetime(pdf.index)))
-                except Exception as e:
-                    raise ValueError(f"Failed to convert index to datetime: {e}")
-        else:
-            if not isinstance(df.index, pd.DatetimeIndex):
-                logger.warning("DataFrame index is not a DatetimeIndex. Converting to datetime.")
-                try:
-                    df.index = pd.to_datetime(df.index)
                 except Exception as e:
                     raise ValueError(f"Failed to convert index to datetime: {e}")
     
@@ -194,89 +165,14 @@ class FeatureEngineer:
             DataFrame with all features added (excluding raw OHLCV data)
         """
         start_time = time.time()
-        logger.info(f"Starting feature engineering using {'Dask' if self.use_dask else 'pandas'} implementation")
+        logger.info("Starting feature engineering using Dask implementation")
         
-        if self.use_dask and self.is_dask_input:
-            # Use Dask implementation
-            result_df = self._add_features_dask(return_periods, ema_periods, add_btc_features)
-        else:
-            # Use pandas implementation
-            result_df = self._add_features_pandas(return_periods, ema_periods, add_btc_features)
+        # Use Dask implementation
+        result_df = self._add_features_dask(return_periods, ema_periods, add_btc_features)
         
         elapsed = time.time() - start_time
         logger.info(f"Feature engineering completed in {elapsed:.2f} seconds")
         return result_df
-    
-    def _add_features_pandas(self, return_periods, ema_periods, add_btc_features):
-        """Pandas implementation of feature engineering."""
-        all_features = []
-        
-        # Group by symbol to calculate per-symbol features
-        symbol_groups = self.df.groupby('symbol')
-        n_symbols = len(self.df['symbol'].unique())
-        
-        logger.info(f"Processing features for {n_symbols} symbols using pandas")
-        
-        for i, (symbol, group) in enumerate(symbol_groups):
-            if i % max(1, n_symbols // 10) == 0:  # Log progress for every ~10%
-                logger.info(f"Processing symbol {i+1}/{n_symbols} ({(i+1)/n_symbols*100:.1f}%)")
-            
-            # Create a dictionary to hold all feature columns
-            feature_data = {'symbol': symbol}
-            
-            # Price indicators - returns
-            for period in return_periods:
-                feature_data[f'return_{period}m'] = self.calculate_return(group, period)
-            
-            # EMAs
-            ema_values = {}
-            for period in ema_periods:
-                ema = self.calculate_ema(group, period)
-                feature_data[f'ema_{period}m'] = ema
-                ema_values[period] = ema
-            
-            # EMA relatives
-            for period in ema_periods:
-                feature_data[f'ema_rel_{period}m'] = group['close'] / ema_values[period]
-            
-            # Bollinger Bands
-            upper, middle, lower = self.calculate_bollinger_bands(group, 20, 2)
-            feature_data['bb_position'] = (group['close'] - lower) / (upper - lower)
-            feature_data['bb_width'] = (upper - lower) / middle
-            
-            # Other indicators
-            feature_data['true_range'] = self.calculate_true_range(group)
-            feature_data['open_close_ratio'] = self.calculate_open_close_ratio(group)
-            feature_data['rsi'] = self.calculate_rsi(group, 14)
-            feature_data['autocorr_lag1'] = self.calculate_autocorrelation(group, 1)
-            feature_data['close_zscore'] = self.calculate_zscore(group['close'])
-            feature_data['close_minmax'] = self.calculate_minmax_scale(group['close'], 20)
-            feature_data['hl_range_pct'] = (group['high'] - group['low']) / group['close']
-            feature_data['volume_ratio_20m'] = self.calculate_volume_ratio(group, 20)
-            feature_data['obv'] = self.calculate_obv(group)
-            feature_data['obv_zscore'] = self.calculate_zscore(feature_data['obv'], 20)
-            
-            # BTC features
-            if add_btc_features and self.btc_df is not None and not ('BTC' in symbol.upper()):
-                btc_features = self.calculate_btc_features(group.index, return_periods)
-                for col, values in btc_features.items():
-                    feature_data[col] = values
-            
-            # Create DataFrame
-            symbol_features = pd.DataFrame(feature_data, index=group.index)
-            all_features.append(symbol_features)
-        
-        # Concatenate all features
-        if all_features:
-            result_df = pd.concat(all_features)
-            return result_df
-        else:
-            meta_columns = ['symbol']
-            meta_columns.extend([f'return_{p}m' for p in return_periods])
-            meta_columns.extend([f'ema_{p}m' for p in ema_periods])
-            meta_columns.extend([f'ema_rel_{p}m' for p in ema_periods])
-            # ... other columns
-            return pd.DataFrame(columns=meta_columns)
     
     def _add_features_dask(self, return_periods, ema_periods, add_btc_features):
         """Dask implementation of feature engineering."""
@@ -351,10 +247,10 @@ class FeatureEngineer:
         result_dask = self.df.map_partitions(process_symbol_partition, meta=meta)
         
         # Compute the result
-        logger.info("Computing Dask result")
+        logger.info("Computing Dask result using processes scheduler")
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            result_df = result_dask.compute(scheduler="threads")
+            result_df = result_dask.compute(scheduler="processes")
         
         return result_df
     
@@ -578,7 +474,6 @@ def create_features(df: Union[pd.DataFrame, dd.DataFrame],
                     return_periods: List[int] = [1, 5, 15, 30, 60, 120],
                     ema_periods: List[int] = [5, 15, 30, 60, 120, 240],
                     add_btc_features: bool = True,
-                    use_dask: bool = True,
                     n_workers: int = None) -> pd.DataFrame:
     """
     Convenience function to add all features to a market data DataFrame.
@@ -589,7 +484,6 @@ def create_features(df: Union[pd.DataFrame, dd.DataFrame],
         return_periods: Periods (in minutes) for calculating returns
         ema_periods: Periods (in minutes) for calculating EMAs
         add_btc_features: Whether to add BTC-related features
-        use_dask: Whether to use Dask for processing (if False, uses pandas)
         n_workers: Number of worker threads/processes to use (default: auto)
         
     Returns:
@@ -601,7 +495,7 @@ def create_features(df: Union[pd.DataFrame, dd.DataFrame],
         os.environ["NUMBA_NUM_THREADS"] = str(n_workers)
         os.environ["OMP_NUM_THREADS"] = str(n_workers)
     
-    engineer = FeatureEngineer(df, use_dask=use_dask)
+    engineer = FeatureEngineer(df)
     return engineer.add_all_features(
         return_periods=return_periods,
         ema_periods=ema_periods,
@@ -614,7 +508,6 @@ def create_sequence_features(df: Union[pd.DataFrame, dd.DataFrame],
                              return_periods: List[int] = [1, 5, 15, 30, 60, 120],
                              ema_periods: List[int] = [5, 15, 30, 60, 120, 240],
                              add_btc_features: bool = True,
-                             use_dask: bool = True,
                              n_workers: int = None) -> pd.DataFrame:
     """
     Convenience function to create sequence features from market data.
@@ -627,7 +520,6 @@ def create_sequence_features(df: Union[pd.DataFrame, dd.DataFrame],
         return_periods: Periods (in minutes) for calculating returns
         ema_periods: Periods (in minutes) for calculating EMAs
         add_btc_features: Whether to add BTC-related features
-        use_dask: Whether to use Dask for processing (if False, uses pandas)
         n_workers: Number of worker threads/processes to use (default: auto)
         
     Returns:
@@ -639,7 +531,7 @@ def create_sequence_features(df: Union[pd.DataFrame, dd.DataFrame],
         os.environ["NUMBA_NUM_THREADS"] = str(n_workers)
         os.environ["OMP_NUM_THREADS"] = str(n_workers)
     
-    engineer = FeatureEngineer(df, use_dask=use_dask)
+    engineer = FeatureEngineer(df)
     return engineer.create_sequence_features(
         sequence_length=sequence_length,
         return_periods=return_periods,
