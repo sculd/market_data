@@ -3,8 +3,135 @@ import numpy as np
 from typing import List, Union, Dict, Tuple, Literal
 import logging
 import warnings
+import numba as nb
+import os
 
 logger = logging.getLogger(__name__)
+
+# Numba-accelerated functions for performance-critical calculations
+@nb.njit(cache=True)
+def calculate_obv_numba(prices, volumes):
+    """Numba-accelerated On-Balance Volume calculation."""
+    n = len(prices)
+    obv = np.zeros(n)
+    obv[0] = volumes[0]
+    
+    for i in range(1, n):
+        if prices[i] > prices[i-1]:
+            obv[i] = obv[i-1] + volumes[i]
+        elif prices[i] < prices[i-1]:
+            obv[i] = obv[i-1] - volumes[i]
+        else:
+            obv[i] = obv[i-1]
+    
+    return obv
+
+@nb.njit(cache=True)
+def calculate_rolling_corr_numba(x, y, window_size):
+    """Numba-accelerated rolling correlation calculation."""
+    n = len(x)
+    result = np.full(n, np.nan)
+    
+    for i in range(window_size, n):
+        x_window = x[i-window_size:i]
+        y_window = y[i-window_size:i]
+        
+        # Filter out NaN values
+        valid_mask = ~(np.isnan(x_window) | np.isnan(y_window))
+        if np.sum(valid_mask) < 5:  # Not enough valid points
+            continue
+            
+        x_valid = x_window[valid_mask]
+        y_valid = y_window[valid_mask]
+        
+        if len(x_valid) < 2:
+            continue
+            
+        # Calculate means
+        x_mean = np.mean(x_valid)
+        y_mean = np.mean(y_valid)
+        
+        # Calculate standard deviations
+        x_std = np.std(x_valid)
+        y_std = np.std(y_valid)
+        
+        if x_std == 0 or y_std == 0:
+            continue
+            
+        # Calculate correlation
+        cov = np.mean((x_valid - x_mean) * (y_valid - y_mean))
+        corr = cov / (x_std * y_std)
+        
+        result[i] = corr
+        
+    return result
+
+@nb.njit(cache=True)
+def calculate_rsi_numba(closes, period):
+    """Numba-accelerated RSI calculation."""
+    n = len(closes)
+    deltas = np.zeros(n)
+    ups = np.zeros(n)
+    downs = np.zeros(n)
+    rsi = np.full(n, np.nan)
+    
+    # Calculate deltas
+    for i in range(1, n):
+        deltas[i] = closes[i] - closes[i-1]
+    
+    # Calculate up and down moves
+    for i in range(1, n):
+        if deltas[i] > 0:
+            ups[i] = deltas[i]
+            downs[i] = 0
+        else:
+            ups[i] = 0
+            downs[i] = -deltas[i]
+    
+    # Calculate RSI
+    for i in range(period, n):
+        avg_gain = 0.0
+        avg_loss = 0.0
+        
+        # Calculate average gain and loss
+        for j in range(i-period+1, i+1):
+            avg_gain += ups[j]
+            avg_loss += downs[j]
+        
+        avg_gain /= period
+        avg_loss /= period
+        
+        if avg_loss == 0:
+            rsi[i] = 100.0
+        else:
+            rs = avg_gain / avg_loss
+            rsi[i] = 100.0 - (100.0 / (1.0 + rs))
+    
+    return rsi
+
+@nb.njit(cache=True)
+def calculate_bollinger_bands_numba(closes, period, std_dev):
+    """Numba-accelerated Bollinger Bands calculation."""
+    n = len(closes)
+    middle_band = np.full(n, np.nan)
+    upper_band = np.full(n, np.nan)
+    lower_band = np.full(n, np.nan)
+    
+    for i in range(period-1, n):
+        window = closes[i-period+1:i+1]
+        valid_window = window[~np.isnan(window)]
+        
+        if len(valid_window) < period // 2:
+            continue
+            
+        mean = np.mean(valid_window)
+        std = np.std(valid_window)
+        
+        middle_band[i] = mean
+        upper_band[i] = mean + (std * std_dev)
+        lower_band[i] = mean - (std * std_dev)
+    
+    return upper_band, middle_band, lower_band
 
 class FeatureEngineer:
     """
@@ -214,11 +341,10 @@ class FeatureEngineer:
     @staticmethod
     def calculate_bollinger_bands(df: pd.DataFrame, period: int = 20, std_dev: float = 2) -> tuple:
         """Calculate Bollinger Bands over specified period in minutes."""
-        middle_band = df['close'].rolling(window=period).mean()
-        std = df['close'].rolling(window=period).std()
-        upper_band = middle_band + (std * std_dev)
-        lower_band = middle_band - (std * std_dev)
-        return upper_band, middle_band, lower_band
+        # Use Numba-accelerated version
+        closes = df['close'].values
+        upper, middle, lower = calculate_bollinger_bands_numba(closes, period, std_dev)
+        return pd.Series(upper, index=df.index), pd.Series(middle, index=df.index), pd.Series(lower, index=df.index)
     
     @staticmethod
     def calculate_true_range(df: pd.DataFrame) -> pd.Series:
@@ -240,35 +366,24 @@ class FeatureEngineer:
     @staticmethod
     def calculate_rsi(df: pd.DataFrame, period: int = 14) -> pd.Series:
         """Calculate Relative Strength Index over specified period in minutes."""
-        delta = df['close'].diff()
-        
-        up = delta.copy()
-        up[up < 0] = 0
-        
-        down = -delta.copy()
-        down[down < 0] = 0
-        
-        avg_gain = up.rolling(window=period).mean()
-        avg_loss = down.rolling(window=period).mean()
-        
-        # Let division by zero result in NaN (which will propagate through later calculations)
-        rs = avg_gain / avg_loss
-        rsi = 100 - (100 / (1 + rs))
-        return pd.Series(rsi, index=df.index)
+        # Use Numba-accelerated version
+        closes = df['close'].values
+        rsi_values = calculate_rsi_numba(closes, period)
+        return pd.Series(rsi_values, index=df.index)
     
     @staticmethod
     def calculate_autocorrelation(df: pd.DataFrame, lag: int = 1) -> pd.Series:
         """Calculate autocorrelation with specified lag in minutes."""
-        # Fill initial NaN with 0
-        result = df['close'].autocorr(lag=lag)
-        # For a Series, autocorr returns a single value, so create a Series of that value
-        if isinstance(result, (int, float)):
-            result = pd.Series(np.nan, index=df.index)
-            # Calculate rolling autocorrelation for a more meaningful result
-            for i in range(lag + 14, len(df)):
-                window = df['close'].iloc[i-14:i+1]
-                result.iloc[i] = window.autocorr(lag=lag)
-        return result
+        # Use Numba-accelerated version for rolling correlation
+        closes = df['close'].values
+        shifted = np.roll(closes, lag)
+        window_size = min(14, len(closes) // 2)
+        
+        # Avoid correlation with rolled-around values
+        shifted[:lag] = np.nan
+        
+        corr_values = calculate_rolling_corr_numba(closes, shifted, window_size)
+        return pd.Series(corr_values, index=df.index)
     
     @staticmethod
     def calculate_zscore(series: pd.Series, window: int = 20) -> pd.Series:
@@ -299,29 +414,11 @@ class FeatureEngineer:
     @staticmethod
     def calculate_obv(df: pd.DataFrame) -> pd.Series:
         """Calculate On-Balance Volume."""
-        close_diff = df['close'].diff()
-        obv = pd.Series(0, index=df.index)
-        
-        # Using a vectorized approach where possible
-        # This is a cumulative sum with conditional adjustments
-        # which is hard to fully vectorize, so we'll use a more efficient loop approach
-        
-        # Pre-allocate the array
-        values = np.zeros(len(df))
-        values[0] = df['volume'].iloc[0]
-        
-        # Process in one pass
-        for i in range(1, len(df)):
-            if close_diff.iloc[i] > 0:
-                values[i] = values[i-1] + df['volume'].iloc[i]
-            elif close_diff.iloc[i] < 0:
-                values[i] = values[i-1] - df['volume'].iloc[i]
-            else:
-                values[i] = values[i-1]
-        
-        # Assign values to Series all at once
-        obv = pd.Series(values, index=df.index)
-        return obv
+        # Use Numba-accelerated version
+        closes = df['close'].values
+        volumes = df['volume'].values
+        obv_values = calculate_obv_numba(closes, volumes)
+        return pd.Series(obv_values, index=df.index)
     
     def calculate_btc_features(self, index: pd.DatetimeIndex, return_periods: List[int]) -> pd.DataFrame:
         """
@@ -374,6 +471,10 @@ def create_features(df: pd.DataFrame,
     Returns:
         DataFrame with normalized/relative features only
     """
+    # Configure Numba threads
+    num_threads = os.cpu_count() or 4
+    nb.set_num_threads(min(num_threads, 8))  # Limit to max 8 threads
+    
     engineer = FeatureEngineer(df)
     # Create a copy to defragment
     return engineer.add_all_features(
@@ -403,6 +504,10 @@ def create_sequence_features(df: pd.DataFrame,
     Returns:
         DataFrame with sequence features only
     """
+    # Configure Numba threads
+    num_threads = os.cpu_count() or 4
+    nb.set_num_threads(min(num_threads, 8))  # Limit to max 8 threads
+    
     engineer = FeatureEngineer(df)
     # Create a copy to defragment
     return engineer.create_sequence_features(
