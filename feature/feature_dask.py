@@ -7,67 +7,8 @@ import logging
 import warnings
 from multiprocessing.pool import ThreadPool
 import time
-import numba as nb
 
 logger = logging.getLogger(__name__)
-
-# Numba-accelerated functions for performance-critical calculations
-@nb.njit(parallel=True, cache=True)
-def calculate_obv_numba(prices, volumes):
-    """Numba-accelerated On-Balance Volume calculation."""
-    n = len(prices)
-    obv = np.zeros(n)
-    obv[0] = volumes[0]
-    
-    for i in range(1, n):
-        if prices[i] > prices[i-1]:
-            obv[i] = obv[i-1] + volumes[i]
-        elif prices[i] < prices[i-1]:
-            obv[i] = obv[i-1] - volumes[i]
-        else:
-            obv[i] = obv[i-1]
-    
-    return obv
-
-@nb.njit(cache=True)
-def calculate_rolling_corr_numba(x, y, window_size):
-    """Numba-accelerated rolling correlation calculation."""
-    n = len(x)
-    result = np.full(n, np.nan)
-    
-    for i in range(window_size, n):
-        x_window = x[i-window_size:i]
-        y_window = y[i-window_size:i]
-        
-        # Filter out NaN values
-        valid_mask = ~(np.isnan(x_window) | np.isnan(y_window))
-        if np.sum(valid_mask) < 5:  # Not enough valid points
-            continue
-            
-        x_valid = x_window[valid_mask]
-        y_valid = y_window[valid_mask]
-        
-        if len(x_valid) < 2:
-            continue
-            
-        # Calculate means
-        x_mean = np.mean(x_valid)
-        y_mean = np.mean(y_valid)
-        
-        # Calculate standard deviations
-        x_std = np.std(x_valid)
-        y_std = np.std(y_valid)
-        
-        if x_std == 0 or y_std == 0:
-            continue
-            
-        # Calculate correlation
-        cov = np.mean((x_valid - x_mean) * (y_valid - y_mean))
-        corr = cov / (x_std * y_std)
-        
-        result[i] = corr
-        
-    return result
 
 class FeatureEngineer:
     """
@@ -370,12 +311,16 @@ class FeatureEngineer:
     @staticmethod
     def calculate_autocorrelation(df: pd.DataFrame, lag: int = 1) -> pd.Series:
         """Calculate autocorrelation with specified lag in minutes."""
-        close = df['close'].values
-        shifted = np.roll(close, lag)
-        
-        # Use numba-accelerated function if available
-        window_size = min(14, len(close) // 2)
-        return pd.Series(calculate_rolling_corr_numba(close, shifted, window_size), index=df.index)
+        # Fill initial NaN with 0
+        result = df['close'].autocorr(lag=lag)
+        # For a Series, autocorr returns a single value, so create a Series of that value
+        if isinstance(result, (int, float)):
+            result = pd.Series(np.nan, index=df.index)
+            # Calculate rolling autocorrelation for a more meaningful result
+            for i in range(lag + 14, len(df)):
+                window = df['close'].iloc[i-14:i+1]
+                result.iloc[i] = window.autocorr(lag=lag)
+        return result
 
     @staticmethod
     def calculate_zscore(series: pd.Series, window: int = 20) -> pd.Series:
@@ -400,11 +345,29 @@ class FeatureEngineer:
     @staticmethod
     def calculate_obv(df: pd.DataFrame) -> pd.Series:
         """Calculate On-Balance Volume."""
-        # Use numba-accelerated function if available
-        prices = df['close'].values
-        volumes = df['volume'].values
-        obv_values = calculate_obv_numba(prices, volumes)
-        return pd.Series(obv_values, index=df.index)
+        close_diff = df['close'].diff()
+        obv = pd.Series(0, index=df.index)
+        
+        # Using a vectorized approach where possible
+        # This is a cumulative sum with conditional adjustments
+        # which is hard to fully vectorize, so we'll use a more efficient loop approach
+        
+        # Pre-allocate the array
+        values = np.zeros(len(df))
+        values[0] = df['volume'].iloc[0]
+        
+        # Process in one pass
+        for i in range(1, len(df)):
+            if close_diff.iloc[i] > 0:
+                values[i] = values[i-1] + df['volume'].iloc[i]
+            elif close_diff.iloc[i] < 0:
+                values[i] = values[i-1] - df['volume'].iloc[i]
+            else:
+                values[i] = values[i-1]
+        
+        # Assign values to Series all at once
+        obv = pd.Series(values, index=df.index)
+        return obv
 
     def calculate_btc_features(self, index: pd.DatetimeIndex, return_periods: List[int]) -> pd.DataFrame:
         """
@@ -451,12 +414,6 @@ def create_features(df: Union[pd.DataFrame, dd.DataFrame],
     Returns:
         DataFrame with normalized/relative features only
     """
-    # Configure workers if specified
-    if n_workers is not None and n_workers > 0:
-        import os
-        os.environ["NUMBA_NUM_THREADS"] = str(n_workers)
-        os.environ["OMP_NUM_THREADS"] = str(n_workers)
-    
     engineer = FeatureEngineer(df)
     return engineer.add_all_features(
         return_periods=return_periods,
@@ -487,12 +444,6 @@ def create_sequence_features(df: Union[pd.DataFrame, dd.DataFrame],
     Returns:
         DataFrame with sequence features only
     """
-    # Configure workers if specified
-    if n_workers is not None and n_workers > 0:
-        import os
-        os.environ["NUMBA_NUM_THREADS"] = str(n_workers)
-        os.environ["OMP_NUM_THREADS"] = str(n_workers)
-    
     engineer = FeatureEngineer(df)
     return engineer.create_sequence_features(
         sequence_length=sequence_length,

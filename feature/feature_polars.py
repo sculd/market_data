@@ -1,8 +1,6 @@
 import pandas as pd
 import polars as pl
 import numpy as np
-# Import numba for JIT compilation
-import numba
 from typing import List, Union, Dict, Tuple, Literal, Optional
 import logging
 import warnings
@@ -278,14 +276,12 @@ class FeatureEngineer:
         Returns:
             DataFrame with sequence features only
         """
-        # Define a JIT-compiled function for creating sequences
-        @numba.njit(parallel=True)
-        def create_sequences_fast(values, sequence_length):
+        # Replace the Numba-based function with a pure Python implementation
+        def create_sequences(values, sequence_length):
             n = len(values)
             sequences = np.zeros((n, sequence_length), dtype=np.float64) * np.nan
             
-            # Parallel processing of rows
-            for i in numba.prange(n):
+            for i in range(n):
                 start_idx = max(0, i - sequence_length + 1)
                 actual_seq_len = i - start_idx + 1
                 if actual_seq_len > 0:
@@ -352,15 +348,15 @@ class FeatureEngineer:
                             if not np.issubdtype(values.dtype, np.number):
                                 values = values.astype(np.float64)
                                 
-                            # Handle NaN values - numba doesn't handle NaNs well in some operations
+                            # Handle NaN values
                             nan_mask = np.isnan(values)
                             if nan_mask.any():
                                 # Replace NaNs with a sentinel value
                                 masked_values = values.copy()
                                 masked_values[nan_mask] = 0.0
                                 
-                                # Generate sequences using the JIT-compiled function
-                                sequences = create_sequences_fast(masked_values, sequence_length)
+                                # Generate sequences using the standard function
+                                sequences = create_sequences(masked_values, sequence_length)
                                 
                                 # Restore NaNs
                                 for i in range(len(values)):
@@ -368,14 +364,13 @@ class FeatureEngineer:
                                         sequences[i, -1] = np.nan
                             else:
                                 # No NaNs, use values directly
-                                sequences = create_sequences_fast(values, sequence_length)
+                                sequences = create_sequences(values, sequence_length)
                         except (TypeError, ValueError) as e:
                             # If conversion fails, log warning and skip this column
                             logger.warning(f"Could not process column {col} as numeric: {e}")
                             continue
                     else:
                         # For non-numeric columns, we'll create sequences of None values
-                        # since we can't meaningfully create numeric sequences
                         logger.warning(f"Skipping non-numeric column {col} for sequence generation")
                         # Create empty/NaN sequences for this column
                         sequences = np.zeros((len(symbol_df), sequence_length)) * np.nan
