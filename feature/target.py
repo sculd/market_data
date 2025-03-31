@@ -8,6 +8,16 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# Default values for target parameters
+DEFAULT_FORWARD_PERIODS = [2, 10]
+DEFAULT_TP_VALUES = [0.03]
+DEFAULT_SL_VALUES = [0.03]
+
+# Default values for complete target parameters (used in add_target_features)
+FULL_FORWARD_PERIODS = [1, 5, 15, 30, 60, 120, 240, 480]
+FULL_TP_VALUES = [0.005, 0.01, 0.02, 0.03, 0.05]
+FULL_SL_VALUES = [0.005, 0.01, 0.02, 0.03, 0.05]
+
 # Numba-accelerated functions for performance-critical calculations
 @nb.njit(cache=True)
 def calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
@@ -99,9 +109,9 @@ class TargetEngineer:
                 raise ValueError(f"Failed to convert index to datetime: {e}")
     
     def add_target_features(self, 
-                           forward_periods: List[int] = [1, 5, 15, 30, 60, 120, 240, 480],
-                           tp_values: List[float] = [0.005, 0.01, 0.02, 0.03, 0.05],
-                           sl_values: List[float] = [0.005, 0.01, 0.02, 0.03, 0.05]) -> pd.DataFrame:
+                           forward_periods: List[int] = FULL_FORWARD_PERIODS,
+                           tp_values: List[float] = FULL_TP_VALUES,
+                           sl_values: List[float] = FULL_SL_VALUES) -> pd.DataFrame:
         """
         Add target features for machine learning, including forward returns and
         classification labels based on take-profit and stop-loss levels.
@@ -153,9 +163,9 @@ class TargetEngineer:
             return pd.DataFrame({'symbol': []}, index=self.df.index)
     
     def get_target_column_names(self,
-                              forward_periods: List[int] = [1, 5, 15, 30, 60, 120, 240, 480],
-                              tp_values: List[float] = [0.005, 0.01, 0.02, 0.03, 0.05],
-                              sl_values: List[float] = [0.005, 0.01, 0.02, 0.03, 0.05]) -> List[str]:
+                              forward_periods: List[int] = FULL_FORWARD_PERIODS,
+                              tp_values: List[float] = FULL_TP_VALUES,
+                              sl_values: List[float] = FULL_SL_VALUES) -> List[str]:
         """
         Get the names of target columns that would be created by add_target_features.
         
@@ -240,9 +250,9 @@ class TargetEngineer:
 
 # Convenience functions
 def create_targets(df: pd.DataFrame, 
-                  forward_periods: List[int] = [2, 10],
-                  tp_values: List[float] = [0.03],
-                  sl_values: List[float] = [0.03]) -> pd.DataFrame:
+                  forward_periods: List[int] = DEFAULT_FORWARD_PERIODS,
+                  tp_values: List[float] = DEFAULT_TP_VALUES,
+                  sl_values: List[float] = DEFAULT_SL_VALUES) -> pd.DataFrame:
     """
     Convenience function to create ML target features from market data.
     Includes forward returns and classification labels.
@@ -265,9 +275,9 @@ def create_targets(df: pd.DataFrame,
     return engineer.add_target_features(forward_periods, tp_values, sl_values).copy()
 
 
-def get_target_columns(forward_periods: List[int] = [2, 10],
-                       tp_values: List[float] = [0.03],
-                       sl_values: List[float] = [0.03]) -> List[str]:
+def get_target_columns(forward_periods: List[int] = DEFAULT_FORWARD_PERIODS,
+                       tp_values: List[float] = DEFAULT_TP_VALUES,
+                       sl_values: List[float] = DEFAULT_SL_VALUES) -> List[str]:
     """
     Get the names of all target columns that would be created by create_targets.
     
@@ -291,13 +301,13 @@ def get_target_columns(forward_periods: List[int] = [2, 10],
 
 # Predefined target column lists for common configurations
 TARGET_COLUMNS_DEFAULT = get_target_columns(
-    forward_periods=[2, 10],
-    tp_values=[0.03],
-    sl_values=[0.03]
+    forward_periods=DEFAULT_FORWARD_PERIODS,
+    tp_values=DEFAULT_TP_VALUES,
+    sl_values=DEFAULT_SL_VALUES
 )
 
 TARGET_COLUMNS_FULL = get_target_columns(
-    forward_periods=[1, 10, 30, 60, 120],
-    tp_values=[0.005, 0.01, 0.02, 0.03, 0.05],
-    sl_values=[0.005, 0.01, 0.02, 0.03, 0.05]
+    forward_periods=FULL_FORWARD_PERIODS,
+    tp_values=FULL_TP_VALUES,
+    sl_values=FULL_SL_VALUES
 ) 

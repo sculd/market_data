@@ -6,8 +6,10 @@ import math
 
 from ingest.bq import cache as raw_cache
 from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from ingest.bq.common import get_full_table_id
 from ingest.util import time as util_time
 from feature import feature
+from feature.feature import DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
 from feature.cache_util import (
     split_t_range,
     cache_data_by_day,
@@ -23,9 +25,9 @@ def get_feature_params_dir(return_periods=None, ema_periods=None, add_btc_featur
     """
     # Use default values if None is provided
     if return_periods is None:
-        return_periods = [1, 5, 15, 30, 60, 120]
+        return_periods = DEFAULT_RETURN_PERIODS
     if ema_periods is None:
-        ema_periods = [5, 15, 30, 60, 120, 240]
+        ema_periods = DEFAULT_EMA_PERIODS
         
     params = {
         'rp': return_periods,
@@ -46,9 +48,9 @@ def get_recommended_warm_up_days(return_periods=None, ema_periods=None):
     """
     # Use default values if None is provided
     if return_periods is None:
-        return_periods = [1, 5, 15, 30, 60, 120]
+        return_periods = DEFAULT_RETURN_PERIODS
     if ema_periods is None:
-        ema_periods = [5, 15, 30, 60, 120, 240]
+        ema_periods = DEFAULT_EMA_PERIODS
     
     # Find the maximum window period
     max_window = max(max(return_periods), max(ema_periods))
@@ -62,17 +64,18 @@ def get_recommended_warm_up_days(return_periods=None, ema_periods=None):
 
 def cache_features(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                   return_periods=None, ema_periods=None, add_btc_features=True,
-                  overwrite=True, warm_up_period_days=1) -> None:
+                  overwrite=True, warm_up_period_days=1, dataset_id=None) -> None:
     """Cache a feature DataFrame, splitting it into daily pieces"""
     params_dir = get_feature_params_dir(return_periods, ema_periods, add_btc_features)
-    return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days)
+    return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id)
 
 def read_features_from_cache(label: str, 
                            return_periods=None, ema_periods=None, add_btc_features=True,
                            t_from: datetime.datetime = None, t_to: datetime.datetime = None,
                            epoch_seconds_from: int = None, epoch_seconds_to: int = None,
                            date_str_from: str = None, date_str_to: str = None,
-                           columns: typing.List[str] = None) -> pd.DataFrame:
+                           columns: typing.List[str] = None,
+                           dataset_id=None) -> pd.DataFrame:
     """Read cached feature data for a specified time range"""
     params_dir = get_feature_params_dir(return_periods, ema_periods, add_btc_features)
     return read_from_cache_generic(
@@ -81,7 +84,8 @@ def read_features_from_cache(label: str,
         t_from=t_from, t_to=t_to,
         epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
         date_str_from=date_str_from, date_str_to=date_str_to,
-        columns=columns
+        columns=columns,
+        dataset_id=dataset_id
     )
 
 def calculate_feature_batch(raw_df: pd.DataFrame, 
@@ -90,9 +94,9 @@ def calculate_feature_batch(raw_df: pd.DataFrame,
                            add_btc_features: bool = True) -> pd.DataFrame:
     """Calculate features for a batch of data using pandas implementation"""
     if return_periods is None:
-        return_periods = [1, 5, 15, 30, 60, 120]
+        return_periods = DEFAULT_RETURN_PERIODS
     if ema_periods is None:
-        ema_periods = [5, 15, 30, 60, 120, 240]
+        ema_periods = DEFAULT_EMA_PERIODS
         
     # Ensure timestamp is proper datetime
     if 'timestamp' in raw_df.columns and not pd.api.types.is_datetime64_any_dtype(raw_df['timestamp']):
@@ -153,6 +157,9 @@ def calculate_and_cache_features(
     # Create label for feature cache
     feature_label = "features"
     
+    # Get dataset ID for cache path
+    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    
     # Include warm-up period
     calculation_t_from = t_from - datetime.timedelta(days=warm_up_days)
     
@@ -202,7 +209,8 @@ def calculate_and_cache_features(
                 ema_periods=ema_periods,
                 add_btc_features=add_btc_features,
                 overwrite=overwrite_cache,
-                warm_up_period_days=warm_up_period_days
+                warm_up_period_days=warm_up_period_days,
+                dataset_id=dataset_id
             )
             
         except Exception as e:
@@ -219,10 +227,19 @@ def load_cached_features(
         epoch_seconds_to: int = None,
         date_str_from: str = None,
         date_str_to: str = None,
-        columns: typing.List[str] = None
+        columns: typing.List[str] = None,
+        dataset_mode: DATASET_MODE = None,
+        export_mode: EXPORT_MODE = None,
+        aggregation_mode: AGGREGATION_MODE = None
     ) -> pd.DataFrame:
     """Load cached features for a specific time range"""
     feature_label = "features"
+    
+    # Get dataset ID for cache path if dataset_mode, export_mode, and aggregation_mode are provided
+    dataset_id = None
+    if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
+        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    
     return read_features_from_cache(
         feature_label,
         return_periods=return_periods,
@@ -231,5 +248,6 @@ def load_cached_features(
         t_from=t_from, t_to=t_to,
         epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
         date_str_from=date_str_from, date_str_to=date_str_to,
-        columns=columns
+        columns=columns,
+        dataset_id=dataset_id
     )

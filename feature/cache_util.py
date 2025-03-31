@@ -81,7 +81,7 @@ def params_to_dir_name(params: dict) -> str:
         
     return "_".join(parts)
 
-def to_filename(basedir: str, label: str, t_from: datetime.datetime, t_to: datetime.datetime, params_dir: str = None) -> str:
+def to_filename(basedir: str, label: str, t_from: datetime.datetime, t_to: datetime.datetime, params_dir: str = None, dataset_id: str = None) -> str:
     """
     Generate a filename for the cached data based on time range and parameters.
     
@@ -97,15 +97,24 @@ def to_filename(basedir: str, label: str, t_from: datetime.datetime, t_to: datet
         End time of the data
     params_dir : str, optional
         Parameters directory name, generated from params_to_dir_name
+    dataset_id : str, optional
+        Dataset identifier (e.g., "trading-290017.market_data_okx.by_minute_AGGREGATION_MODE.TAKE_LASTEST")
+        If provided, this will be included in the path
     """
     t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
     t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
     
+    # Base directory structure with dataset_id if provided
+    if dataset_id:
+        base_dir = os.path.join(basedir, label, dataset_id)
+    else:
+        base_dir = os.path.join(basedir, label)
+    
     # Include params in the directory structure if provided
     if params_dir:
-        dir_path = os.path.join(basedir, label, params_dir)
+        dir_path = os.path.join(base_dir, params_dir)
     else:
-        dir_path = os.path.join(basedir, label)
+        dir_path = base_dir
         
     fn = os.path.join(dir_path, f"{t_str_from}_{t_str_to}.parquet")
     
@@ -144,7 +153,7 @@ def is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) 
     return at_begin_of_day(t_from) and at_begin_of_day(t_to)
 
 def cache_daily_df(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
-                  params_dir: str = None, overwrite=True):
+                  params_dir: str = None, overwrite=True, dataset_id: str = None):
     """Cache a DataFrame that covers one-day range exactly"""
     if not is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from}-{t_to} does not match {CACHE_INTERVAL=} thus will not be cached.")
@@ -154,7 +163,7 @@ def cache_daily_df(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to
         logging.info(f"df for {t_from}-{t_to} is empty thus will not be cached.")
         return None
 
-    filename = to_filename(CACHE_BASE_PATH, label, t_from, t_to, params_dir)
+    filename = to_filename(CACHE_BASE_PATH, label, t_from, t_to, params_dir, dataset_id)
     if os.path.exists(filename):
         logging.info(f"{filename} already exists.")
         if overwrite:
@@ -168,13 +177,14 @@ def cache_daily_df(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to
     return filename
 
 def fetch_from_daily_cache(label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
-                          params_dir: str = None, columns: typing.List[str] = None) -> typing.Optional[pd.DataFrame]:
+                          params_dir: str = None, columns: typing.List[str] = None, 
+                          dataset_id: str = None) -> typing.Optional[pd.DataFrame]:
     """Fetch cached data for a specific day"""
     if not is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from} to {t_to} does not match {CACHE_INTERVAL=} thus not read from cache.")
         return None
     
-    filename = to_filename(CACHE_BASE_PATH, label, t_from, t_to, params_dir)
+    filename = to_filename(CACHE_BASE_PATH, label, t_from, t_to, params_dir, dataset_id)
     if not os.path.exists(filename):
         logging.info(f"{filename=} does not exist in local cache.")
         return None
@@ -193,7 +203,8 @@ def read_from_cache_generic(label: str, params_dir: str = None,
                            t_from: datetime.datetime = None, t_to: datetime.datetime = None,
                            epoch_seconds_from: int = None, epoch_seconds_to: int = None,
                            date_str_from: str = None, date_str_to: str = None,
-                           columns: typing.List[str] = None) -> pd.DataFrame:
+                           columns: typing.List[str] = None,
+                           dataset_id: str = None) -> pd.DataFrame:
     """Read cached data for a specified time range"""
     t_from, t_to = util_time.to_t(
         t_from=t_from, t_to=t_to,
@@ -219,7 +230,7 @@ def read_from_cache_generic(label: str, params_dir: str = None,
         df_list = []
 
     for i, t_range in enumerate(t_ranges):
-        df = fetch_from_daily_cache(label, t_range[0], t_range[1], params_dir, columns)
+        df = fetch_from_daily_cache(label, t_range[0], t_range[1], params_dir, columns, dataset_id)
         if df is None:
             continue
         df_list.append(df)
@@ -231,7 +242,8 @@ def read_from_cache_generic(label: str, params_dir: str = None,
     return df_concat
 
 def cache_data_by_day(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
-                     params_dir: str = None, overwrite=False, warm_up_period_days=1) -> None:
+                     params_dir: str = None, overwrite=False, warm_up_period_days=1, 
+                     dataset_id: str = None) -> None:
     """Cache a DataFrame, splitting it into daily pieces"""
     if len(df) == 0:
         logging.info(f"df is empty for {label} thus will be skipped.")
@@ -264,5 +276,5 @@ def cache_data_by_day(df: pd.DataFrame, label: str, t_from: datetime.datetime, t
             
         t_begin = anchor_to_begin_of_day(timestamps.min())
         t_end = anchor_to_begin_of_day(t_begin + CACHE_INTERVAL)
-        cache_daily_df(df_daily, label, t_begin, t_end, params_dir, overwrite=overwrite)
+        cache_daily_df(df_daily, label, t_begin, t_end, params_dir, overwrite=overwrite, dataset_id=dataset_id)
         del df_daily

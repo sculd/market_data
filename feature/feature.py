@@ -8,6 +8,10 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# Default values for feature parameters
+DEFAULT_RETURN_PERIODS = [1, 5, 15, 30, 60, 120]
+DEFAULT_EMA_PERIODS = [5, 15, 30, 60, 120, 240]
+
 # Numba-accelerated functions for performance-critical calculations
 @nb.njit(cache=True)
 def calculate_obv_numba(prices, volumes):
@@ -180,8 +184,8 @@ class FeatureEngineer:
             except Exception as e:
                 raise ValueError(f"Failed to convert index to datetime: {e}")
     
-    def add_all_features(self, return_periods: List[int] = [1, 5, 15, 30, 60, 120], 
-                         ema_periods: List[int] = [5, 15, 30, 60, 120, 240],
+    def add_all_features(self, return_periods: List[int] = DEFAULT_RETURN_PERIODS, 
+                         ema_periods: List[int] = DEFAULT_EMA_PERIODS,
                          add_btc_features: bool = True) -> pd.DataFrame:
         """
         Add all features to the DataFrame.
@@ -256,8 +260,8 @@ class FeatureEngineer:
             return pd.DataFrame({'symbol': []}, index=self.df.index)
     
     def create_sequence_features(self, sequence_length: int = 60,
-                               return_periods: List[int] = [1, 5, 15, 30, 60, 120], 
-                               ema_periods: List[int] = [5, 15, 30, 60, 120, 240],
+                               return_periods: List[int] = DEFAULT_RETURN_PERIODS, 
+                               ema_periods: List[int] = DEFAULT_EMA_PERIODS,
                                add_btc_features: bool = True) -> pd.DataFrame:
         """
         Create a DataFrame with sequence features only.
@@ -455,8 +459,8 @@ class FeatureEngineer:
 
 # Example usage
 def create_features(df: pd.DataFrame, 
-                    return_periods: List[int] = [1, 5, 15, 30, 60, 120],
-                    ema_periods: List[int] = [5, 15, 30, 60, 120, 240],
+                    return_periods: List[int] = DEFAULT_RETURN_PERIODS,
+                    ema_periods: List[int] = DEFAULT_EMA_PERIODS,
                     add_btc_features: bool = True) -> pd.DataFrame:
     """
     Convenience function to add all features to a market data DataFrame.
@@ -486,8 +490,8 @@ def create_features(df: pd.DataFrame,
 
 def create_sequence_features(df: pd.DataFrame, 
                              sequence_length: int = 60,
-                             return_periods: List[int] = [1, 5, 15, 30, 60, 120],
-                             ema_periods: List[int] = [5, 15, 30, 60, 120, 240],
+                             return_periods: List[int] = DEFAULT_RETURN_PERIODS,
+                             ema_periods: List[int] = DEFAULT_EMA_PERIODS,
                              add_btc_features: bool = True) -> pd.DataFrame:
     """
     Convenience function to create sequence features from market data.

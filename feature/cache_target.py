@@ -6,8 +6,10 @@ import math
 
 from ingest.bq import cache as raw_cache
 from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from ingest.bq.common import get_full_table_id
 from ingest.util import time as util_time
 from feature import target
+from feature.target import DEFAULT_FORWARD_PERIODS, DEFAULT_TP_VALUES, DEFAULT_SL_VALUES
 from feature.cache_util import (
     split_t_range,
     cache_data_by_day,
@@ -23,11 +25,11 @@ def get_target_params_dir(forward_periods=None, tp_values=None, sl_values=None):
     """
     # Use default values if None is provided
     if forward_periods is None:
-        forward_periods = [2, 10]
+        forward_periods = DEFAULT_FORWARD_PERIODS
     if tp_values is None:
-        tp_values = [0.03]
+        tp_values = DEFAULT_TP_VALUES
     if sl_values is None:
-        sl_values = [0.03]
+        sl_values = DEFAULT_SL_VALUES
         
     params = {
         'fp': forward_periods,
@@ -48,7 +50,7 @@ def get_recommended_warm_up_days(forward_periods=None):
     """
     # Use default values if None is provided
     if forward_periods is None:
-        forward_periods = [2, 10]
+        forward_periods = DEFAULT_FORWARD_PERIODS
     
     # Find the maximum forward period
     max_forward = max(forward_periods)
@@ -62,17 +64,18 @@ def get_recommended_warm_up_days(forward_periods=None):
 
 def cache_targets(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                  forward_periods=None, tp_values=None, sl_values=None,
-                 overwrite=True, warm_up_period_days=1) -> None:
+                 overwrite=True, warm_up_period_days=1, dataset_id=None) -> None:
     """Cache a target DataFrame, splitting it into daily pieces"""
     params_dir = get_target_params_dir(forward_periods, tp_values, sl_values)
-    return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days)
+    return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id)
 
 def read_targets_from_cache(label: str, 
                           forward_periods=None, tp_values=None, sl_values=None,
                           t_from: datetime.datetime = None, t_to: datetime.datetime = None,
                           epoch_seconds_from: int = None, epoch_seconds_to: int = None,
                           date_str_from: str = None, date_str_to: str = None,
-                          columns: typing.List[str] = None) -> pd.DataFrame:
+                          columns: typing.List[str] = None,
+                          dataset_id=None) -> pd.DataFrame:
     """Read cached target data for a specified time range"""
     params_dir = get_target_params_dir(forward_periods, tp_values, sl_values)
     return read_from_cache_generic(
@@ -81,7 +84,8 @@ def read_targets_from_cache(label: str,
         t_from=t_from, t_to=t_to,
         epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
         date_str_from=date_str_from, date_str_to=date_str_to,
-        columns=columns
+        columns=columns,
+        dataset_id=dataset_id
     )
 
 def calculate_target_batch(raw_df: pd.DataFrame,
@@ -90,11 +94,11 @@ def calculate_target_batch(raw_df: pd.DataFrame,
                           sl_values: typing.List[float] = None) -> pd.DataFrame:
     """Calculate targets for a batch of data using pandas implementation"""
     if forward_periods is None:
-        forward_periods = [2, 10]
+        forward_periods = DEFAULT_FORWARD_PERIODS
     if tp_values is None:
-        tp_values = [0.03]
+        tp_values = DEFAULT_TP_VALUES
     if sl_values is None:
-        sl_values = [0.03]
+        sl_values = DEFAULT_SL_VALUES
         
     # Ensure timestamp is proper datetime
     if 'timestamp' in raw_df.columns and not pd.api.types.is_datetime64_any_dtype(raw_df['timestamp']):
@@ -154,6 +158,9 @@ def calculate_and_cache_targets(
     # Create label for target cache
     target_label = "targets"
     
+    # Get dataset ID for cache path
+    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    
     # Include warm-up period
     calculation_t_from = t_from - datetime.timedelta(days=warm_up_days)
     
@@ -203,7 +210,8 @@ def calculate_and_cache_targets(
                 tp_values=tp_values,
                 sl_values=sl_values,
                 overwrite=overwrite_cache,
-                warm_up_period_days=warm_up_period_days
+                warm_up_period_days=warm_up_period_days,
+                dataset_id=dataset_id
             )
             
         except Exception as e:
@@ -220,10 +228,19 @@ def load_cached_targets(
         epoch_seconds_to: int = None,
         date_str_from: str = None,
         date_str_to: str = None,
-        columns: typing.List[str] = None
+        columns: typing.List[str] = None,
+        dataset_mode: DATASET_MODE = None,
+        export_mode: EXPORT_MODE = None,
+        aggregation_mode: AGGREGATION_MODE = None
     ) -> pd.DataFrame:
     """Load cached targets for a specific time range"""
     target_label = "targets"
+    
+    # Get dataset ID for cache path if dataset_mode, export_mode, and aggregation_mode are provided
+    dataset_id = None
+    if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
+        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    
     return read_targets_from_cache(
         target_label,
         forward_periods=forward_periods,
@@ -232,5 +249,6 @@ def load_cached_targets(
         t_from=t_from, t_to=t_to,
         epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
         date_str_from=date_str_from, date_str_to=date_str_to,
-        columns=columns
+        columns=columns,
+        dataset_id=dataset_id
     )
