@@ -224,145 +224,76 @@ class TargetEngineer:
                -1: stop-loss reached within period
                 0: neither reached within period
         """
-        try:
-            # Try to use Numba for high-performance calculation
-            import numba
+        # Create a base DataFrame with price levels
+        if position_type == 'long':
+            # For long positions
+            tp_price_expr = pl.col('close') * (1 + take_profit)
+            sl_price_expr = pl.col('close') * (1 - stop_loss)
+        else:
+            # For short positions
+            tp_price_expr = pl.col('close') * (1 - take_profit)
+            sl_price_expr = pl.col('close') * (1 + stop_loss)
+        
+        # Create a base DataFrame with price levels
+        base_df = df.select([
+            'high',
+            'low',
+            'close',
+            tp_price_expr.alias('tp_price'),
+            sl_price_expr.alias('sl_price')
+        ])
+        
+        # Convert to numpy arrays for faster processing
+        high_values = base_df.select('high').to_numpy().flatten()
+        low_values = base_df.select('low').to_numpy().flatten()
+        tp_prices = base_df.select('tp_price').to_numpy().flatten()
+        sl_prices = base_df.select('sl_price').to_numpy().flatten()
+        
+        # Initialize result array
+        result = np.zeros(len(high_values), dtype=np.int8)
+        
+        # Process in chunks to improve performance
+        chunk_size = 1000
+        for chunk_start in range(0, len(high_values) - 1, chunk_size):
+            chunk_end = min(chunk_start + chunk_size, len(high_values) - 1)
             
-            # Define a JIT-compiled function for calculating TP/SL labels
-            # Use cache=True to reuse compiled code across calls
-            @numba.njit(cache=True)
-            def calculate_labels_fast(high_values, low_values, close_values, take_profit, stop_loss, period, n_rows, is_long):
-                # Pre-allocate result array
-                result = np.zeros(n_rows, dtype=np.int8)
+            for i in range(chunk_start, chunk_end):
+                if i + period >= len(high_values):
+                    # Not enough future data
+                    continue
                 
-                # Process each row
-                for i in range(n_rows):
-                    # Skip if we don't have enough future data
-                    if i + period >= n_rows:
-                        continue
-                    
-                    # Calculate TP/SL prices
-                    base_price = close_values[i]
-                    if is_long:
-                        tp_price = base_price * (1 + take_profit)
-                        sl_price = base_price * (1 - stop_loss)
+                # Get target prices
+                tp_price = tp_prices[i]
+                sl_price = sl_prices[i]
+                
+                # Process future window
+                hit_tp = False
+                hit_sl = False
+                
+                # Check each future price
+                for j in range(i + 1, min(i + period + 1, len(high_values))):
+                    if position_type == 'long':
+                        # Long position: high price hits TP, low price hits SL
+                        if high_values[j] >= tp_price:
+                            hit_tp = True
+                            break
+                        if low_values[j] <= sl_price:
+                            hit_sl = True
+                            break
                     else:
-                        tp_price = base_price * (1 - take_profit)
-                        sl_price = base_price * (1 + stop_loss)
-                    
-                    # Check future window
-                    for j in range(i + 1, min(i + period + 1, n_rows)):
-                        if is_long:
-                            # Long position
-                            if high_values[j] >= tp_price:
-                                result[i] = 1
-                                break
-                            if low_values[j] <= sl_price:
-                                result[i] = -1
-                                break
-                        else:
-                            # Short position
-                            if low_values[j] <= tp_price:
-                                result[i] = 1
-                                break
-                            if high_values[j] >= sl_price:
-                                result[i] = -1
-                                break
+                        # Short position: low price hits TP, high price hits SL
+                        if low_values[j] <= tp_price:
+                            hit_tp = True
+                            break
+                        if high_values[j] >= sl_price:
+                            hit_sl = True
+                            break
                 
-                return result
-            
-            # Extract necessary arrays from DataFrame for efficient processing
-            high_values = df.select('high').to_numpy().flatten()
-            low_values = df.select('low').to_numpy().flatten()
-            close_values = df.select('close').to_numpy().flatten()
-            
-            # Calculate labels
-            n_rows = len(high_values)
-            is_long = position_type == 'long'
-            
-            # Simple JIT-compiled calculation
-            result = calculate_labels_fast(
-                high_values, low_values, close_values,
-                take_profit, stop_loss, period, n_rows, is_long
-            )
-            
-        except (ImportError, Exception) as e:
-            # Fallback if Numba is not available or there's an error
-            if isinstance(e, ImportError):
-                logger.warning("Numba not available. Using slower implementation for TP/SL calculation.")
-            else:
-                logger.warning(f"Error in Numba calculation: {e}. Using slower implementation.")
-            
-            # Create a base DataFrame with price levels
-            if position_type == 'long':
-                # For long positions
-                tp_price_expr = pl.col('close') * (1 + take_profit)
-                sl_price_expr = pl.col('close') * (1 - stop_loss)
-            else:
-                # For short positions
-                tp_price_expr = pl.col('close') * (1 - take_profit)
-                sl_price_expr = pl.col('close') * (1 + stop_loss)
-            
-            # Create a base DataFrame with price levels
-            base_df = df.select([
-                'high',
-                'low',
-                'close',
-                tp_price_expr.alias('tp_price'),
-                sl_price_expr.alias('sl_price')
-            ])
-            
-            # Convert to numpy arrays for faster processing
-            high_values = base_df.select('high').to_numpy().flatten()
-            low_values = base_df.select('low').to_numpy().flatten()
-            tp_prices = base_df.select('tp_price').to_numpy().flatten()
-            sl_prices = base_df.select('sl_price').to_numpy().flatten()
-            
-            # Initialize result array
-            result = np.zeros(len(high_values), dtype=np.int8)
-            
-            # Process in chunks to improve performance
-            chunk_size = 1000
-            for chunk_start in range(0, len(high_values) - 1, chunk_size):
-                chunk_end = min(chunk_start + chunk_size, len(high_values) - 1)
-                
-                for i in range(chunk_start, chunk_end):
-                    if i + period >= len(high_values):
-                        # Not enough future data
-                        continue
-                    
-                    # Get target prices
-                    tp_price = tp_prices[i]
-                    sl_price = sl_prices[i]
-                    
-                    # Process future window
-                    hit_tp = False
-                    hit_sl = False
-                    
-                    # Check each future price
-                    for j in range(i + 1, min(i + period + 1, len(high_values))):
-                        if position_type == 'long':
-                            # Long position: high price hits TP, low price hits SL
-                            if high_values[j] >= tp_price:
-                                hit_tp = True
-                                break
-                            if low_values[j] <= sl_price:
-                                hit_sl = True
-                                break
-                        else:
-                            # Short position: low price hits TP, high price hits SL
-                            if low_values[j] <= tp_price:
-                                hit_tp = True
-                                break
-                            if high_values[j] >= sl_price:
-                                hit_sl = True
-                                break
-                    
-                    # Set result
-                    if hit_tp:
-                        result[i] = 1
-                    elif hit_sl:
-                        result[i] = -1
+                # Set result
+                if hit_tp:
+                    result[i] = 1
+                elif hit_sl:
+                    result[i] = -1
         
         # Convert results to a Polars expression
         return pl.lit(result.tolist())

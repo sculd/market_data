@@ -6,15 +6,14 @@ from typing import List, Union, Dict, Tuple, Literal
 import logging
 import warnings
 import time
-import numba as nb
 
 logger = logging.getLogger(__name__)
 
-# Numba-accelerated functions for performance-critical calculations
-@nb.njit(cache=True)
-def calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
+# Remove Numba import and JIT-decorated function
+# Replace with pure Python implementation
+def calculate_tp_sl_labels_py(closes, highs, lows, period, take_profit, stop_loss, position_type):
     """
-    Numba-accelerated take-profit/stop-loss label calculation.
+    Pure Python implementation of take-profit/stop-loss label calculation.
     
     Args:
         closes: Array of close prices
@@ -270,11 +269,11 @@ class TargetEngineer:
         highs = df['high'].values
         lows = df['low'].values
         
-        # Convert position type to integer for Numba
+        # Convert position type to integer for the pure Python function
         pos_type_int = 0 if position_type == 'long' else 1
         
-        # Call Numba function
-        labels = calculate_tp_sl_labels_numba(
+        # Call the pure Python function
+        labels = calculate_tp_sl_labels_py(
             closes, highs, lows, period, take_profit, stop_loss, pos_type_int
         )
         
@@ -301,12 +300,7 @@ def create_targets(df: Union[pd.DataFrame, dd.DataFrame],
     Returns:
         DataFrame with target features
     """
-    # Configure workers if specified
-    if n_workers is not None and n_workers > 0:
-        import os
-        os.environ["NUMBA_NUM_THREADS"] = str(n_workers)
-        os.environ["OMP_NUM_THREADS"] = str(n_workers)
-    
+    # Remove Numba thread configuration
     engineer = TargetEngineer(df)
     return engineer.add_target_features(forward_periods, tp_values, sl_values)
 
