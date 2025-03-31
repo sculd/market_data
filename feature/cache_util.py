@@ -127,18 +127,65 @@ def anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
     return CACHE_TIMEZONE.localize(datetime.datetime(year=t.year, month=t.month, day=t.day, hour=0, minute=0, second=0))
 
 def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime, 
-                 interval: datetime.timedelta = CACHE_INTERVAL) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
-    """Split a time range into daily intervals"""
+                 interval: datetime.timedelta = CACHE_INTERVAL,
+                 warm_up: datetime.timedelta = None) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
+    """
+    Split a time range into intervals, with an optional warm-up period for each interval.
+    
+    Parameters:
+    -----------
+    t_from : datetime.datetime
+        Start time of the entire range
+    t_to : datetime.datetime
+        End time of the entire range
+    interval : datetime.timedelta
+        Step size for advancing through the range (default is CACHE_INTERVAL = 1 day)
+    warm_up : datetime.timedelta, optional
+        Optional warm-up period to include at the beginning of each range
+        
+    Returns:
+    --------
+    List of (start_time, end_time) tuples, where:
+        - Each range moves forward by 'interval'
+        - If warm_up is provided, each start_time is adjusted to include the warm-up period
+        - The warm-up period overlaps with the previous interval
+    
+    Examples:
+    ---------
+    With interval=1 day, no warm-up:
+        [(day1, day2), (day2, day3), (day3, day4)]
+    
+    With interval=1 day, warm_up=2 days:
+        [(day1, day2), (day1-2days, day3), (day2-2days, day4)]
+    """
     ret = []
-    t1, t2 = anchor_to_begin_of_day(t_from), anchor_to_begin_of_day(t_from + interval)
+    # Anchor times to beginning of day
+    t1 = anchor_to_begin_of_day(t_from - warm_up)
+    t2 = anchor_to_begin_of_day(t_from + interval)
+    
+    # First range doesn't have warm-up (starting from t_from)
     ret.append((t1, t2))
+    
+    # Process subsequent ranges with warm-up if specified
     while t2 < t_to:
-        t1, t2 = t2, t2 + interval
-        t1, t2 = anchor_to_begin_of_day(t1), anchor_to_begin_of_day(t2)
-        ret.append((t1, t2))
-
+        # Move forward by interval for the end time
+        t2 = anchor_to_begin_of_day(t2 + interval)
+        
+        # Calculate start time, adjusted for warm-up if provided
+        if warm_up is not None:
+            # Start earlier by warm_up period
+            t1_with_warmup = anchor_to_begin_of_day(t2 - interval - warm_up)
+        else:
+            # Without warm-up, start at previous end
+            t1_with_warmup = anchor_to_begin_of_day(t2 - interval)
+        
+        # Add the range to our list
+        ret.append((t1_with_warmup, t2))
+    
+    # Adjust the last range if it exceeds t_to
     last = (ret[-1][0], min(ret[-1][1], t_to))
     ret[-1] = last
+    
     return ret
 
 def is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) -> bool:

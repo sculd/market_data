@@ -56,11 +56,9 @@ def get_recommended_warm_up_days(return_periods=None, ema_periods=None):
     max_window = max(max(return_periods), max(ema_periods))
     
     # Convert to days (assuming periods are in minutes for 24/7 markets)
-    # Add a small buffer of 2 days to be safe
-    days_needed = math.ceil(max_window / (24 * 60)) + 2
+    days_needed = math.ceil(max_window / (24 * 60))
     
-    # Ensure at least 3 days minimum
-    return max(3, days_needed)
+    return days_needed
 
 def cache_features(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                   return_periods=None, ema_periods=None, add_btc_features=True,
@@ -160,14 +158,14 @@ def calculate_and_cache_features(
     # Get dataset ID for cache path
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
     
-    # Include warm-up period
-    calculation_t_from = t_from - datetime.timedelta(days=warm_up_days)
-    
-    # Split the full range into calculation batches
+    # Set up calculation parameters
     if calculation_batch_days <= 0:
         calculation_batch_days = 1
     calculation_interval = datetime.timedelta(days=calculation_batch_days)
-    calculation_ranges = split_t_range(calculation_t_from, t_to, interval=calculation_interval)
+    warm_up_period = datetime.timedelta(days=warm_up_days)
+    
+    # Split the range into calculation batches, with warm-up included in each batch
+    calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval, warm_up=warm_up_period)
     
     for calc_range in calculation_ranges:
         calc_t_from, calc_t_to = calc_range
@@ -198,10 +196,19 @@ def calculate_and_cache_features(
                 continue
                 
             # 4. Cache features daily
-            # Determine if this is a warm-up batch or a regular batch
-            is_warmup = calc_t_from < t_from
-            warm_up_period_days = warm_up_days if is_warmup else 0
+            # Determine if this is a warm-up batch or contains warm-up data
+            is_warmup_batch = calc_range == calculation_ranges[0]  # First range doesn't have warm-up
             
+            # For the first batch (without warm-up), use the regular warm-up period
+            # For subsequent batches, we need to filter out the warm-up data from caching
+            if is_warmup_batch:
+                # First range doesn't include built-in warm-up, but we do need to skip some initial days
+                warm_up_period_days = warm_up_days
+            else:
+                # For batches with built-in warm-up, calculate how many days from the start are warm-up data
+                # warm_up_days is enough because warm_up is aligned to day boundaries
+                warm_up_period_days = warm_up_days
+                
             cache_features(
                 features_df, feature_label, 
                 calc_t_from, calc_t_to,
