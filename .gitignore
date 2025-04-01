@@ -41,4 +41,8 @@ Thumbs.db
 
 # Logs
 logs/
-*.log 
+*.log
+
+# Documentation builds
+docs/build/
+docs/_build/ 
