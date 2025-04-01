@@ -158,12 +158,13 @@ def cache_resampled_data_by_day(df: pd.DataFrame, label: str, t_from: datetime.d
         day_df = df[(df.index >= current_date) & (df.index < next_date)]
         
         if len(day_df) > 0:
-            # Cache the daily chunk
+            # Cache the daily chunk with the end time as start of next day (00:00:00)
+            # This matches the format used in feature/target caching with [start, end) semantics
             filename = cache_resampled_df(
                 day_df, 
                 label, 
                 current_date, 
-                next_date - datetime.timedelta(microseconds=1),
+                next_date,  # Use start of next day instead of end of current day
                 params_dir,
                 overwrite,
                 dataset_id
@@ -187,6 +188,10 @@ def fetch_resampled_from_cache(label: str,
                               dataset_id: str = None) -> typing.Optional[pd.DataFrame]:
     """
     Fetch cached resampled data for the specified time range
+    
+    Files are stored with [start, end) semantics, where each daily file has:
+    - start: beginning of the day (00:00:00)
+    - end: beginning of the next day (00:00:00)
     
     Parameters:
     -----------
@@ -235,6 +240,8 @@ def fetch_resampled_from_cache(label: str,
     all_files = [f for f in os.listdir(dir_path) if f.endswith('.parquet')]
     
     # Filter files that overlap with our time range
+    # For a file with range [file_t_from, file_t_to), it overlaps with [t_from, t_to)
+    # if file_t_from < t_to AND file_t_to > t_from
     relevant_dfs = []
     for filename in all_files:
         # Extract time range from filename
@@ -245,8 +252,9 @@ def fetch_resampled_from_cache(label: str,
             file_t_from = pd.to_datetime(file_t_str_from)
             file_t_to = pd.to_datetime(file_t_str_to)
             
-            # Check if this file's time range overlaps with our requested range
-            if (file_t_from <= t_to) and (file_t_to >= t_from):
+            # Check if this file's time range [file_t_from, file_t_to) overlaps with our requested range [t_from, t_to)
+            # Using half-open interval logic: overlap exists if start of one < end of other
+            if (file_t_from < t_to) and (t_from < file_t_to):
                 file_path = os.path.join(dir_path, filename)
                 df = pd.read_parquet(file_path)
                 
@@ -256,8 +264,8 @@ def fetch_resampled_from_cache(label: str,
                     if valid_columns:
                         df = df[valid_columns]
                 
-                # Filter to the requested time range
-                df = df[(df.index >= t_from) & (df.index <= t_to)]
+                # Filter to the requested time range [t_from, t_to)
+                df = df[(df.index >= t_from) & (df.index < t_to)]
                 
                 if len(df) > 0:
                     relevant_dfs.append(df)
