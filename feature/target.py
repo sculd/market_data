@@ -18,6 +18,45 @@ FULL_FORWARD_PERIODS = [1, 5, 15, 30, 60, 120, 240, 480]
 FULL_TP_VALUES = [0.005, 0.01, 0.02, 0.03, 0.05]
 FULL_SL_VALUES = [0.005, 0.01, 0.02, 0.03, 0.05]
 
+class TargetParams:
+    """
+    Encapsulates parameters for target engineering.
+    
+    This class holds all the parameters needed for target calculation,
+    providing a single source of truth for target configuration.
+    
+    Attributes:
+        forward_periods (List[int]): Periods (in minutes) for calculating forward returns
+        tp_values (List[float]): Take-profit threshold values (as decimal)
+        sl_values (List[float]): Stop-loss threshold values (as decimal)
+    """
+    
+    def __init__(
+        self,
+        forward_periods: List[int] = None,
+        tp_values: List[float] = None,
+        sl_values: List[float] = None
+    ):
+        """
+        Initialize target parameters.
+        
+        Args:
+            forward_periods: Periods for forward returns calculation. If None, uses DEFAULT_FORWARD_PERIODS
+            tp_values: Take-profit threshold values. If None, uses DEFAULT_TP_VALUES
+            sl_values: Stop-loss threshold values. If None, uses DEFAULT_SL_VALUES
+        """
+        self.forward_periods = forward_periods or DEFAULT_FORWARD_PERIODS
+        self.tp_values = tp_values or DEFAULT_TP_VALUES
+        self.sl_values = sl_values or DEFAULT_SL_VALUES
+    
+    def __repr__(self) -> str:
+        """String representation of the parameters."""
+        return (
+            f"TargetParams(forward_periods={self.forward_periods}, "
+            f"tp_values={self.tp_values}, "
+            f"sl_values={self.sl_values})"
+        )
+
 # Numba-accelerated functions for performance-critical calculations
 @nb.njit(cache=True)
 def calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
@@ -83,15 +122,17 @@ class TargetEngineer:
     - Columns: 'symbol', 'open', 'high', 'low', 'close', 'volume'
     """
     
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame, params: TargetParams = None):
         """
         Initialize with a DataFrame of market data.
         
         Args:
             df: DataFrame with timestamp index and OHLCV columns
+            params: Target parameters. If None, uses default parameters
         """
         self.validate_dataframe(df)
         self.df = df.copy()
+        self.params = params or TargetParams()
     
     def validate_dataframe(self, df: pd.DataFrame) -> None:
         """Validate that the DataFrame has the required structure."""
@@ -108,19 +149,11 @@ class TargetEngineer:
             except Exception as e:
                 raise ValueError(f"Failed to convert index to datetime: {e}")
     
-    def add_target_features(self, 
-                           forward_periods: List[int] = FULL_FORWARD_PERIODS,
-                           tp_values: List[float] = FULL_TP_VALUES,
-                           sl_values: List[float] = FULL_SL_VALUES) -> pd.DataFrame:
+    def add_target_features(self) -> pd.DataFrame:
         """
         Add target features for machine learning, including forward returns and
         classification labels based on take-profit and stop-loss levels.
         
-        Args:
-            forward_periods: Periods (in minutes) for calculating forward returns
-            tp_values: Take-profit threshold values (as decimal)
-            sl_values: Stop-loss threshold values (as decimal)
-            
         Returns:
             DataFrame with target features added
         """
@@ -133,13 +166,13 @@ class TargetEngineer:
             target_data = {'symbol': symbol}
             
             # Add forward returns for different periods
-            for period in forward_periods:
+            for period in self.params.forward_periods:
                 target_data[f'label_forward_return_{period}m'] = self.calculate_forward_return(group, period)
             
             # Add classification labels for different configurations
-            for period in forward_periods:
-                for tp in tp_values:
-                    for sl in sl_values:
+            for period in self.params.forward_periods:
+                for tp in self.params.tp_values:
+                    for sl in self.params.sl_values:
                         # Long position labels
                         target_data[f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
                             self.calculate_tp_sl_labels(group, period, tp, sl, 'long')
@@ -162,31 +195,23 @@ class TargetEngineer:
             # Return an empty DataFrame with only the symbol column
             return pd.DataFrame({'symbol': []}, index=self.df.index)
     
-    def get_target_column_names(self,
-                              forward_periods: List[int] = FULL_FORWARD_PERIODS,
-                              tp_values: List[float] = FULL_TP_VALUES,
-                              sl_values: List[float] = FULL_SL_VALUES) -> List[str]:
+    def get_target_column_names(self) -> List[str]:
         """
         Get the names of target columns that would be created by add_target_features.
         
-        Args:
-            forward_periods: Periods (in minutes) for calculating forward returns
-            tp_values: Take-profit threshold values (as decimal)
-            sl_values: Stop-loss threshold values (as decimal)
-            
         Returns:
             List of column names for target features
         """
         column_names = []
         
         # Forward return column names
-        for period in forward_periods:
+        for period in self.params.forward_periods:
             column_names.append(f'label_forward_return_{period}m')
         
         # Classification label column names
-        for period in forward_periods:
-            for tp in tp_values:
-                for sl in sl_values:
+        for period in self.params.forward_periods:
+            for tp in self.params.tp_values:
+                for sl in self.params.sl_values:
                     # Long position labels
                     column_names.append(f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m')
                     # Short position labels
@@ -249,19 +274,14 @@ class TargetEngineer:
 
 
 # Convenience functions
-def create_targets(df: pd.DataFrame, 
-                  forward_periods: List[int] = DEFAULT_FORWARD_PERIODS,
-                  tp_values: List[float] = DEFAULT_TP_VALUES,
-                  sl_values: List[float] = DEFAULT_SL_VALUES) -> pd.DataFrame:
+def create_targets(df: pd.DataFrame, params: TargetParams = None) -> pd.DataFrame:
     """
     Convenience function to create ML target features from market data.
     Includes forward returns and classification labels.
     
     Args:
         df: DataFrame with timestamp index and OHLCV columns
-        forward_periods: Periods (in minutes) for calculating forward returns
-        tp_values: Take-profit threshold values (as decimal)
-        sl_values: Stop-loss threshold values (as decimal)
+        params: Target calculation parameters. If None, uses default parameters.
         
     Returns:
         DataFrame with target features
@@ -270,21 +290,17 @@ def create_targets(df: pd.DataFrame,
     num_threads = os.cpu_count() or 4
     nb.set_num_threads(min(num_threads, 8))  # Limit to max 8 threads
     
-    engineer = TargetEngineer(df)
+    engineer = TargetEngineer(df, params=params)
     # Create a copy to defragment
-    return engineer.add_target_features(forward_periods, tp_values, sl_values).copy()
+    return engineer.add_target_features().copy()
 
 
-def get_target_columns(forward_periods: List[int] = DEFAULT_FORWARD_PERIODS,
-                       tp_values: List[float] = DEFAULT_TP_VALUES,
-                       sl_values: List[float] = DEFAULT_SL_VALUES) -> List[str]:
+def get_target_columns(params: TargetParams = None) -> List[str]:
     """
     Get the names of all target columns that would be created by create_targets.
     
     Args:
-        forward_periods: Periods (in minutes) for calculating forward returns
-        tp_values: Take-profit threshold values (as decimal)
-        sl_values: Stop-loss threshold values (as decimal)
+        params: Target calculation parameters. If None, uses default parameters.
         
     Returns:
         List of column names for target features
@@ -293,21 +309,16 @@ def get_target_columns(forward_periods: List[int] = DEFAULT_FORWARD_PERIODS,
     empty_df = pd.DataFrame({'symbol': ['BTC'], 
                              'open': [1], 'high': [1], 'low': [1], 'close': [1], 'volume': [1]},
                            index=[pd.Timestamp.now()])
-    engineer = TargetEngineer(empty_df)
+    engineer = TargetEngineer(empty_df, params=params)
     
     # Get column names
-    return engineer.get_target_column_names(forward_periods, tp_values, sl_values)
+    return engineer.get_target_column_names()
 
 
 # Predefined target column lists for common configurations
-TARGET_COLUMNS_DEFAULT = get_target_columns(
-    forward_periods=DEFAULT_FORWARD_PERIODS,
-    tp_values=DEFAULT_TP_VALUES,
-    sl_values=DEFAULT_SL_VALUES
-)
-
-TARGET_COLUMNS_FULL = get_target_columns(
+TARGET_COLUMNS_DEFAULT = get_target_columns(TargetParams())
+TARGET_COLUMNS_FULL = get_target_columns(TargetParams(
     forward_periods=FULL_FORWARD_PERIODS,
     tp_values=FULL_TP_VALUES,
     sl_values=FULL_SL_VALUES
-) 
+)) 

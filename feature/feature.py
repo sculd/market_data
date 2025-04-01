@@ -8,6 +8,45 @@ import os
 
 logger = logging.getLogger(__name__)
 
+class FeatureParams:
+    """
+    Encapsulates parameters for feature engineering.
+    
+    This class holds all the parameters needed for feature calculation,
+    providing a single source of truth for feature configuration.
+    
+    Attributes:
+        return_periods (List[int]): Periods (in minutes) for calculating returns
+        ema_periods (List[int]): Periods (in minutes) for calculating EMAs
+        add_btc_features (bool): Whether to add BTC-related features
+    """
+    
+    def __init__(
+        self,
+        return_periods: List[int] = None,
+        ema_periods: List[int] = None,
+        add_btc_features: bool = True
+    ):
+        """
+        Initialize feature parameters.
+        
+        Args:
+            return_periods: Periods for returns calculation. If None, uses DEFAULT_RETURN_PERIODS
+            ema_periods: Periods for EMA calculation. If None, uses DEFAULT_EMA_PERIODS
+            add_btc_features: Whether to add BTC-related features
+        """
+        self.return_periods = return_periods or DEFAULT_RETURN_PERIODS
+        self.ema_periods = ema_periods or DEFAULT_EMA_PERIODS
+        self.add_btc_features = add_btc_features
+    
+    def __repr__(self) -> str:
+        """String representation of the parameters."""
+        return (
+            f"FeatureParams(return_periods={self.return_periods}, "
+            f"ema_periods={self.ema_periods}, "
+            f"add_btc_features={self.add_btc_features})"
+        )
+
 # Default values for feature parameters
 DEFAULT_RETURN_PERIODS = [1, 5, 15, 30, 60, 120]
 DEFAULT_EMA_PERIODS = [5, 15, 30, 60, 120, 240]
@@ -146,16 +185,18 @@ class FeatureEngineer:
     - Columns: 'symbol', 'open', 'high', 'low', 'close', 'volume'
     """
     
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame, params: FeatureParams = None):
         """
         Initialize with a DataFrame of market data.
         
         Args:
             df: DataFrame with timestamp index and OHLCV columns
+            params: Feature parameters. If None, uses default parameters
         """
         self.validate_dataframe(df)
         self.df = df.copy()
         self.btc_df = None
+        self.params = params or FeatureParams()
         
         # Identify Bitcoin data by looking for common BTC patterns in symbol names
         # This handles different exchange formats: BTC, BTCUSDT, BTC-USDT-SWAP, BTC/USDT, etc.
@@ -184,17 +225,10 @@ class FeatureEngineer:
             except Exception as e:
                 raise ValueError(f"Failed to convert index to datetime: {e}")
     
-    def add_all_features(self, return_periods: List[int] = DEFAULT_RETURN_PERIODS, 
-                         ema_periods: List[int] = DEFAULT_EMA_PERIODS,
-                         add_btc_features: bool = True) -> pd.DataFrame:
+    def add_all_features(self) -> pd.DataFrame:
         """
         Add all features to the DataFrame.
         
-        Args:
-            return_periods: Periods (in minutes) for calculating returns
-            ema_periods: Periods (in minutes) for calculating EMAs
-            add_btc_features: Whether to add BTC-related features
-            
         Returns:
             DataFrame with all features added (excluding raw OHLCV data)
         """
@@ -207,10 +241,10 @@ class FeatureEngineer:
             feature_data = {'symbol': symbol}
             
             # Price indicators
-            for period in return_periods:
+            for period in self.params.return_periods:
                 feature_data[f'return_{period}m'] = self.calculate_return(group, period)
             
-            for period in ema_periods:
+            for period in self.params.ema_periods:
                 ema = self.calculate_ema(group, period)
                 feature_data[f'ema_{period}m'] = ema
                 # Add EMA relative to price (normalized)
@@ -240,8 +274,8 @@ class FeatureEngineer:
             feature_data['obv_zscore'] = self.calculate_zscore(feature_data['obv'], 20)
             
             # Add BTC features if requested
-            if add_btc_features and self.btc_df is not None and not ('BTC' in symbol.upper()):
-                btc_features = self.calculate_btc_features(group.index, return_periods)
+            if self.params.add_btc_features and self.btc_df is not None and not ('BTC' in symbol.upper()):
+                btc_features = self.calculate_btc_features(group.index)
                 for col, values in btc_features.items():
                     feature_data[col] = values
             
@@ -259,10 +293,7 @@ class FeatureEngineer:
             # Return an empty DataFrame with only the symbol column
             return pd.DataFrame({'symbol': []}, index=self.df.index)
     
-    def create_sequence_features(self, sequence_length: int = 60,
-                               return_periods: List[int] = DEFAULT_RETURN_PERIODS, 
-                               ema_periods: List[int] = DEFAULT_EMA_PERIODS,
-                               add_btc_features: bool = True) -> pd.DataFrame:
+    def create_sequence_features(self, sequence_length: int = 60) -> pd.DataFrame:
         """
         Create a DataFrame with sequence features only.
         Each column contains arrays of past values for each feature.
@@ -270,19 +301,12 @@ class FeatureEngineer:
         
         Args:
             sequence_length: Length of the sequence arrays
-            return_periods: Periods (in minutes) for calculating returns
-            ema_periods: Periods (in minutes) for calculating EMAs
-            add_btc_features: Whether to add BTC-related features
             
         Returns:
             DataFrame with sequence features only
         """
         # First get the regular features (which already exclude raw OHLCV)
-        features_df = self.add_all_features(
-            return_periods=return_periods,
-            ema_periods=ema_periods,
-            add_btc_features=add_btc_features
-        )
+        features_df = self.add_all_features()
         
         # Create an empty list to hold all sequence features DataFrames
         all_sequence_features = []
@@ -424,13 +448,12 @@ class FeatureEngineer:
         obv_values = calculate_obv_numba(closes, volumes)
         return pd.Series(obv_values, index=df.index)
     
-    def calculate_btc_features(self, index: pd.DatetimeIndex, return_periods: List[int]) -> pd.DataFrame:
+    def calculate_btc_features(self, index: pd.DatetimeIndex) -> pd.DataFrame:
         """
         Calculate BTC-specific features.
         
         Args:
             index: DatetimeIndex to align with
-            return_periods: Periods in minutes for calculating returns
             
         Returns:
             DataFrame with BTC features
@@ -443,7 +466,7 @@ class FeatureEngineer:
         # Create a dictionary to hold all BTC features
         btc_data = {}
         
-        for period in return_periods:
+        for period in self.params.return_periods:
             # Calculate BTC return
             btc_return = self.calculate_return(self.btc_df, period)
             
@@ -458,19 +481,14 @@ class FeatureEngineer:
 
 
 # Example usage
-def create_features(df: pd.DataFrame, 
-                    return_periods: List[int] = DEFAULT_RETURN_PERIODS,
-                    ema_periods: List[int] = DEFAULT_EMA_PERIODS,
-                    add_btc_features: bool = True) -> pd.DataFrame:
+def create_features(df: pd.DataFrame, params: FeatureParams = None) -> pd.DataFrame:
     """
     Convenience function to add all features to a market data DataFrame.
     Raw OHLCV data is excluded from the result.
     
     Args:
         df: DataFrame with timestamp index and OHLCV columns
-        return_periods: Periods (in minutes) for calculating returns
-        ema_periods: Periods (in minutes) for calculating EMAs
-        add_btc_features: Whether to add BTC-related features
+        params: Feature calculation parameters. If None, uses default parameters.
         
     Returns:
         DataFrame with normalized/relative features only
@@ -479,20 +497,14 @@ def create_features(df: pd.DataFrame,
     num_threads = os.cpu_count() or 4
     nb.set_num_threads(min(num_threads, 8))  # Limit to max 8 threads
     
-    engineer = FeatureEngineer(df)
+    engineer = FeatureEngineer(df, params=params)
     # Create a copy to defragment
-    return engineer.add_all_features(
-        return_periods=return_periods,
-        ema_periods=ema_periods,
-        add_btc_features=add_btc_features
-    ).copy()
+    return engineer.add_all_features().copy()
 
 
 def create_sequence_features(df: pd.DataFrame, 
                              sequence_length: int = 60,
-                             return_periods: List[int] = DEFAULT_RETURN_PERIODS,
-                             ema_periods: List[int] = DEFAULT_EMA_PERIODS,
-                             add_btc_features: bool = True) -> pd.DataFrame:
+                             params: FeatureParams = None) -> pd.DataFrame:
     """
     Convenience function to create sequence features from market data.
     Each column in the resulting DataFrame contains arrays of the past values.
@@ -501,9 +513,7 @@ def create_sequence_features(df: pd.DataFrame,
     Args:
         df: DataFrame with timestamp index and OHLCV columns
         sequence_length: Length of the sequence arrays
-        return_periods: Periods (in minutes) for calculating returns
-        ema_periods: Periods (in minutes) for calculating EMAs
-        add_btc_features: Whether to add BTC-related features
+        params: Feature calculation parameters. If None, uses default parameters.
         
     Returns:
         DataFrame with sequence features only
@@ -512,11 +522,8 @@ def create_sequence_features(df: pd.DataFrame,
     num_threads = os.cpu_count() or 4
     nb.set_num_threads(min(num_threads, 8))  # Limit to max 8 threads
     
-    engineer = FeatureEngineer(df)
+    engineer = FeatureEngineer(df, params=params)
     # Create a copy to defragment
     return engineer.create_sequence_features(
-        sequence_length=sequence_length,
-        return_periods=return_periods,
-        ema_periods=ema_periods,
-        add_btc_features=add_btc_features
+        sequence_length=sequence_length
     ).copy()

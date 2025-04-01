@@ -9,7 +9,7 @@ from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from ingest.bq.common import get_full_table_id
 from ingest.util import time as util_time
 from feature import target
-from feature.target import DEFAULT_FORWARD_PERIODS, DEFAULT_TP_VALUES, DEFAULT_SL_VALUES
+from feature.target import TargetParams, DEFAULT_FORWARD_PERIODS, DEFAULT_TP_VALUES, DEFAULT_SL_VALUES
 from feature.cache_util import (
     split_t_range,
     cache_data_by_day,
@@ -17,28 +17,21 @@ from feature.cache_util import (
     params_to_dir_name
 )
 
-def get_target_params_dir(forward_periods=None, tp_values=None, sl_values=None):
+def get_target_params_dir(params: TargetParams = None) -> str:
     """
     Convert target calculation parameters to a directory name string.
     
     Uses the default values when None is passed to ensure consistent directory paths.
     """
-    # Use default values if None is provided
-    if forward_periods is None:
-        forward_periods = DEFAULT_FORWARD_PERIODS
-    if tp_values is None:
-        tp_values = DEFAULT_TP_VALUES
-    if sl_values is None:
-        sl_values = DEFAULT_SL_VALUES
-        
-    params = {
-        'fp': forward_periods,
-        'tp': tp_values,
-        'sl': sl_values
+    params = params or TargetParams()
+    params_dict = {
+        'fp': params.forward_periods,
+        'tp': params.tp_values,
+        'sl': params.sl_values
     }
-    return params_to_dir_name(params)
+    return params_to_dir_name(params_dict)
 
-def get_recommended_warm_up_days(forward_periods=None):
+def get_recommended_warm_up_days(params: TargetParams = None) -> int:
     """
     Calculate the recommended warm-up period based on target parameters.
     
@@ -48,12 +41,10 @@ def get_recommended_warm_up_days(forward_periods=None):
     Returns:
         int: Recommended number of warm-up days
     """
-    # Use default values if None is provided
-    if forward_periods is None:
-        forward_periods = DEFAULT_FORWARD_PERIODS
+    params = params or TargetParams()
     
     # Find the maximum forward period
-    max_forward = max(forward_periods)
+    max_forward = max(params.forward_periods)
     
     # Convert to days (assuming periods are in minutes for 24/7 markets)
     # Add a small buffer of 2 days to be safe
@@ -63,21 +54,20 @@ def get_recommended_warm_up_days(forward_periods=None):
     return max(3, days_needed)
 
 def cache_targets(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
-                 forward_periods=None, tp_values=None, sl_values=None,
-                 overwrite=True, warm_up_period_days=1, dataset_id=None) -> None:
+                 params: TargetParams = None, overwrite=True, warm_up_period_days=1, dataset_id=None) -> None:
     """Cache a target DataFrame, splitting it into daily pieces"""
-    params_dir = get_target_params_dir(forward_periods, tp_values, sl_values)
+    params_dir = get_target_params_dir(params)
     return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id)
 
 def read_targets_from_cache(label: str, 
-                          forward_periods=None, tp_values=None, sl_values=None,
+                          params: TargetParams = None,
                           t_from: datetime.datetime = None, t_to: datetime.datetime = None,
                           epoch_seconds_from: int = None, epoch_seconds_to: int = None,
                           date_str_from: str = None, date_str_to: str = None,
                           columns: typing.List[str] = None,
                           dataset_id=None) -> pd.DataFrame:
     """Read cached target data for a specified time range"""
-    params_dir = get_target_params_dir(forward_periods, tp_values, sl_values)
+    params_dir = get_target_params_dir(params)
     return read_from_cache_generic(
         label,
         params_dir=params_dir,
@@ -88,37 +78,22 @@ def read_targets_from_cache(label: str,
         dataset_id=dataset_id
     )
 
-def calculate_target_batch(raw_df: pd.DataFrame,
-                          forward_periods: typing.List[int] = None,
-                          tp_values: typing.List[float] = None,
-                          sl_values: typing.List[float] = None) -> pd.DataFrame:
+def calculate_target_batch(raw_df: pd.DataFrame, params: TargetParams = None) -> pd.DataFrame:
     """Calculate targets for a batch of data using pandas implementation"""
-    if forward_periods is None:
-        forward_periods = DEFAULT_FORWARD_PERIODS
-    if tp_values is None:
-        tp_values = DEFAULT_TP_VALUES
-    if sl_values is None:
-        sl_values = DEFAULT_SL_VALUES
-        
+    params = params or TargetParams()
+    
     # Ensure timestamp is proper datetime
     if 'timestamp' in raw_df.columns and not pd.api.types.is_datetime64_any_dtype(raw_df['timestamp']):
         raw_df['timestamp'] = pd.to_datetime(raw_df['timestamp'])
     
     # Use the pandas implementation to calculate targets
-    return target.create_targets(
-        raw_df, 
-        forward_periods=forward_periods, 
-        tp_values=tp_values, 
-        sl_values=sl_values
-    )
+    return target.create_targets(raw_df, params=params)
 
 def calculate_and_cache_targets(
         dataset_mode: DATASET_MODE,
         export_mode: EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
-        forward_periods: typing.List[int] = None,
-        tp_values: typing.List[float] = None,
-        sl_values: typing.List[float] = None,
+        params: TargetParams = None,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -139,13 +114,17 @@ def calculate_and_cache_targets(
     
     Parameters:
     -----------
+    params : TargetParams, optional
+        Target calculation parameters. If None, uses default parameters.
     warm_up_days : int, optional
         Number of warm-up days for target calculation. If None, 
         automatically determined based on the maximum forward period.
     """
+    params = params or TargetParams()
+    
     # If warm_up_days not provided, calculate based on target parameters
     if warm_up_days is None:
-        warm_up_days = get_recommended_warm_up_days(forward_periods)
+        warm_up_days = get_recommended_warm_up_days(params)
         logging.info(f"Using auto-calculated warm-up period of {warm_up_days} days based on target parameters")
     
     # Resolve time range
@@ -187,12 +166,7 @@ def calculate_and_cache_targets(
             
         # Calculate targets for this batch
         try:
-            targets_df = calculate_target_batch(
-                raw_df,
-                forward_periods=forward_periods, 
-                tp_values=tp_values, 
-                sl_values=sl_values
-            )
+            targets_df = calculate_target_batch(raw_df, params)
             
             if targets_df is None or len(targets_df) == 0:
                 logging.warning(f"Target calculation returned empty result for {calc_t_from} to {calc_t_to}")
@@ -214,9 +188,7 @@ def calculate_and_cache_targets(
             cache_targets(
                 targets_df, target_label, 
                 calc_t_from, calc_t_to,
-                forward_periods=forward_periods,
-                tp_values=tp_values,
-                sl_values=sl_values,
+                params=params,
                 overwrite=overwrite_cache,
                 warm_up_period_days=warm_up_period_days,
                 dataset_id=dataset_id
@@ -227,9 +199,7 @@ def calculate_and_cache_targets(
             continue
 
 def load_cached_targets(
-        forward_periods: typing.List[int] = None,
-        tp_values: typing.List[float] = None,
-        sl_values: typing.List[float] = None,
+        params: TargetParams = None,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -251,9 +221,7 @@ def load_cached_targets(
     
     return read_targets_from_cache(
         target_label,
-        forward_periods=forward_periods,
-        tp_values=tp_values,
-        sl_values=sl_values,
+        params=params,
         t_from=t_from, t_to=t_to,
         epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
         date_str_from=date_str_from, date_str_to=date_str_to,

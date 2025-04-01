@@ -9,7 +9,7 @@ from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from ingest.bq.common import get_full_table_id
 from ingest.util import time as util_time
 from feature import feature
-from feature.feature import DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
+from feature.feature import FeatureParams, DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
 from feature.cache_util import (
     split_t_range,
     cache_data_by_day,
@@ -17,26 +17,21 @@ from feature.cache_util import (
     params_to_dir_name
 )
 
-def get_feature_params_dir(return_periods=None, ema_periods=None, add_btc_features=True):
+def get_feature_params_dir(params: FeatureParams = None) -> str:
     """
     Convert feature calculation parameters to a directory name string.
     
     Uses the default values when None is passed to ensure consistent directory paths.
     """
-    # Use default values if None is provided
-    if return_periods is None:
-        return_periods = DEFAULT_RETURN_PERIODS
-    if ema_periods is None:
-        ema_periods = DEFAULT_EMA_PERIODS
-        
-    params = {
-        'rp': return_periods,
-        'ep': ema_periods,
-        'btc': add_btc_features
+    params = params or FeatureParams()
+    params_dict = {
+        'rp': params.return_periods,
+        'ep': params.ema_periods,
+        'btc': params.add_btc_features
     }
-    return params_to_dir_name(params)
+    return params_to_dir_name(params_dict)
 
-def get_recommended_warm_up_days(return_periods=None, ema_periods=None):
+def get_recommended_warm_up_days(params: FeatureParams = None) -> int:
     """
     Calculate the recommended warm-up period based on feature parameters.
     
@@ -46,14 +41,10 @@ def get_recommended_warm_up_days(return_periods=None, ema_periods=None):
     Returns:
         int: Recommended number of warm-up days
     """
-    # Use default values if None is provided
-    if return_periods is None:
-        return_periods = DEFAULT_RETURN_PERIODS
-    if ema_periods is None:
-        ema_periods = DEFAULT_EMA_PERIODS
+    params = params or FeatureParams()
     
     # Find the maximum window period
-    max_window = max(max(return_periods), max(ema_periods))
+    max_window = max(max(params.return_periods), max(params.ema_periods))
     
     # Convert to days (assuming periods are in minutes for 24/7 markets)
     days_needed = math.ceil(max_window / (24 * 60))
@@ -61,21 +52,20 @@ def get_recommended_warm_up_days(return_periods=None, ema_periods=None):
     return days_needed
 
 def cache_features(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
-                  return_periods=None, ema_periods=None, add_btc_features=True,
-                  overwrite=True, warm_up_period_days=1, dataset_id=None) -> None:
+                  params: FeatureParams = None, overwrite=True, warm_up_period_days=1, dataset_id=None) -> None:
     """Cache a feature DataFrame, splitting it into daily pieces"""
-    params_dir = get_feature_params_dir(return_periods, ema_periods, add_btc_features)
+    params_dir = get_feature_params_dir(params)
     return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id)
 
 def read_features_from_cache(label: str, 
-                           return_periods=None, ema_periods=None, add_btc_features=True,
+                           params: FeatureParams = None,
                            t_from: datetime.datetime = None, t_to: datetime.datetime = None,
                            epoch_seconds_from: int = None, epoch_seconds_to: int = None,
                            date_str_from: str = None, date_str_to: str = None,
                            columns: typing.List[str] = None,
                            dataset_id=None) -> pd.DataFrame:
     """Read cached feature data for a specified time range"""
-    params_dir = get_feature_params_dir(return_periods, ema_periods, add_btc_features)
+    params_dir = get_feature_params_dir(params)
     return read_from_cache_generic(
         label,
         params_dir=params_dir,
@@ -86,35 +76,22 @@ def read_features_from_cache(label: str,
         dataset_id=dataset_id
     )
 
-def calculate_feature_batch(raw_df: pd.DataFrame, 
-                           return_periods: typing.List[int] = None, 
-                           ema_periods: typing.List[int] = None,
-                           add_btc_features: bool = True) -> pd.DataFrame:
+def calculate_feature_batch(raw_df: pd.DataFrame, params: FeatureParams = None) -> pd.DataFrame:
     """Calculate features for a batch of data using pandas implementation"""
-    if return_periods is None:
-        return_periods = DEFAULT_RETURN_PERIODS
-    if ema_periods is None:
-        ema_periods = DEFAULT_EMA_PERIODS
-        
+    params = params or FeatureParams()
+    
     # Ensure timestamp is proper datetime
     if 'timestamp' in raw_df.columns and not pd.api.types.is_datetime64_any_dtype(raw_df['timestamp']):
         raw_df['timestamp'] = pd.to_datetime(raw_df['timestamp'])
     
     # Use the pandas implementation to calculate features
-    return feature.create_features(
-        raw_df, 
-        return_periods=return_periods, 
-        ema_periods=ema_periods, 
-        add_btc_features=add_btc_features
-    )
+    return feature.create_features(raw_df, params=params)
 
 def calculate_and_cache_features(
         dataset_mode: DATASET_MODE,
         export_mode: EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
-        return_periods: typing.List[int] = None,
-        ema_periods: typing.List[int] = None,
-        add_btc_features: bool = True,
+        params: FeatureParams = None,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -135,14 +112,18 @@ def calculate_and_cache_features(
     
     Parameters:
     -----------
+    params : FeatureParams, optional
+        Feature calculation parameters. If None, uses default parameters.
     warm_up_days : int, optional
         Number of warm-up days for feature calculation. If None, 
         automatically determined based on the maximum window size
         in return_periods and ema_periods.
     """
+    params = params or FeatureParams()
+    
     # If warm_up_days not provided, calculate based on feature parameters
     if warm_up_days is None:
-        warm_up_days = get_recommended_warm_up_days(return_periods, ema_periods)
+        warm_up_days = get_recommended_warm_up_days(params)
         logging.info(f"Using auto-calculated warm-up period of {warm_up_days} days based on feature parameters")
     
     # Resolve time range
@@ -184,12 +165,7 @@ def calculate_and_cache_features(
             
         # 3. Calculate features for this batch
         try:
-            features_df = calculate_feature_batch(
-                raw_df,
-                return_periods=return_periods, 
-                ema_periods=ema_periods,
-                add_btc_features=add_btc_features
-            )
+            features_df = calculate_feature_batch(raw_df, params)
             
             if features_df is None or len(features_df) == 0:
                 logging.warning(f"Feature calculation returned empty result for {calc_t_from} to {calc_t_to}")
@@ -212,9 +188,7 @@ def calculate_and_cache_features(
             cache_features(
                 features_df, feature_label, 
                 calc_t_from, calc_t_to,
-                return_periods=return_periods,
-                ema_periods=ema_periods,
-                add_btc_features=add_btc_features,
+                params=params,
                 overwrite=overwrite_cache,
                 warm_up_period_days=warm_up_period_days,
                 dataset_id=dataset_id
@@ -225,9 +199,7 @@ def calculate_and_cache_features(
             continue
 
 def load_cached_features(
-        return_periods: typing.List[int] = None,
-        ema_periods: typing.List[int] = None,
-        add_btc_features: bool = True,
+        params: FeatureParams = None,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -249,9 +221,7 @@ def load_cached_features(
     
     return read_features_from_cache(
         feature_label,
-        return_periods=return_periods,
-        ema_periods=ema_periods,
-        add_btc_features=add_btc_features,
+        params=params,
         t_from=t_from, t_to=t_to,
         epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
         date_str_from=date_str_from, date_str_to=date_str_to,
