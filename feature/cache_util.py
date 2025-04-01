@@ -9,7 +9,6 @@ import hashlib
 from pathlib import Path
 import re
 
-from ingest.util import time as util_time
 from ingest.util.time import TimeRange
 
 # The base directory for cache

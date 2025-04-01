@@ -8,10 +8,7 @@ from pathlib import Path
 from ingest.bq import cache as raw_cache
 from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from ingest.bq.common import get_full_table_id
-from ingest.util import time as util_time
 from machine_learning.resample import resample_at_events
-from feature.feature import DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
-from feature.target import DEFAULT_FORWARD_PERIODS, DEFAULT_TP_VALUES, DEFAULT_SL_VALUES
 from feature.cache_util import params_to_dir_name, split_t_range
 from ingest.util.time import TimeRange
 

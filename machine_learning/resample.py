@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 from typing import List, Optional, Union, Tuple
-from feature.feature import DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
 
 def get_events_t(df: pd.DataFrame, col: str, threshold: float = 0.05) -> pd.DataFrame:
     """

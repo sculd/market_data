@@ -7,10 +7,8 @@ import math
 from ingest.bq import cache as raw_cache
 from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from ingest.bq.common import get_full_table_id
-from ingest.util import time as util_time
 from ingest.util.time import TimeRange
-from feature import feature
-from feature.feature import FeatureParams, DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
+from feature import feature, FeatureParams
 from feature.cache_util import (
     split_t_range,
     cache_data_by_day,
