@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 
 from ingest.util import time as util_time
+from ingest.util.time import TimeRange
 
 # The base directory for cache
 CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
@@ -248,17 +249,11 @@ def fetch_from_daily_cache(label: str, t_from: datetime.datetime, t_to: datetime
         return df[columns]
 
 def read_from_cache_generic(label: str, params_dir: str = None, 
-                           t_from: datetime.datetime = None, t_to: datetime.datetime = None,
-                           epoch_seconds_from: int = None, epoch_seconds_to: int = None,
-                           date_str_from: str = None, date_str_to: str = None,
+                           time_range: TimeRange = None,
                            columns: typing.List[str] = None,
                            dataset_id: str = None) -> pd.DataFrame:
     """Read cached data for a specified time range"""
-    t_from, t_to = util_time.to_t(
-        t_from=t_from, t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from, date_str_to=date_str_to,
-    )
+    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
 
     t_ranges = split_t_range(t_from, t_to)
     df_concat = None

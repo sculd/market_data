@@ -13,6 +13,7 @@ from machine_learning.resample import resample_at_events
 from feature.feature import DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
 from feature.target import DEFAULT_FORWARD_PERIODS, DEFAULT_TP_VALUES, DEFAULT_SL_VALUES
 from feature.cache_util import params_to_dir_name, split_t_range
+from ingest.util.time import TimeRange
 
 # The base directory for cache
 CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/resample')
@@ -160,12 +161,7 @@ def cache_resampled_data_by_day(df: pd.DataFrame, label: str, t_from: datetime.d
     return filenames
 
 def fetch_resampled_from_cache(label: str, 
-                              t_from: datetime.datetime = None, 
-                              t_to: datetime.datetime = None,
-                              epoch_seconds_from: int = None, 
-                              epoch_seconds_to: int = None,
-                              date_str_from: str = None, 
-                              date_str_to: str = None,
+                              time_range: TimeRange = None,
                               params_dir: str = None, 
                               columns: typing.List[str] = None, 
                               dataset_id: str = None) -> typing.Optional[pd.DataFrame]:
@@ -180,12 +176,11 @@ def fetch_resampled_from_cache(label: str,
     -----------
     label : str
         Type of data to fetch
-    t_from, t_to : datetime.datetime
-        Time range for the data
-    epoch_seconds_from, epoch_seconds_to : int
-        Alternative time range specification as epoch seconds
-    date_str_from, date_str_to : str
-        Alternative time range specification as date strings
+    time_range : TimeRange
+        Time range for the data. Can be specified using any of:
+        - (t_from, t_to): datetime objects
+        - (epoch_seconds_from, epoch_seconds_to): Unix timestamps
+        - (date_str_from, date_str_to): Date strings in YYYY-MM-DD format
     params_dir : str
         Parameters directory name
     columns : List[str]
@@ -194,11 +189,7 @@ def fetch_resampled_from_cache(label: str,
         Dataset identifier
     """
     # Resolve time range
-    t_from, t_to = util_time.to_t(
-        t_from=t_from, t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from, date_str_to=date_str_to,
-    )
+    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
     
     # For fetching, we need to search for files covering the whole period
     # So we check the cache directory for any files that might contain our data
@@ -274,12 +265,7 @@ def resample_and_cache_data(
         aggregation_mode: AGGREGATION_MODE,
         price_col: str = 'close',
         threshold: float = 0.05,
-        t_from: datetime.datetime = None,
-        t_to: datetime.datetime = None,
-        epoch_seconds_from: int = None,
-        epoch_seconds_to: int = None,
-        date_str_from: str = None,
-        date_str_to: str = None,
+        time_range: TimeRange = None,
         calculation_batch_days: int = 7,  # Use larger batches for resampling
         overwrite_cache: bool = True,
         label: str = "resampled"
@@ -305,12 +291,11 @@ def resample_and_cache_data(
         Column to use for detecting significant price movements
     threshold : float
         Threshold for significant price movement (as decimal)
-    t_from, t_to : datetime.datetime
-        Time range for the data
-    epoch_seconds_from, epoch_seconds_to : int
-        Alternative time range specification as epoch seconds
-    date_str_from, date_str_to : str
-        Alternative time range specification as date strings
+    time_range : TimeRange
+        Time range for the data. Can be specified using any of:
+        - (t_from, t_to): datetime objects
+        - (epoch_seconds_from, epoch_seconds_to): Unix timestamps
+        - (date_str_from, date_str_to): Date strings in YYYY-MM-DD format
     calculation_batch_days : int
         Size of batches in days for processing
     overwrite_cache : bool
@@ -319,11 +304,7 @@ def resample_and_cache_data(
         Label for the cache directory
     """
     # Resolve time range
-    t_from, t_to = util_time.to_t(
-        t_from=t_from, t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from, date_str_to=date_str_to,
-    )
+    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
     
     # Get dataset ID for cache path
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
@@ -383,19 +364,36 @@ def resample_and_cache_data(
 
 def load_cached_resampled_data(
         threshold: float = 0.05,
-        t_from: datetime.datetime = None,
-        t_to: datetime.datetime = None,
-        epoch_seconds_from: int = None,
-        epoch_seconds_to: int = None,
-        date_str_from: str = None,
-        date_str_to: str = None,
+        time_range: TimeRange = None,
         columns: typing.List[str] = None,
         dataset_mode: DATASET_MODE = None,
         export_mode: EXPORT_MODE = None,
         aggregation_mode: AGGREGATION_MODE = None,
         label: str = "resampled"
     ) -> pd.DataFrame:
-    """Load cached resampled data for a specific time range"""
+    """
+    Load cached resampled data for a specific time range.
+    
+    Parameters:
+    -----------
+    threshold : float
+        Threshold for significant price movement (as decimal)
+    time_range : TimeRange
+        Time range for the data. Can be specified using any of:
+        - (t_from, t_to): datetime objects
+        - (epoch_seconds_from, epoch_seconds_to): Unix timestamps
+        - (date_str_from, date_str_to): Date strings in YYYY-MM-DD format
+    columns : List[str]
+        Specific columns to fetch
+    dataset_mode : DATASET_MODE
+        Dataset mode (LIVE, REPLAY, etc.)
+    export_mode : EXPORT_MODE
+        Export mode (OHLC, TICKS, etc.)
+    aggregation_mode : AGGREGATION_MODE
+        Aggregation mode (MIN_1, MIN_5, etc.)
+    label : str
+        Label for the cache directory
+    """
     # Get dataset ID for cache path if dataset_mode, export_mode, and aggregation_mode are provided
     dataset_id = None
     if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
@@ -404,14 +402,13 @@ def load_cached_resampled_data(
     # Generate parameters directory name
     params_dir = get_resample_params_dir(threshold=threshold)
     
+    # Resolve time range
+    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
+    
     return fetch_resampled_from_cache(
         label,
         t_from=t_from, 
         t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from, 
-        epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from, 
-        date_str_to=date_str_to,
         params_dir=params_dir,
         columns=columns,
         dataset_id=dataset_id

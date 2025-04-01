@@ -8,6 +8,7 @@ from ingest.bq import cache as raw_cache
 from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from ingest.bq.common import get_full_table_id
 from ingest.util import time as util_time
+from ingest.util.time import TimeRange
 from feature import target
 from feature.target import TargetParams, DEFAULT_FORWARD_PERIODS, DEFAULT_TP_VALUES, DEFAULT_SL_VALUES
 from feature.cache_util import (
@@ -36,7 +37,7 @@ def get_recommended_warm_up_days(params: TargetParams = None) -> int:
     Calculate the recommended warm-up period based on target parameters.
     
     Uses the maximum forward period plus a buffer to ensure sufficient
-    historical data is available for all target calculations.
+    historical data for all target calculations.
     
     Returns:
         int: Recommended number of warm-up days
@@ -61,19 +62,16 @@ def cache_targets(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to:
 
 def read_targets_from_cache(label: str, 
                           params: TargetParams = None,
-                          t_from: datetime.datetime = None, t_to: datetime.datetime = None,
-                          epoch_seconds_from: int = None, epoch_seconds_to: int = None,
-                          date_str_from: str = None, date_str_to: str = None,
+                          time_range: TimeRange = None,
                           columns: typing.List[str] = None,
                           dataset_id=None) -> pd.DataFrame:
     """Read cached target data for a specified time range"""
     params_dir = get_target_params_dir(params)
+    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
     return read_from_cache_generic(
         label,
         params_dir=params_dir,
         t_from=t_from, t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from, date_str_to=date_str_to,
         columns=columns,
         dataset_id=dataset_id
     )
@@ -94,12 +92,7 @@ def calculate_and_cache_targets(
         export_mode: EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
         params: TargetParams = None,
-        t_from: datetime.datetime = None,
-        t_to: datetime.datetime = None,
-        epoch_seconds_from: int = None,
-        epoch_seconds_to: int = None,
-        date_str_from: str = None,
-        date_str_to: str = None,
+        time_range: TimeRange = None,
         calculation_batch_days: int = 1,
         warm_up_days: int = None,  # Now optional with None as default
         overwrite_cache: bool = True,
@@ -116,6 +109,8 @@ def calculate_and_cache_targets(
     -----------
     params : TargetParams, optional
         Target calculation parameters. If None, uses default parameters.
+    time_range : TimeRange, optional
+        Time range for target calculation. If None, must provide individual time parameters.
     warm_up_days : int, optional
         Number of warm-up days for target calculation. If None, 
         automatically determined based on the maximum forward period.
@@ -128,11 +123,7 @@ def calculate_and_cache_targets(
         logging.info(f"Using auto-calculated warm-up period of {warm_up_days} days based on target parameters")
     
     # Resolve time range
-    t_from, t_to = util_time.to_t(
-        t_from=t_from, t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from, date_str_to=date_str_to,
-    )
+    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
     
     # Create label for target cache
     target_label = "targets"
@@ -200,12 +191,7 @@ def calculate_and_cache_targets(
 
 def load_cached_targets(
         params: TargetParams = None,
-        t_from: datetime.datetime = None,
-        t_to: datetime.datetime = None,
-        epoch_seconds_from: int = None,
-        epoch_seconds_to: int = None,
-        date_str_from: str = None,
-        date_str_to: str = None,
+        time_range: TimeRange = None,
         columns: typing.List[str] = None,
         dataset_mode: DATASET_MODE = None,
         export_mode: EXPORT_MODE = None,
@@ -222,9 +208,7 @@ def load_cached_targets(
     return read_targets_from_cache(
         target_label,
         params=params,
-        t_from=t_from, t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from, epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from, date_str_to=date_str_to,
+        time_range=time_range,
         columns=columns,
         dataset_id=dataset_id
     )
