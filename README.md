@@ -104,6 +104,45 @@ The feature engineering module calculates the following indicators:
 **Feature Naming Convention:**
 Features are named based on their calculation method and time horizon. For example, `return_30m` represents the 30-minute price return, and `ema_60m` represents the 60-minute exponential moving average.
 
+### Documentation
+
+The project uses Sphinx for generating API documentation. To generate the documentation:
+
+1. Install the required documentation packages:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Build the documentation:
+   ```bash
+   cd docs
+   make html
+   ```
+
+3. View the documentation:
+   - Open `docs/build/html/index.html` in your web browser
+   - Or use a local server:
+     ```bash
+     cd docs/build/html
+     python -m http.server 8000
+     ```
+     Then visit `http://localhost:8000` in your browser
+
+The documentation includes:
+- Complete API reference for all modules
+- Type hints and parameter descriptions
+- Code examples with copy buttons
+- Search functionality
+- Cross-referencing between modules
+
+To automatically rebuild documentation when files change:
+```bash
+cd docs
+make watch
+```
+
+Note: The documentation build directory (`docs/build/`) is ignored by Git. Each developer should build their own documentation locally.
+
 ### Target Engineering
 
 The project now includes a target engineering module for machine learning purposes, creating prediction targets based on future price movements:
