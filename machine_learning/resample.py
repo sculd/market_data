@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from typing import List, Optional, Union, Tuple
+from feature.feature import DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
 
 def get_events_t(df: pd.DataFrame, col: str, threshold: float = 0.05) -> pd.DataFrame:
     """
@@ -73,51 +74,32 @@ def get_events_t_multi(df: pd.DataFrame, col: str, threshold: float = 0.05) -> p
 
     return events_df
 
-def create_resampled_dataset(
+def resample_at_events(
     df: pd.DataFrame, 
     price_col: str = 'close',
     threshold: float = 0.05,
-    forward_periods: List[int] = [2, 10],
-    tp_values: List[float] = [0.03],
-    sl_values: List[float] = [0.03],
-    return_periods: List[int] = [1, 5, 15, 30, 60, 120],
-    ema_periods: List[int] = [5, 15, 30, 60, 120, 240],
-    add_btc_features: bool = True
 ) -> pd.DataFrame:
     """
-    Create a resampled dataset with regular features, sampled at significant price movements.
+    Generic function to resample a DataFrame at significant price movement events.
     
     This function:
-    1. Generates features and targets using create_features_with_targets
-    2. Identifies significant price movements using get_events_t_multi
-    3. Filters the dataset to include only those timestamps
+    1. Takes any DataFrame with 'timestamp' index and 'symbol' column
+    2. Identifies significant price movements using the specified price column
+    3. Filters the DataFrame to include only rows at those significant price movement timestamps
     
     Args:
-        df: DataFrame with timestamp index and OHLCV columns
+        df: DataFrame with timestamp index, 'symbol' column, and price columns
         price_col: Column to use for detecting significant price movements
         threshold: Threshold for significant price movement (as decimal)
-        forward_periods: Periods (in minutes) for calculating forward returns
-        tp_values: Take-profit threshold values (as decimal)
-        sl_values: Stop-loss threshold values (as decimal)
-        return_periods: Periods (in minutes) for calculating returns
-        ema_periods: Periods (in minutes) for calculating EMAs
-        add_btc_features: Whether to add BTC-related features
         
     Returns:
-        Resampled DataFrame with features and targets at event timestamps
+        Filtered DataFrame containing only rows at significant price movement timestamps
     """
-    from machine_learning.feature_target import create_features_with_targets
-    
-    # Generate features and targets
-    combined_df = create_features_with_targets(
-        df,
-        forward_periods=forward_periods,
-        tp_values=tp_values,
-        sl_values=sl_values,
-        return_periods=return_periods,
-        ema_periods=ema_periods,
-        add_btc_features=add_btc_features
-    )
+    # Ensure required columns exist
+    if price_col not in df.columns:
+        raise ValueError(f"DataFrame must contain '{price_col}' column for detecting price movements")
+    if 'symbol' not in df.columns:
+        raise ValueError("DataFrame must contain 'symbol' column")
     
     # Identify significant price movements
     events_df = get_events_t_multi(
@@ -127,83 +109,14 @@ def create_resampled_dataset(
     )
     
     if events_df.empty:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=df.columns, index=pd.DatetimeIndex([]))
     
     # Create multi-indices for filtering
     events_multi = events_df.reset_index().set_index(['timestamp', 'symbol'])
-    combined_multi = combined_df.reset_index().set_index(['timestamp', 'symbol'])
+    df_multi = df.reset_index().set_index(['timestamp', 'symbol'])
     
     # Filter to event timestamps only
-    common_idx = events_multi.index.intersection(combined_multi.index)
-    resampled_df = combined_multi.loc[common_idx].reset_index().set_index('timestamp')
+    common_idx = events_multi.index.intersection(df_multi.index)
+    resampled_df = df_multi.loc[common_idx].reset_index().set_index('timestamp')
     
     return resampled_df
-
-def create_resampled_seq_dataset(
-    df: pd.DataFrame, 
-    price_col: str = 'close',
-    threshold: float = 0.05,
-    sequence_length: int = 60,
-    forward_periods: List[int] = [2, 10],
-    tp_values: List[float] = [0.03],
-    sl_values: List[float] = [0.03],
-    return_periods: List[int] = [1, 5, 15, 30, 60, 120],
-    ema_periods: List[int] = [5, 15, 30, 60, 120, 240],
-    add_btc_features: bool = True
-) -> pd.DataFrame:
-    """
-    Create a resampled dataset with sequence features, sampled at significant price movements.
-    
-    This function:
-    1. Generates sequence features and targets using create_sequence_features_with_targets
-    2. Identifies significant price movements using get_events_t_multi
-    3. Filters the dataset to include only those timestamps
-    
-    Args:
-        df: DataFrame with timestamp index and OHLCV columns
-        price_col: Column to use for detecting significant price movements
-        threshold: Threshold for significant price movement (as decimal)
-        sequence_length: Length of the sequence arrays
-        forward_periods: Periods (in minutes) for calculating forward returns
-        tp_values: Take-profit threshold values (as decimal)
-        sl_values: Stop-loss threshold values (as decimal)
-        return_periods: Periods (in minutes) for calculating returns
-        ema_periods: Periods (in minutes) for calculating EMAs
-        add_btc_features: Whether to add BTC-related features
-        
-    Returns:
-        Resampled DataFrame with sequence features and targets at event timestamps
-    """
-    from machine_learning.feature_target import create_sequence_features_with_targets
-    
-    # Generate sequence features and targets
-    seq_df = create_sequence_features_with_targets(
-        df,
-        sequence_length=sequence_length,
-        forward_periods=forward_periods,
-        tp_values=tp_values,
-        sl_values=sl_values,
-        return_periods=return_periods,
-        ema_periods=ema_periods,
-        add_btc_features=add_btc_features
-    )
-    
-    # Identify significant price movements
-    events_df = get_events_t_multi(
-        df,
-        price_col,
-        threshold
-    )
-    
-    if events_df.empty:
-        return pd.DataFrame()
-    
-    # Create multi-indices for filtering
-    events_multi = events_df.reset_index().set_index(['timestamp', 'symbol'])
-    seq_multi = seq_df.reset_index().set_index(['timestamp', 'symbol'])
-    
-    # Filter to event timestamps only
-    common_idx = events_multi.index.intersection(seq_multi.index)
-    resampled_seq_df = seq_multi.loc[common_idx].reset_index().set_index('timestamp')
-    
-    return resampled_seq_df

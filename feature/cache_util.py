@@ -160,10 +160,11 @@ def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime,
     """
     ret = []
     # Anchor times to beginning of day
-    t1 = anchor_to_begin_of_day(t_from - warm_up)
+    if warm_up is not None:
+        t1 = anchor_to_begin_of_day(t_from - warm_up)
+    else:
+        t1 = anchor_to_begin_of_day(t_from)
     t2 = anchor_to_begin_of_day(t_from + interval)
-    
-    # First range doesn't have warm-up (starting from t_from)
     ret.append((t1, t2))
     
     # Process subsequent ranges with warm-up if specified
