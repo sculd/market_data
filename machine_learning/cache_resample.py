@@ -20,13 +20,6 @@ Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def get_resample_params_dir(
     threshold: float = 0.05,
-    forward_periods=DEFAULT_FORWARD_PERIODS, 
-    tp_values=DEFAULT_TP_VALUES, 
-    sl_values=DEFAULT_SL_VALUES,
-    return_periods=DEFAULT_RETURN_PERIODS, 
-    ema_periods=DEFAULT_EMA_PERIODS, 
-    add_btc_features=True,
-    sequence_length: int = None  # Only needed for sequence datasets
 ):
     """
     Convert resampling parameters to a directory name string.
@@ -36,18 +29,8 @@ def get_resample_params_dir(
     # Build parameters dictionary
     params = {
         'th': threshold,
-        'fp': forward_periods,
-        'tp': tp_values,
-        'sl': sl_values,
-        'rp': return_periods,
-        'ep': ema_periods,
-        'btc': add_btc_features
     }
     
-    # Add sequence_length only if provided (for sequence datasets)
-    if sequence_length is not None:
-        params['seq'] = sequence_length
-        
     return params_to_dir_name(params)
 
 def to_filename(label: str, t_from: datetime.datetime, t_to: datetime.datetime, params_dir: str, dataset_id: str = None) -> str:
