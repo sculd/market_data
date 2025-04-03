@@ -8,6 +8,10 @@ import os
 
 logger = logging.getLogger(__name__)
 
+# Default values for feature parameters
+DEFAULT_RETURN_PERIODS = [1, 5, 15, 30, 60, 120]
+DEFAULT_EMA_PERIODS = [5, 15, 30, 60, 120, 240]
+
 class FeatureParams:
     """
     Encapsulates parameters for feature engineering.
@@ -46,10 +50,6 @@ class FeatureParams:
             f"ema_periods={self.ema_periods}, "
             f"add_btc_features={self.add_btc_features})"
         )
-
-# Default values for feature parameters
-DEFAULT_RETURN_PERIODS = [1, 5, 15, 30, 60, 120]
-DEFAULT_EMA_PERIODS = [5, 15, 30, 60, 120, 240]
 
 # Numba-accelerated functions for performance-critical calculations
 @nb.njit(cache=True)

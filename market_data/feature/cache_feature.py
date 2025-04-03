@@ -3,22 +3,28 @@ import datetime
 import logging
 import typing
 import math
+import os
+from pathlib import Path
 
-from ..ingest.bq.cache import read_from_cache_or_query_and_cache
-from ..ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
-from ..ingest.bq.common import get_full_table_id
-from ..util.time import TimeRange
-from .feature import create_features, FeatureParams
-from ..util.cache.time import (
+from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
+from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.bq.common import get_full_table_id
+from market_data.util.time import TimeRange
+from market_data.feature.feature import create_features, FeatureParams
+from market_data.util.cache.time import (
     split_t_range,
 )
-from ..util.cache.dataframe import (
+from market_data.util.cache.dataframe import (
     cache_data_by_day,
     read_from_cache_generic,
 )
-from ..util.cache.path import (
+from market_data.util.cache.path import (
     params_to_dir_name
 )
+
+# The base directory for feature cache
+FEATURE_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
+Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def get_feature_params_dir(params: FeatureParams = None) -> str:
     """
@@ -58,7 +64,8 @@ def cache_features(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to
                   params: FeatureParams = None, overwrite=True, warm_up_period_days=1, dataset_id=None) -> None:
     """Cache a feature DataFrame, splitting it into daily pieces"""
     params_dir = get_feature_params_dir(params)
-    return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id)
+    return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id,
+                            cache_base_path=FEATURE_CACHE_BASE_PATH)
 
 def read_features_from_cache(label: str, 
                            params: FeatureParams = None,
@@ -73,7 +80,8 @@ def read_features_from_cache(label: str,
         params_dir=params_dir,
         t_from=t_from, t_to=t_to,
         columns=columns,
-        dataset_id=dataset_id
+        dataset_id=dataset_id,
+        cache_base_path=FEATURE_CACHE_BASE_PATH
     )
 
 def calculate_feature_batch(raw_df: pd.DataFrame, params: FeatureParams = None) -> pd.DataFrame:

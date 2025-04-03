@@ -3,22 +3,29 @@ import datetime
 import logging
 import typing
 import math
+import os
+from pathlib import Path
 
-from ..ingest.bq.cache import read_from_cache_or_query_and_cache
-from ..ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
-from ..ingest.bq.common import get_full_table_id
-from ..util.time import TimeRange
-from .target import create_targets, TargetParams
-from ..util.cache.time import (
+from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
+from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.bq.common import get_full_table_id
+from market_data.util.time import TimeRange
+from market_data.feature.target import create_targets, TargetParams
+from market_data.util.cache.time import (
     split_t_range,
 )
-from ..util.cache.dataframe import (
+from market_data.util.cache.dataframe import (
     cache_data_by_day,
     read_from_cache_generic,
 )
-from ..util.cache.path import (
+from market_data.util.cache.path import (
     params_to_dir_name
 )
+
+# Define the cache base path for targets
+TARGET_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
+# Ensure the directory exists
+Path(TARGET_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def get_target_params_dir(params: TargetParams = None) -> str:
     """
@@ -56,26 +63,23 @@ def get_recommended_warm_up_days(params: TargetParams = None) -> int:
     # Ensure at least 3 days minimum
     return max(3, days_needed)
 
-def cache_targets(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
-                 params: TargetParams = None, overwrite=True, warm_up_period_days=1, dataset_id=None) -> None:
-    """Cache a target DataFrame, splitting it into daily pieces"""
+def cache_targets(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime,
+                 params: TargetParams = None, overwrite=False, warm_up_period_days=1, dataset_id=None) -> None:
+    """Cache target features for a specific time range"""
     params_dir = get_target_params_dir(params)
-    return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id)
+    
+    cache_data_by_day(
+        df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id,
+        cache_base_path=TARGET_CACHE_BASE_PATH
+    )
 
-def read_targets_from_cache(label: str, 
-                          params: TargetParams = None,
-                          time_range: TimeRange = None,
-                          columns: typing.List[str] = None,
-                          dataset_id=None) -> pd.DataFrame:
-    """Read cached target data for a specified time range"""
-    params_dir = get_target_params_dir(params)
-    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
+def read_targets_from_cache(dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE, aggregation_mode: AGGREGATION_MODE,
+                           time_range: TimeRange, params_dir: str = None, columns: typing.List[str] = None) -> pd.DataFrame:
+    """Read target features from cache"""
     return read_from_cache_generic(
-        label,
-        params_dir=params_dir,
-        t_from=t_from, t_to=t_to,
-        columns=columns,
-        dataset_id=dataset_id
+        'targets', params_dir, time_range, columns,
+        dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode,
+        cache_base_path=TARGET_CACHE_BASE_PATH
     )
 
 def calculate_target_batch(raw_df: pd.DataFrame, params: TargetParams = None) -> pd.DataFrame:
@@ -208,9 +212,8 @@ def load_cached_targets(
         dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
     
     return read_targets_from_cache(
-        target_label,
-        params=params,
-        time_range=time_range,
-        columns=columns,
-        dataset_id=dataset_id
+        dataset_mode, export_mode, aggregation_mode,
+        time_range,
+        params_dir=get_target_params_dir(params),
+        columns=columns
     )

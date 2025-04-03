@@ -31,8 +31,9 @@ TIMESTAMP_INDEX_NAME = 'timestamp'
 def cache_daily_df(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                   params_dir: str = None, overwrite=True, dataset_id: str = None,
                   dataset_mode: DATASET_MODE = None, export_mode: EXPORT_MODE = None, 
-                  aggregation_mode: AGGREGATION_MODE = None):
+                  aggregation_mode: AGGREGATION_MODE = None, cache_base_path: str = None):
     """Cache a DataFrame that covers one-day range exactly"""
+    assert cache_base_path is not None, "cache_base_path must be provided"
     if not is_exact_cache_interval(t_from, t_to):
         logger.info(f"{t_from}-{t_to} does not match {CACHE_INTERVAL=} thus will not be cached.")
         return None
@@ -41,87 +42,77 @@ def cache_daily_df(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to
         logger.info(f"df for {t_from}-{t_to} is empty thus will not be cached.")
         return None
 
-    filename = to_filename(CACHE_BASE_PATH, label, t_from, t_to, params_dir, dataset_id,
+    filename = to_filename(cache_base_path, label, t_from, t_to, params_dir, dataset_id,
                           dataset_mode, export_mode, aggregation_mode)
     if os.path.exists(filename):
         logger.info(f"{filename} already exists.")
         if overwrite:
             logger.info(f"and would overwrite it.")
             df.to_parquet(filename)
-        else:
-            logger.info(f"and would not write it.")
+        return None
     else:
+        logger.info(f"{filename} does not exist.")
         df.to_parquet(filename)
-    
-    return filename
+        return None
 
 def fetch_from_daily_cache(label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                           params_dir: str = None, columns: List[str] = None, 
                           dataset_id: str = None, dataset_mode: DATASET_MODE = None, 
-                          export_mode: EXPORT_MODE = None, aggregation_mode: AGGREGATION_MODE = None) -> Optional[pd.DataFrame]:
-    """Fetch cached data for a specific day"""
+                          export_mode: EXPORT_MODE = None, aggregation_mode: AGGREGATION_MODE = None,
+                          cache_base_path: str = None) -> Optional[pd.DataFrame]:
+    """Read a DataFrame that covers one-day range exactly"""
     if not is_exact_cache_interval(t_from, t_to):
-        logger.info(f"{t_from} to {t_to} does not match {CACHE_INTERVAL=} thus not read from cache.")
-        return None
-    
-    filename = to_filename(CACHE_BASE_PATH, label, t_from, t_to, params_dir, dataset_id,
-                          dataset_mode, export_mode, aggregation_mode)
-    if not os.path.exists(filename):
-        logger.info(f"{filename=} does not exist in local cache.")
-        return None
-    
-    df = pd.read_parquet(filename)
-    if len(df) == 0:
+        logger.info(f"{t_from}-{t_to} does not match {CACHE_INTERVAL=} thus will not be read from cache.")
         return None
 
-    if columns is None:
-        return df
+    if cache_base_path is None:
+        cache_base_path = os.path.expanduser('~/algo_cache')
+        Path(cache_base_path).mkdir(parents=True, exist_ok=True)
+
+    filename = to_filename(cache_base_path, label, t_from, t_to, params_dir, dataset_id,
+                          dataset_mode, export_mode, aggregation_mode)
+    if os.path.exists(filename):
+        logger.info(f"{filename} exists.")
+        return pd.read_parquet(filename, columns=columns)
     else:
-        columns = [c for c in columns if c in df.columns]
-        return df[columns]
+        logger.info(f"{filename} does not exist.")
+        return None
 
 def read_from_cache_generic(label: str, params_dir: str = None, 
                            time_range: TimeRange = None,
                            columns: List[str] = None,
                            dataset_id: str = None, dataset_mode: DATASET_MODE = None, 
-                           export_mode: EXPORT_MODE = None, aggregation_mode: AGGREGATION_MODE = None) -> pd.DataFrame:
+                           export_mode: EXPORT_MODE = None, aggregation_mode: AGGREGATION_MODE = None,
+                           cache_base_path: str = None) -> pd.DataFrame:
     """Read cached data for a specified time range"""
+    assert cache_base_path is not None, "cache_base_path must be provided"
     t_from, t_to = time_range.to_datetime() if time_range else (None, None)
-
-    t_ranges = split_t_range(t_from, t_to)
-    df_concat = None
-    df_list = []
-    # Concat every 10 days to free memory
-    concat_interval = 10
-
-    def concat_batch():
-        nonlocal df_concat, df_list
-        if not df_list:
-            return
-        df_batch = pd.concat(df_list)
-        if df_concat is None:
-            df_concat = df_batch
-        else:
-            df_concat = pd.concat([df_concat, df_batch])
-        df_list = []
-
-    for i, t_range in enumerate(t_ranges):
-        df = fetch_from_daily_cache(label, t_range[0], t_range[1], params_dir, columns, dataset_id,
-                                   dataset_mode, export_mode, aggregation_mode)
-        if df is None:
-            continue
-        df_list.append(df)
-
-        if len(df_list) > 0 and len(df_list) % concat_interval == 0:
-            concat_batch()
-
-    concat_batch()
-    return df_concat
+    
+    # Split the range into daily pieces
+    daily_ranges = split_t_range(t_from, t_to, interval=CACHE_INTERVAL)
+    
+    # Read each daily piece
+    dfs = []
+    for d_from, d_to in daily_ranges:
+        df = fetch_from_daily_cache(
+            label, d_from, d_to, params_dir, columns,
+            dataset_id, dataset_mode, export_mode, aggregation_mode,
+            cache_base_path
+        )
+        if df is not None:
+            dfs.append(df)
+    
+    # Concatenate all pieces
+    if dfs:
+        return pd.concat(dfs)
+    else:
+        return pd.DataFrame()
 
 def cache_data_by_day(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                      params_dir: str = None, overwrite=False, warm_up_period_days=1, 
                      dataset_id: str = None, dataset_mode: DATASET_MODE = None, 
-                     export_mode: EXPORT_MODE = None, aggregation_mode: AGGREGATION_MODE = None) -> None:
+                     export_mode: EXPORT_MODE = None, aggregation_mode: AGGREGATION_MODE = None,
+                     cache_base_path: str = None) -> None:
     """Cache a DataFrame, splitting it into daily pieces"""
     if len(df) == 0:
         logger.info(f"df is empty for {label} thus will be skipped.")
@@ -155,5 +146,6 @@ def cache_data_by_day(df: pd.DataFrame, label: str, t_from: datetime.datetime, t
         t_begin = anchor_to_begin_of_day(timestamps.min())
         t_end = anchor_to_begin_of_day(t_begin + CACHE_INTERVAL)
         cache_daily_df(df_daily, label, t_begin, t_end, params_dir, overwrite=overwrite, dataset_id=dataset_id,
-                       dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode)
+                       dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode,
+                       cache_base_path=cache_base_path)
         del df_daily 
