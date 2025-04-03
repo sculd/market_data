@@ -5,12 +5,12 @@ import typing
 import os
 from pathlib import Path
 
-from ingest.bq import cache as raw_cache
+from util.cache import read_from_cache_or_query_and_cache
 from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from ingest.bq.common import get_full_table_id
 from machine_learning.resample import resample_at_events, ResampleParams
 from feature.cache_util import params_to_dir_name, split_t_range
-from ingest.util.time import TimeRange
+from util.time import TimeRange
 
 # The base directory for cache
 CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/resample')
@@ -319,7 +319,7 @@ def resample_and_cache_data(
         logging.info(f"Processing resampling batch {calc_t_from} to {calc_t_to}")
         
         # 1 & 2. Get raw data (fetch and cache if not present)
-        raw_df = raw_cache.read_from_cache_or_query_and_cache(
+        raw_df = read_from_cache_or_query_and_cache(
             dataset_mode, export_mode, aggregation_mode,
             t_from=calc_t_from, t_to=calc_t_to,
             overwirte_cache=overwrite_cache

@@ -12,6 +12,7 @@ from .common import AGGREGATION_MODE
 from . import time as util_time
 from ..gcs.util import get_gcsblobname, download_gcs_blob, upload_file_to_public_gcs_bucket, if_blob_exist
 from google.cloud import storage
+from util.cache import split_t_range, anchor_to_begin_of_day, is_exact_cache_interval
 
 
 # the cache will be stored per day.
@@ -40,47 +41,6 @@ def to_filename(basedir: str, label: str, t_id: str, aggregation_mode: AGGREGATI
         pass
 
     return fn
-
-
-def anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
-    return _cache_timezone.localize(datetime.datetime(year=t.year, month=t.month, day=t.day, hour=0, minute=0, second=0))
-
-
-def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
-    """
-    split an interval into a list of daily intervals.
-    """
-    ret = []
-    t1, t2 = anchor_to_begin_of_day(t_from), anchor_to_begin_of_day(t_from + _cache_interval)
-    ret.append((t1, t2))
-    while t2 < t_to:
-        t1, t2 = t2, t2 + _cache_interval
-        t1, t2 = anchor_to_begin_of_day(t1), anchor_to_begin_of_day(t2)
-        ret.append((t1, t2))
-
-    last = (ret[-1][0], min(ret[-1][1], t_to))
-    ret[-1] = last
-    return ret
-
-
-def is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) -> bool:
-    """
-    returns if the range is one-day interval anchored at the zero hour.
-    """
-    t_from_plus_a_day = anchor_to_begin_of_day(t_from + datetime.timedelta(days=1))
-    if t_to != t_from_plus_a_day:
-        return False
-
-    def at_begin_of_day(t: datetime.datetime) -> bool:
-        return t.hour == 0 and t.minute == 0 and t.second == 0
-
-    if not at_begin_of_day(t_from):
-        return False
-
-    if not at_begin_of_day(t_to):
-        return False
-
-    return True
 
 
 def _cache_daily_df(df: pd.DataFrame, label: str, aggregation_mode: AGGREGATION_MODE, t_id: str, t_from: datetime.datetime, t_to: datetime.datetime, overwrite=True):

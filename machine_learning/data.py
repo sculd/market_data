@@ -9,7 +9,7 @@ from feature.target import TargetParams
 from feature.feature import FeatureParams
 from ingest.bq.cache import read_from_cache_or_query_and_cache
 from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
-from ingest.util.time import TimeRange
+from util.time import TimeRange
 from feature.cache_feature import load_cached_features, calculate_and_cache_features
 from feature.cache_target import load_cached_targets, calculate_and_cache_targets
 from machine_learning.cache_resample import load_cached_resampled_data, resample_and_cache_data
