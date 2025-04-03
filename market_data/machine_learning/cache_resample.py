@@ -5,12 +5,12 @@ import typing
 import os
 from pathlib import Path
 
-from util.cache import read_from_cache_or_query_and_cache
-from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
-from ingest.bq.common import get_full_table_id
-from machine_learning.resample import resample_at_events, ResampleParams
-from feature.cache_util import params_to_dir_name, split_t_range
-from util.time import TimeRange
+from ..util.cache import read_from_cache_or_query_and_cache
+from ..ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from ..ingest.bq.common import get_full_table_id
+from .resample import resample_at_events, ResampleParams
+from ..feature.cache_util import params_to_dir_name, split_t_range
+from ..util.time import TimeRange
 
 # The base directory for cache
 CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/resample')

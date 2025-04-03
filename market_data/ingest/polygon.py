@@ -8,7 +8,7 @@ import os
 
 import urllib.parse as urlparse
 from urllib.parse import urlencode
-from cache_to_disk import cache_to_disk
+from ..util.cache.dataframe import cache_to_disk
 
 polygon_api_key = os.getenv("QUANT_GALORE_POLYGON_API_KEY")
 _POLYGON_V2_BASE_URL = "https://api.polygon.io/v2"

@@ -20,8 +20,8 @@ from .time import (
     split_t_range,
     anchor_to_begin_of_day
 )
-from util.time import TimeRange
-from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from ...util.time import TimeRange
+from ...ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 
 logger = logging.getLogger(__name__)
 

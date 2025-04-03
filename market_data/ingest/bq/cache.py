@@ -9,10 +9,10 @@ from . import candle
 from . import orderbook1l
 from . import common
 from .common import AGGREGATION_MODE
-from . import time as util_time
+from ...util import time as util_time
 from ..gcs.util import get_gcsblobname, download_gcs_blob, upload_file_to_public_gcs_bucket, if_blob_exist
 from google.cloud import storage
-from util.cache import split_t_range, anchor_to_begin_of_day, is_exact_cache_interval
+from ...util.cache.time import split_t_range, anchor_to_begin_of_day, is_exact_cache_interval
 
 
 # the cache will be stored per day.
