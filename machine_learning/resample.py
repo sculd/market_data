@@ -1,6 +1,13 @@
 import pandas as pd
 import numpy as np
 from typing import List, Optional, Union, Tuple
+from dataclasses import dataclass
+
+@dataclass
+class ResampleParams:
+    """Parameters for resampling data at significant price movements."""
+    price_col: str = 'close'
+    threshold: float = 0.05
 
 def get_events_t(df: pd.DataFrame, col: str, threshold: float = 0.05) -> pd.DataFrame:
     """
@@ -75,8 +82,7 @@ def get_events_t_multi(df: pd.DataFrame, col: str, threshold: float = 0.05) -> p
 
 def resample_at_events(
     df: pd.DataFrame, 
-    price_col: str = 'close',
-    threshold: float = 0.05,
+    params: ResampleParams = None,
 ) -> pd.DataFrame:
     """
     Generic function to resample a DataFrame at significant price movement events.
@@ -88,23 +94,25 @@ def resample_at_events(
     
     Args:
         df: DataFrame with timestamp index, 'symbol' column, and price columns
-        price_col: Column to use for detecting significant price movements
-        threshold: Threshold for significant price movement (as decimal)
+        params: ResampleParams object containing resampling parameters. If None, uses default parameters.
         
     Returns:
         Filtered DataFrame containing only rows at significant price movement timestamps
     """
+    # Use default parameters if none provided
+    params = params or ResampleParams()
+    
     # Ensure required columns exist
-    if price_col not in df.columns:
-        raise ValueError(f"DataFrame must contain '{price_col}' column for detecting price movements")
+    if params.price_col not in df.columns:
+        raise ValueError(f"DataFrame must contain '{params.price_col}' column for detecting price movements")
     if 'symbol' not in df.columns:
         raise ValueError("DataFrame must contain 'symbol' column")
     
     # Identify significant price movements
     events_df = get_events_t_multi(
         df,
-        price_col,
-        threshold
+        params.price_col,
+        params.threshold
     )
     
     if events_df.empty:

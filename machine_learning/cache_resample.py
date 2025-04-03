@@ -8,7 +8,7 @@ from pathlib import Path
 from ingest.bq import cache as raw_cache
 from ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from ingest.bq.common import get_full_table_id
-from machine_learning.resample import resample_at_events
+from machine_learning.resample import resample_at_events, ResampleParams
 from feature.cache_util import params_to_dir_name, split_t_range
 from ingest.util.time import TimeRange
 
@@ -16,20 +16,17 @@ from ingest.util.time import TimeRange
 CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/resample')
 Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
-def get_resample_params_dir(
-    threshold: float = 0.05,
-):
+def get_resample_params_dir(params: ResampleParams = None) -> str:
     """
     Convert resampling parameters to a directory name string.
     
-    Uses the default values from feature.py and target.py for parameters.
+    Uses the default values when None is passed to ensure consistent directory paths.
     """
-    # Build parameters dictionary
-    params = {
-        'th': threshold,
+    params = params or ResampleParams()
+    params_dict = {
+        'th': params.threshold,
     }
-    
-    return params_to_dir_name(params)
+    return params_to_dir_name(params_dict)
 
 def to_filename(label: str, t_from: datetime.datetime, t_to: datetime.datetime, params_dir: str, dataset_id: str = None) -> str:
     """
@@ -260,9 +257,8 @@ def resample_and_cache_data(
         dataset_mode: DATASET_MODE,
         export_mode: EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
-        price_col: str = 'close',
-        threshold: float = 0.05,
         time_range: TimeRange = None,
+        params: ResampleParams = None,
         calculation_batch_days: int = 7,  # Use larger batches for resampling
         overwrite_cache: bool = True,
         label: str = "resampled"
@@ -284,15 +280,13 @@ def resample_and_cache_data(
         Export mode (OHLC, TICKS, etc.)
     aggregation_mode : AGGREGATION_MODE
         Aggregation mode (MIN_1, MIN_5, etc.)
-    price_col : str
-        Column to use for detecting significant price movements
-    threshold : float
-        Threshold for significant price movement (as decimal)
     time_range : TimeRange
         Time range for the data. Can be specified using any of:
         - (t_from, t_to): datetime objects
         - (epoch_seconds_from, epoch_seconds_to): Unix timestamps
         - (date_str_from, date_str_to): Date strings in YYYY-MM-DD format
+    params : ResampleParams
+        Parameters for resampling. If None, uses default parameters.
     calculation_batch_days : int
         Size of batches in days for processing
     overwrite_cache : bool
@@ -300,6 +294,9 @@ def resample_and_cache_data(
     label : str
         Label for the cache directory
     """
+    # Use default parameters if none provided
+    params = params or ResampleParams()
+    
     # Resolve time range
     t_from, t_to = time_range.to_datetime() if time_range else (None, None)
     
@@ -312,7 +309,7 @@ def resample_and_cache_data(
     calculation_interval = datetime.timedelta(days=calculation_batch_days)
     
     # Generate parameters directory name
-    params_dir = get_resample_params_dir(threshold=threshold)
+    params_dir = get_resample_params_dir(params)
     
     # Split the range into calculation batches
     calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval)
@@ -336,8 +333,7 @@ def resample_and_cache_data(
         try:
             resampled_df = resample_at_events(
                 raw_df,
-                price_col=price_col,
-                threshold=threshold
+                params=params
             )
             
             if resampled_df is None or len(resampled_df) == 0:
@@ -360,7 +356,7 @@ def resample_and_cache_data(
             continue
 
 def load_cached_resampled_data(
-        threshold: float = 0.05,
+        params: ResampleParams = None,
         time_range: TimeRange = None,
         columns: typing.List[str] = None,
         dataset_mode: DATASET_MODE = None,
@@ -373,8 +369,8 @@ def load_cached_resampled_data(
     
     Parameters:
     -----------
-    threshold : float
-        Threshold for significant price movement (as decimal)
+    params : ResampleParams
+        Parameters for resampling. If None, uses default parameters.
     time_range : TimeRange
         Time range for the data. Can be specified using any of:
         - (t_from, t_to): datetime objects
@@ -391,13 +387,16 @@ def load_cached_resampled_data(
     label : str
         Label for the cache directory
     """
+    # Use default parameters if none provided
+    params = params or ResampleParams()
+    
     # Get dataset ID for cache path if dataset_mode, export_mode, and aggregation_mode are provided
     dataset_id = None
     if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
         dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
     
     # Generate parameters directory name
-    params_dir = get_resample_params_dir(threshold=threshold)
+    params_dir = get_resample_params_dir(params)
     
     # Resolve time range
     t_from, t_to = time_range.to_datetime() if time_range else (None, None)
