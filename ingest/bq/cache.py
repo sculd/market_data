@@ -9,7 +9,7 @@ from . import candle
 from . import orderbook1l
 from . import common
 from .common import AGGREGATION_MODE
-from ..util import time as util_time
+from . import time as util_time
 from ..gcs.util import get_gcsblobname, download_gcs_blob, upload_file_to_public_gcs_bucket, if_blob_exist
 from google.cloud import storage
 
