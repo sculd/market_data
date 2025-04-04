@@ -68,6 +68,68 @@ def _get_resample_params_dir(
         
     return params_to_dir_name(params_dict)
 
+def _calculate_daily_ml_data(
+    date: datetime.datetime,
+    dataset_mode: DATASET_MODE,
+    export_mode: EXPORT_MODE,
+    aggregation_mode: AGGREGATION_MODE,
+    feature_params: FeatureParams,
+    target_params: TargetParams,
+    resample_params: ResampleParams,
+    overwrite_cache: bool = True
+) -> None:
+    """
+    Calculate and cache ML data for a single day.
+    
+    Args:
+        date: The date to calculate ML data for
+        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
+        export_mode: Export mode (OHLC, TICKS, etc.)
+        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        feature_params: Feature calculation parameters
+        target_params: Target calculation parameters
+        resample_params: Resampling parameters
+        overwrite_cache: Whether to overwrite existing cache files
+    """
+    # Create time range for the specific day
+    t_from = date
+    t_to = date + datetime.timedelta(days=1)
+    time_range = TimeRange(t_from, t_to)
+    
+    # Prepare ML data for the day
+    ml_data_df = prepare_ml_data(
+        dataset_mode=dataset_mode,
+        export_mode=export_mode,
+        aggregation_mode=aggregation_mode,
+        time_range=time_range,
+        feature_params=feature_params,
+        target_params=target_params,
+        resample_params=resample_params
+    )
+    
+    if ml_data_df is None or len(ml_data_df) == 0:
+        logger.warning(f"No ML data available for {date}")
+        return
+    
+    # Cache the data
+    logger.info(f"Caching ML data for {date}")
+    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    params_dir = _get_resample_params_dir(resample_params, feature_params, target_params)
+    
+    cache_data_by_day(
+        df=ml_data_df,
+        label="ml_data",
+        t_from=t_from,
+        t_to=t_to,
+        params_dir=params_dir,
+        overwrite=overwrite_cache,
+        dataset_id=dataset_id,
+        cache_base_path=CACHE_BASE_PATH,
+        warm_up_period_days=0,
+    )
+    
+    logger.info(f"Successfully cached ML data for {date} with {len(ml_data_df)} rows")
+
 def calculate_and_cache_ml_data(
     dataset_mode: DATASET_MODE,
     export_mode: EXPORT_MODE,
@@ -82,8 +144,8 @@ def calculate_and_cache_ml_data(
     Calculate and cache ML data by preparing the data and caching it daily.
     
     This function:
-    1. Prepares ML data using prepare_ml_data
-    2. Splits the data into daily pieces
+    1. Splits the time range into individual days
+    2. For each day, prepares ML data using prepare_ml_data
     3. Caches each daily piece
     
     Args:
@@ -112,39 +174,25 @@ def calculate_and_cache_ml_data(
     # Get time range
     t_from, t_to = time_range.to_datetime()
     
-    # Prepare ML data
-    ml_data_df = prepare_ml_data(
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-        time_range=time_range,
-        feature_params=feature_params,
-        target_params=target_params,
-        resample_params=resample_params
-    )
+    # Calculate number of days
+    current_date = t_from
     
-    if ml_data_df is None or len(ml_data_df) == 0:
-        logger.error("No ML data available")
-        return
-    
-    # Cache the data by day
-    logger.info("Caching ML data by day")
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    params_dir = _get_resample_params_dir(resample_params, feature_params, target_params)
-    
-    cache_data_by_day(
-        df=ml_data_df,
-        label="ml_data",
-        t_from=t_from,
-        t_to=t_to,
-        params_dir=params_dir,
-        overwrite=overwrite_cache,
-        dataset_id=dataset_id,
-        cache_base_path=CACHE_BASE_PATH,
-        warm_up_period_days=0,
-    )
-    
-    logger.info(f"Successfully cached ML data with {len(ml_data_df)} rows")
+    # Process each day
+    while current_date < t_to:
+        logger.info(f"Processing day {current_date}")
+        
+        _calculate_daily_ml_data(
+            date=current_date,
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            feature_params=feature_params,
+            target_params=target_params,
+            resample_params=resample_params,
+            overwrite_cache=overwrite_cache
+        )
+
+        current_date += datetime.timedelta(days=1)
 
 def load_cached_ml_data(
     dataset_mode: DATASET_MODE,
