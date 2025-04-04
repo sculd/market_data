@@ -5,6 +5,7 @@ import logging
 import warnings
 import numba as nb
 import os
+from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +19,7 @@ FULL_FORWARD_PERIODS = [1, 5, 15, 30, 60, 120, 240, 480]
 FULL_TP_VALUES = [0.005, 0.01, 0.02, 0.03, 0.05]
 FULL_SL_VALUES = [0.005, 0.01, 0.02, 0.03, 0.05]
 
+@dataclass
 class TargetParams:
     """
     Encapsulates parameters for target engineering.

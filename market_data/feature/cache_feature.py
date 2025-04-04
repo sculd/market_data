@@ -27,11 +27,6 @@ FEATURE_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
 Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def get_feature_params_dir(params: FeatureParams = None) -> str:
-    """
-    Convert feature calculation parameters to a directory name string.
-    
-    Uses the default values when None is passed to ensure consistent directory paths.
-    """
     params = params or FeatureParams()
     params_dict = {
         'rp': params.return_periods,

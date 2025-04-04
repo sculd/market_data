@@ -5,13 +5,18 @@ import logging
 import warnings
 import numba as nb
 import os
-
+from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 # Default values for feature parameters
 DEFAULT_RETURN_PERIODS = [1, 5, 15, 30, 60, 120]
 DEFAULT_EMA_PERIODS = [5, 15, 30, 60, 120, 240]
 
+# Default values for feature parameters
+DEFAULT_RETURN_PERIODS = [1, 5, 15, 30, 60, 120]
+DEFAULT_EMA_PERIODS = [5, 15, 30, 60, 120, 240]
+
+@dataclass
 class FeatureParams:
     """
     Encapsulates parameters for feature engineering.

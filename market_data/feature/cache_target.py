@@ -28,11 +28,6 @@ TARGET_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
 Path(TARGET_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def get_target_params_dir(params: TargetParams = None) -> str:
-    """
-    Convert target calculation parameters to a directory name string.
-    
-    Uses the default values when None is passed to ensure consistent directory paths.
-    """
     params = params or TargetParams()
     params_dict = {
         'fp': params.forward_periods,

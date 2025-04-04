@@ -4,43 +4,37 @@ import logging
 import typing
 import os
 from pathlib import Path
+from dataclasses import asdict
 
-from market_data.util.cache import read_from_cache_or_query_and_cache
+
+from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.ingest.bq.common import get_full_table_id
 from market_data.machine_learning.resample import resample_at_events, ResampleParams
-from market_data.feature.cache_util import params_to_dir_name, split_t_range
 from market_data.util.time import TimeRange
 
+from market_data.util.cache.time import (
+    split_t_range,
+)
 from market_data.util.cache.dataframe import (
     cache_data_by_day,
     read_from_cache_generic,
 )
 
-# The base directory for cache
-RESAMPLE_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/resample')
-Path(RESAMPLE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
+from market_data.util.cache.path import (
+    params_to_dir_name
+)
 
-def get_resample_params_dir(params: ResampleParams = None) -> str:
-    """
-    Convert resample parameters to a directory name string.
-    
-    Uses the default values when None is passed to ensure consistent directory paths.
-    """
-    params = params or ResampleParams()
-    params_dict = {
-        'window': params.window_minutes,
-        'offset': params.offset_minutes,
-        'fill': params.fill_method
-    }
-    return params_to_dir_name(params_dict)
+# The base directory for cache
+RESAMPLE_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
+Path(RESAMPLE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def cache_resampled_data(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                         params: ResampleParams = None, overwrite=True, dataset_id=None) -> None:
     """Cache a resampled DataFrame, splitting it into daily pieces"""
-    params_dir = get_resample_params_dir(params)
+    params_dir = params_to_dir_name(asdict(params or ResampleParams()))
     return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, dataset_id=dataset_id,
-                            cache_base_path=RESAMPLE_CACHE_BASE_PATH)
+                            cache_base_path=RESAMPLE_CACHE_BASE_PATH, warm_up_period_days=0)
 
 def read_resampled_data_from_cache(label: str, 
                                  params: ResampleParams = None,
@@ -48,7 +42,7 @@ def read_resampled_data_from_cache(label: str,
                                  columns: typing.List[str] = None,
                                  dataset_id=None) -> pd.DataFrame:
     """Read cached resampled data for a specified time range"""
-    params_dir = get_resample_params_dir(params)
+    params_dir = params_to_dir_name(asdict(params or ResampleParams()))
     t_from, t_to = time_range.to_datetime() if time_range else (None, None)
     return read_from_cache_generic(
         label,
