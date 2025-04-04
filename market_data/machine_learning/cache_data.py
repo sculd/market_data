@@ -4,16 +4,14 @@ from typing import Optional, List
 import os
 import datetime
 from pathlib import Path
+from dataclasses import asdict
 
 from market_data.feature.target import TargetParams, DEFAULT_FORWARD_PERIODS, DEFAULT_TP_VALUES, DEFAULT_SL_VALUES
 from market_data.feature.feature import FeatureParams, DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
-from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
-from market_data.feature.cache_feature import load_cached_features, calculate_and_cache_features
-from market_data.feature.cache_target import load_cached_targets, calculate_and_cache_targets
-from .cache_resample import load_cached_resampled_data, resample_and_cache_data
-from .resample import ResampleParams
+from market_data.machine_learning.resample import ResampleParams
+from market_data.machine_learning.data import prepare_ml_data
 from market_data.util.cache.time import (
     split_t_range,
 )
@@ -31,11 +29,43 @@ logger = logging.getLogger(__name__)
 CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/ml_data')
 Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
-def get_resample_params_dir(params: ResampleParams = None) -> str:
-    params = params or ResampleParams()
-    params_dict = {
-        'th': params.threshold,
-    }
+def get_resample_params_dir(
+    resample_params: ResampleParams = None,
+    feature_params: FeatureParams = None,
+    target_params: TargetParams = None
+) -> str:
+    """
+    Convert all ML data parameters to a directory name string.
+    
+    Uses the default values when None is passed to ensure consistent directory paths.
+    """
+    resample_params = resample_params or ResampleParams()
+    feature_params = feature_params or FeatureParams(
+        return_periods=DEFAULT_RETURN_PERIODS,
+        ema_periods=DEFAULT_EMA_PERIODS,
+        add_btc_features=True
+    )
+    target_params = target_params or TargetParams(
+        forward_periods=DEFAULT_FORWARD_PERIODS,
+        tp_values=DEFAULT_TP_VALUES,
+        sl_values=DEFAULT_SL_VALUES
+    )
+    
+    # Flatten all parameters into a single dictionary with prefixed keys
+    params_dict = {}
+    
+    # Add resample parameters with 'r_' prefix
+    for key, value in asdict(resample_params).items():
+        params_dict[f'r_{key}'] = value
+        
+    # Add feature parameters with 'f_' prefix
+    for key, value in asdict(feature_params).items():
+        params_dict[f'f_{key}'] = value
+        
+    # Add target parameters with 't_' prefix
+    for key, value in asdict(target_params).items():
+        params_dict[f't_{key}'] = value
+        
     return params_to_dir_name(params_dict)
 
 def calculate_and_cache_data(
@@ -49,15 +79,12 @@ def calculate_and_cache_data(
     overwrite_cache: bool = False
 ) -> None:
     """
-    Calculate and cache all required data for machine learning.
+    Calculate and cache ML data by preparing the data and caching it daily.
     
     This function:
-    1. Ensures raw data is present (caches if not)
-    2. Ensures feature data is present (calculates and caches if not)
-    3. Ensures target data is present (calculates and caches if not)
-    4. Ensures resampled data is present (calculates and caches if not)
-    5. Joins feature, target and resampled data into a final DataFrame
-    6. Caches the final ML data DataFrame
+    1. Prepares ML data using prepare_ml_data
+    2. Splits the data into daily pieces
+    3. Caches each daily piece
     
     Args:
         dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
@@ -82,127 +109,28 @@ def calculate_and_cache_data(
     )
     resample_params = resample_params or ResampleParams()
     
-    # 1. Ensure raw data is present
-    raw_df = read_from_cache_or_query_and_cache(
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-        time_range=time_range,
-        overwirte_cache=overwrite_cache
-    )
-    
-    if raw_df is None or len(raw_df) == 0:
-        logger.error("No raw data available")
-        return
-    
-    # 2. Ensure feature data is present
-    features_df = load_cached_features(
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-        time_range=time_range
-    )
-    
-    if features_df is None:
-        logger.info("Calculating and caching features")
-        calculate_and_cache_features(
-            raw_df,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            time_range=time_range,
-            params=feature_params,
-            overwrite_cache=overwrite_cache
-        )
-        features_df = load_cached_features(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            time_range=time_range
-        )
-    
-    if features_df is None or len(features_df) == 0:
-        logger.error("No feature data available")
-        return
-    
-    # 3. Ensure target data is present
-    targets_df = load_cached_targets(
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-        time_range=time_range
-    )
-    
-    if targets_df is None:
-        logger.info("Calculating and caching targets")
-        calculate_and_cache_targets(
-            raw_df,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            time_range=time_range,
-            params=target_params,
-            overwrite_cache=overwrite_cache
-        )
-        targets_df = load_cached_targets(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            time_range=time_range
-        )
-    
-    if targets_df is None or len(targets_df) == 0:
-        logger.error("No target data available")
-        return
-    
-    # 4. Ensure resampled data is present
-    resampled_df = load_cached_resampled_data(
-        params=resample_params,
-        time_range=time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode
-    )
-    
-    if resampled_df is None:
-        logger.info("Calculating and caching resampled data")
-        resample_and_cache_data(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            time_range=time_range,
-            params=resample_params,
-            overwrite_cache=overwrite_cache
-        )
-        resampled_df = load_cached_resampled_data(
-            params=resample_params,
-            time_range=time_range,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode
-        )
-    
-    if resampled_df is None or len(resampled_df) == 0:
-        logger.error("No resampled data available")
-        return
-    
-    # 5. Join feature, target and resampled data
-    # First join features and targets
-    combined_df = features_df.join(targets_df, how='inner')
-    
-    # Then filter to resampled timestamps
-    resampled_timestamps = resampled_df.index
-    ml_data_df = combined_df[combined_df.index.isin(resampled_timestamps)]
-    
-    if len(ml_data_df) == 0:
-        logger.error("No data after joining features, targets and resampled timestamps")
-        return
-    
-    # 6. Cache the final ML data DataFrame
-    logger.info("Caching final ML data DataFrame")
+    # Get time range
     t_from, t_to = time_range.to_datetime()
+    
+    # Prepare ML data
+    ml_data_df = prepare_ml_data(
+        dataset_mode=dataset_mode,
+        export_mode=export_mode,
+        aggregation_mode=aggregation_mode,
+        time_range=time_range,
+        feature_params=feature_params,
+        target_params=target_params,
+        resample_params=resample_params
+    )
+    
+    if ml_data_df is None or len(ml_data_df) == 0:
+        logger.error("No ML data available")
+        return
+    
+    # Cache the data by day
+    logger.info("Caching ML data by day")
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    params_dir = get_resample_params_dir(resample_params)
+    params_dir = get_resample_params_dir(resample_params, feature_params, target_params)
     
     cache_data_by_day(
         df=ml_data_df,
@@ -211,11 +139,11 @@ def calculate_and_cache_data(
         t_to=t_to,
         params_dir=params_dir,
         overwrite=overwrite_cache,
-        dataset_id=dataset_id
+        dataset_id=dataset_id,
+        cache_base_path=CACHE_BASE_PATH
     )
     
-    logger.info(f"Successfully prepared and cached ML data with {len(ml_data_df)} rows")
-    return ml_data_df
+    logger.info(f"Successfully cached ML data with {len(ml_data_df)} rows")
 
 def load_cached_data(
     dataset_mode: DATASET_MODE,
@@ -228,13 +156,7 @@ def load_cached_data(
     columns: Optional[List[str]] = None
 ) -> pd.DataFrame:
     """
-    Load cached data for machine learning, ensuring all required data is present.
-    
-    This function:
-    1. Loads cached feature data
-    2. Loads cached target data
-    3. Loads cached resampled data
-    4. Joins feature, target and resampled data
+    Load cached ML data for a specific time range.
     
     Args:
         dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
@@ -247,71 +169,28 @@ def load_cached_data(
         columns: Optional list of columns to load. If None, loads all columns.
         
     Returns:
-        DataFrame with features and targets, resampled at significant price movements
+        DataFrame with ML data, or empty DataFrame if no data is available
     """
     # Use default parameters if none provided
-    feature_params = feature_params or FeatureParams(
-        return_periods=DEFAULT_RETURN_PERIODS,
-        ema_periods=DEFAULT_EMA_PERIODS,
-        add_btc_features=True
-    )
-    target_params = target_params or TargetParams(
-        forward_periods=DEFAULT_FORWARD_PERIODS,
-        tp_values=DEFAULT_TP_VALUES,
-        sl_values=DEFAULT_SL_VALUES
-    )
+    feature_params = feature_params or FeatureParams()
+    target_params = target_params or TargetParams()
     resample_params = resample_params or ResampleParams()
     
-    # 1. Load feature data
-    features_df = load_cached_features(
+    # Get dataset ID for cache path
+    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    
+    # Get parameters directory name
+    params_dir = get_resample_params_dir(resample_params, feature_params, target_params)
+    
+    # Read from cache
+    return read_from_cache_generic(
+        label="ml_data",
+        params_dir=params_dir,
+        time_range=time_range,
+        columns=columns,
+        dataset_id=dataset_id,
         dataset_mode=dataset_mode,
         export_mode=export_mode,
         aggregation_mode=aggregation_mode,
-        time_range=time_range,
-        columns=columns
+        cache_base_path=CACHE_BASE_PATH
     )
-    
-    if features_df is None or len(features_df) == 0:
-        logger.error("No feature data available")
-        return pd.DataFrame()
-    
-    # 2. Load target data
-    targets_df = load_cached_targets(
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-        time_range=time_range,
-        columns=columns
-    )
-    
-    if targets_df is None or len(targets_df) == 0:
-        logger.error("No target data available")
-        return pd.DataFrame()
-    
-    # 3. Load resampled data
-    resampled_df = load_cached_resampled_data(
-        params=resample_params,
-        time_range=time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode
-    )
-    
-    if resampled_df is None or len(resampled_df) == 0:
-        logger.error("No resampled data available")
-        return pd.DataFrame()
-    
-    # 4. Join feature, target and resampled data
-    # First join features and targets
-    combined_df = features_df.join(targets_df, how='inner')
-    
-    # Then filter to resampled timestamps
-    resampled_timestamps = resampled_df.index
-    final_df = combined_df[combined_df.index.isin(resampled_timestamps)]
-    
-    if len(final_df) == 0:
-        logger.error("No data after joining features, targets and resampled timestamps")
-        return pd.DataFrame()
-    
-    logger.info(f"Successfully loaded ML data with {len(final_df)} rows")
-    return final_df

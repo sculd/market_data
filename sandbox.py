@@ -2,6 +2,9 @@ import logging
 import sys
 import os
 from dotenv import load_dotenv
+import importlib
+import pandas as pd
+import market_data.util.time
 
 logging.basicConfig(
     level=logging.INFO,
@@ -32,7 +35,7 @@ import market_data.util.time
 '''
 df = market_data.ingest.bq.cache.query_and_cache(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
-    date_str_from='2024-01-01', date_str_to='2024-01-03')
+    date_str_from='2024-01-18', date_str_to='2024-01-20')
 
 #df = ingest.bq.cache.query_and_cache(ingest.bq.util.DATASET_MODE.BITHUMB, ingest.bq.util.EXPORT_MODE.ORDERBOOK_LEVEL1, date_str_from='2024-03-21', date_str_to='2024-03-22')
 
@@ -40,36 +43,41 @@ df = market_data.ingest.bq.cache.query_and_cache(
 print(df)
 #'''
 
-t_range = market_data.util.time.TimeRange(date_str_from='2024-01-01', date_str_to='2024-01-03')
 
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2024-01-03',
+    )
 
 '''
-import market_data.feature.feature
 import market_data.feature.cache_feature
-features_df = market_data.feature.cache_feature.calculate_and_cache_features(
-    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
-    params=market_data.feature.feature.FeatureParams(),
-    time_range=t_range,
-    calculation_batch_days=1,
-    overwrite_cache=True
-)
+market_data.feature.cache_feature.calculate_and_cache_features(
+      market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+      time_range=time_range,
+    )
 #'''
 
 '''
-import market_data.feature.target
 import market_data.feature.cache_target
-features_df = market_data.feature.cache_target.calculate_and_cache_targets(
+market_data.feature.cache_target.calculate_and_cache_targets(
+      market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+      time_range=time_range,
+    )
+#'''
+
+'''
+import market_data.machine_learning.cache_resample
+market_data.machine_learning.cache_resample.resample_and_cache_data(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
-    params=market_data.feature.target.TargetParams(),
-    time_range=t_range,
-    calculation_batch_days=1,
-    overwrite_cache=True
+    time_range=time_range,
 )
 #'''
 
-
 #'''
-import market_data.machine_learning.data
+import market_data.machine_learning.cache_data
+market_data.machine_learning.cache_data.prepare_ml_data(
+    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    time_range=time_range,
+)
 #'''
 
 print('done')
