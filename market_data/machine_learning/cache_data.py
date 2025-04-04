@@ -140,7 +140,8 @@ def calculate_and_cache_data(
         params_dir=params_dir,
         overwrite=overwrite_cache,
         dataset_id=dataset_id,
-        cache_base_path=CACHE_BASE_PATH
+        cache_base_path=CACHE_BASE_PATH,
+        warm_up_period_days=0,
     )
     
     logger.info(f"Successfully cached ML data with {len(ml_data_df)} rows")

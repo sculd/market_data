@@ -152,7 +152,7 @@ def prepare_ml_data(
     
     # 5. Join feature, target and resampled data
     features_targets_df = features_df.reset_index().set_index(["timestamp", "symbol"]).join(targets_df.reset_index().set_index(["timestamp", "symbol"]))
-    data_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(features_targets_df)
+    data_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(features_targets_df).reset_index().set_index("timestamp")
     
     if len(data_df) == 0:
         logger.error("No data after joining features, targets and resampled timestamps")
