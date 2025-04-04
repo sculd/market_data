@@ -43,7 +43,7 @@ class FeatureParams:
 
 # Numba-accelerated functions for performance-critical calculations
 @nb.njit(cache=True)
-def calculate_obv_numba(prices, volumes):
+def _calculate_obv_numba(prices, volumes):
     """Numba-accelerated On-Balance Volume calculation."""
     n = len(prices)
     obv = np.zeros(n)
@@ -60,7 +60,7 @@ def calculate_obv_numba(prices, volumes):
     return obv
 
 @nb.njit(cache=True)
-def calculate_rolling_corr_numba(x, y, window_size):
+def _calculate_rolling_corr_numba(x, y, window_size):
     """Numba-accelerated rolling correlation calculation."""
     n = len(x)
     result = np.full(n, np.nan)
@@ -100,7 +100,7 @@ def calculate_rolling_corr_numba(x, y, window_size):
     return result
 
 @nb.njit(cache=True)
-def calculate_rsi_numba(closes, period):
+def _calculate_rsi_numba(closes, period):
     """Numba-accelerated RSI calculation."""
     n = len(closes)
     deltas = np.zeros(n)
@@ -143,7 +143,7 @@ def calculate_rsi_numba(closes, period):
     return rsi
 
 @nb.njit(cache=True)
-def calculate_bollinger_bands_numba(closes, period, std_dev):
+def _calculate_bollinger_bands_numba(closes, period, std_dev):
     """Numba-accelerated Bollinger Bands calculation."""
     n = len(closes)
     middle_band = np.full(n, np.nan)
@@ -361,7 +361,7 @@ class FeatureEngineer:
         """Calculate Bollinger Bands over specified period in minutes."""
         # Use Numba-accelerated version
         closes = df['close'].values
-        upper, middle, lower = calculate_bollinger_bands_numba(closes, period, std_dev)
+        upper, middle, lower = _calculate_bollinger_bands_numba(closes, period, std_dev)
         return pd.Series(upper, index=df.index), pd.Series(middle, index=df.index), pd.Series(lower, index=df.index)
     
     @staticmethod
@@ -386,7 +386,7 @@ class FeatureEngineer:
         """Calculate Relative Strength Index over specified period in minutes."""
         # Use Numba-accelerated version
         closes = df['close'].values
-        rsi_values = calculate_rsi_numba(closes, period)
+        rsi_values = _calculate_rsi_numba(closes, period)
         return pd.Series(rsi_values, index=df.index)
     
     @staticmethod
@@ -400,7 +400,7 @@ class FeatureEngineer:
         # Avoid correlation with rolled-around values
         shifted[:lag] = np.nan
         
-        corr_values = calculate_rolling_corr_numba(closes, shifted, window_size)
+        corr_values = _calculate_rolling_corr_numba(closes, shifted, window_size)
         return pd.Series(corr_values, index=df.index)
     
     @staticmethod
@@ -435,7 +435,7 @@ class FeatureEngineer:
         # Use Numba-accelerated version
         closes = df['close'].values
         volumes = df['volume'].values
-        obv_values = calculate_obv_numba(closes, volumes)
+        obv_values = _calculate_obv_numba(closes, volumes)
         return pd.Series(obv_values, index=df.index)
     
     def calculate_btc_features(self, index: pd.DatetimeIndex) -> pd.DataFrame:

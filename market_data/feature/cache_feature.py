@@ -26,7 +26,7 @@ from market_data.util.cache.path import (
 FEATURE_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
 Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
-def get_feature_params_dir(params: FeatureParams = None) -> str:
+def _get_feature_params_dir(params: FeatureParams = None) -> str:
     params = params or FeatureParams()
     params_dict = {
         'rp': params.return_periods,
@@ -35,7 +35,7 @@ def get_feature_params_dir(params: FeatureParams = None) -> str:
     }
     return params_to_dir_name(params_dict)
 
-def get_recommended_warm_up_days(params: FeatureParams = None) -> int:
+def _get_recommended_warm_up_days(params: FeatureParams = None) -> int:
     """
     Calculate the recommended warm-up period based on feature parameters.
     
@@ -55,20 +55,20 @@ def get_recommended_warm_up_days(params: FeatureParams = None) -> int:
     
     return days_needed
 
-def cache_features(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
+def _cache_features(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                   params: FeatureParams = None, overwrite=True, warm_up_period_days=1, dataset_id=None) -> None:
     """Cache a feature DataFrame, splitting it into daily pieces"""
-    params_dir = get_feature_params_dir(params)
+    params_dir = _get_feature_params_dir(params)
     return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id,
                             cache_base_path=FEATURE_CACHE_BASE_PATH)
 
-def read_features_from_cache(label: str, 
+def _read_features_from_cache(label: str, 
                            params: FeatureParams = None,
                            time_range: TimeRange = None,
                            columns: typing.List[str] = None,
                            dataset_id=None) -> pd.DataFrame:
     """Read cached feature data for a specified time range"""
-    params_dir = get_feature_params_dir(params)
+    params_dir = _get_feature_params_dir(params)
     return read_from_cache_generic(
         label,
         params_dir=params_dir,
@@ -78,7 +78,7 @@ def read_features_from_cache(label: str,
         cache_base_path=FEATURE_CACHE_BASE_PATH
     )
 
-def calculate_feature_batch(raw_df: pd.DataFrame, params: FeatureParams = None) -> pd.DataFrame:
+def _calculate_feature_batch(raw_df: pd.DataFrame, params: FeatureParams = None) -> pd.DataFrame:
     """Calculate features for a batch of data using pandas implementation"""
     params = params or FeatureParams()
     
@@ -122,7 +122,7 @@ def calculate_and_cache_features(
     
     # If warm_up_days not provided, calculate based on feature parameters
     if warm_up_days is None:
-        warm_up_days = get_recommended_warm_up_days(params)
+        warm_up_days = _get_recommended_warm_up_days(params)
         logging.info(f"Using auto-calculated warm-up period of {warm_up_days} days based on feature parameters")
     
     # Resolve time range
@@ -160,7 +160,7 @@ def calculate_and_cache_features(
             
         # 3. Calculate features for this batch
         try:
-            features_df = calculate_feature_batch(raw_df, params)
+            features_df = _calculate_feature_batch(raw_df, params)
             
             if features_df is None or len(features_df) == 0:
                 logging.warning(f"Feature calculation returned empty result for {calc_t_from} to {calc_t_to}")
@@ -180,7 +180,7 @@ def calculate_and_cache_features(
                 # warm_up_days is enough because warm_up is aligned to day boundaries
                 warm_up_period_days = warm_up_days
                 
-            cache_features(
+            _cache_features(
                 features_df, feature_label, 
                 calc_t_from, calc_t_to,
                 params=params,
@@ -209,7 +209,7 @@ def load_cached_features(
     if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
         dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
     
-    return read_features_from_cache(
+    return _read_features_from_cache(
         feature_label,
         params=params,
         time_range=time_range,

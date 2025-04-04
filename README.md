@@ -115,8 +115,7 @@ The project uses Sphinx for generating API documentation. To generate the docume
 
 2. Build the documentation:
    ```bash
-   cd docs
-   make html
+   ./build_docs.sh
    ```
 
 3. View the documentation:

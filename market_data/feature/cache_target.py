@@ -27,7 +27,7 @@ TARGET_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
 # Ensure the directory exists
 Path(TARGET_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
-def get_target_params_dir(params: TargetParams = None) -> str:
+def _get_target_params_dir(params: TargetParams = None) -> str:
     params = params or TargetParams()
     params_dict = {
         'fp': params.forward_periods,
@@ -36,7 +36,7 @@ def get_target_params_dir(params: TargetParams = None) -> str:
     }
     return params_to_dir_name(params_dict)
 
-def get_recommended_warm_up_days(params: TargetParams = None) -> int:
+def _get_recommended_warm_up_days(params: TargetParams = None) -> int:
     """
     Calculate the recommended warm-up period based on target parameters.
     
@@ -58,17 +58,17 @@ def get_recommended_warm_up_days(params: TargetParams = None) -> int:
     # Ensure at least 3 days minimum
     return max(3, days_needed)
 
-def cache_targets(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime,
+def _cache_targets(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime,
                  params: TargetParams = None, overwrite=False, warm_up_period_days=1, dataset_id=None) -> None:
     """Cache target features for a specific time range"""
-    params_dir = get_target_params_dir(params)
+    params_dir = _get_target_params_dir(params)
     
     cache_data_by_day(
         df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id,
         cache_base_path=TARGET_CACHE_BASE_PATH
     )
 
-def read_targets_from_cache(dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE, aggregation_mode: AGGREGATION_MODE,
+def _read_targets_from_cache(dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE, aggregation_mode: AGGREGATION_MODE,
                            time_range: TimeRange, params_dir: str = None, columns: typing.List[str] = None) -> pd.DataFrame:
     """Read target features from cache"""
     return read_from_cache_generic(
@@ -77,7 +77,7 @@ def read_targets_from_cache(dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE
         cache_base_path=TARGET_CACHE_BASE_PATH
     )
 
-def calculate_target_batch(raw_df: pd.DataFrame, params: TargetParams = None) -> pd.DataFrame:
+def _calculate_target_batch(raw_df: pd.DataFrame, params: TargetParams = None) -> pd.DataFrame:
     """Calculate targets for a batch of data using pandas implementation"""
     params = params or TargetParams()
     
@@ -120,7 +120,7 @@ def calculate_and_cache_targets(
     
     # If warm_up_days not provided, calculate based on target parameters
     if warm_up_days is None:
-        warm_up_days = get_recommended_warm_up_days(params)
+        warm_up_days = _get_recommended_warm_up_days(params)
         logging.info(f"Using auto-calculated warm-up period of {warm_up_days} days based on target parameters")
     
     # Resolve time range
@@ -158,7 +158,7 @@ def calculate_and_cache_targets(
             
         # Calculate targets for this batch
         try:
-            targets_df = calculate_target_batch(raw_df, params)
+            targets_df = _calculate_target_batch(raw_df, params)
             
             if targets_df is None or len(targets_df) == 0:
                 logging.warning(f"Target calculation returned empty result for {calc_t_from} to {calc_t_to}")
@@ -177,7 +177,7 @@ def calculate_and_cache_targets(
                 # warm_up_days is enough because warm_up is aligned to day boundaries
                 warm_up_period_days = warm_up_days
             
-            cache_targets(
+            _cache_targets(
                 targets_df, target_label, 
                 calc_t_from, calc_t_to,
                 params=params,
@@ -206,9 +206,9 @@ def load_cached_targets(
     if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
         dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
     
-    return read_targets_from_cache(
+    return _read_targets_from_cache(
         dataset_mode, export_mode, aggregation_mode,
         time_range,
-        params_dir=get_target_params_dir(params),
+        params_dir=_get_target_params_dir(params),
         columns=columns
     )

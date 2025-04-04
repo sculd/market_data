@@ -1,6 +1,32 @@
 API Reference
 =============
 
+Feature Module
+--------------
+
+.. automodule:: market_data.feature.feature
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: market_data.feature.cache_feature
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Target Module
+-------------
+
+.. automodule:: market_data.feature.target
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: market_data.feature.cache_target
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Machine Learning Module
 -----------------------
 
@@ -14,25 +40,12 @@ Machine Learning Module
    :undoc-members:
    :show-inheritance:
 
-Feature Module
---------------
-
-.. automodule:: market_data.feature.feature
+.. automodule:: market_data.machine_learning.data
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: market_data.feature.target
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: market_data.feature.cache_feature
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-.. automodule:: market_data.feature.cache_util
+.. automodule:: market_data.machine_learning.cache_data
    :members:
    :undoc-members:
    :show-inheritance:

@@ -46,7 +46,7 @@ class TargetParams:
 
 # Numba-accelerated functions for performance-critical calculations
 @nb.njit(cache=True)
-def calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
+def _calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
     """
     Numba-accelerated take-profit/stop-loss label calculation.
     
@@ -252,7 +252,7 @@ class TargetEngineer:
         pos_type_int = 0 if position_type == 'long' else 1
         
         # Call Numba-accelerated function
-        labels = calculate_tp_sl_labels_numba(
+        labels = _calculate_tp_sl_labels_numba(
             closes, highs, lows, period, take_profit, stop_loss, pos_type_int
         )
         
