@@ -63,7 +63,7 @@ Ingest Module
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: market_data.ingest.util.time
+.. automodule:: market_data.util.time
    :members:
    :undoc-members:
    :show-inheritance: 

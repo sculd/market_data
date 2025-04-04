@@ -62,22 +62,6 @@ def _cache_features(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_t
     return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, warm_up_period_days, dataset_id,
                             cache_base_path=FEATURE_CACHE_BASE_PATH)
 
-def _read_features_from_cache(label: str, 
-                           params: FeatureParams = None,
-                           time_range: TimeRange = None,
-                           columns: typing.List[str] = None,
-                           dataset_id=None) -> pd.DataFrame:
-    """Read cached feature data for a specified time range"""
-    params_dir = _get_feature_params_dir(params)
-    return read_from_cache_generic(
-        label,
-        params_dir=params_dir,
-        time_range=time_range,
-        columns=columns,
-        dataset_id=dataset_id,
-        cache_base_path=FEATURE_CACHE_BASE_PATH
-    )
-
 def _calculate_feature_batch(raw_df: pd.DataFrame, params: FeatureParams = None) -> pd.DataFrame:
     """Calculate features for a batch of data using pandas implementation"""
     params = params or FeatureParams()
@@ -109,14 +93,24 @@ def calculate_and_cache_features(
     
     Parameters:
     -----------
+    dataset_mode : DATASET_MODE, optional
+        Dataset mode for cache path. If None, uses default dataset mode.
+    export_mode : EXPORT_MODE, optional
+        Export mode for cache path. If None, uses default export mode.
+    aggregation_mode : AGGREGATION_MODE, optional
+        Aggregation mode for cache path. If None, uses default aggregation mode.
     params : FeatureParams, optional
         Feature calculation parameters. If None, uses default parameters.
     time_range : TimeRange, optional
         Time range for feature calculation. If None, must provide individual time parameters.
+    calculation_batch_days : int, optional
+        Number of days to calculate features for in each batch.
     warm_up_days : int, optional
         Number of warm-up days for feature calculation. If None, 
         automatically determined based on the maximum window size
         in return_periods and ema_periods.
+    overwrite_cache : bool, optional
+        If True, overwrite existing cache files. If False, skip cache files that already exist.
     """
     params = params or FeatureParams()
     
@@ -201,18 +195,26 @@ def load_cached_features(
         export_mode: EXPORT_MODE = None,
         aggregation_mode: AGGREGATION_MODE = None
     ) -> pd.DataFrame:
-    """Load cached features for a specific time range"""
-    feature_label = "features"
+    """
+    Load cached features for a specific time range
     
-    # Get dataset ID for cache path if dataset_mode, export_mode, and aggregation_mode are provided
-    dataset_id = None
-    if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    
-    return _read_features_from_cache(
-        feature_label,
-        params=params,
-        time_range=time_range,
-        columns=columns,
-        dataset_id=dataset_id
+    Parameters:
+    -----------
+    params : FeatureParams, optional
+        Feature calculation parameters. If None, uses default parameters.
+    time_range : TimeRange, optional
+        Time range for feature calculation. If None, must provide individual time parameters.
+    columns : typing.List[str], optional
+        Columns to load from cache. If None, all columns are loaded.
+    dataset_mode : DATASET_MODE, optional
+        Dataset mode for cache path. If None, uses default dataset mode.
+    export_mode : EXPORT_MODE, optional
+        Export mode for cache path. If None, uses default export mode.
+    aggregation_mode : AGGREGATION_MODE, optional
+        Aggregation mode for cache path. If None, uses default aggregation mode.
+    """
+    return read_from_cache_generic(
+        'features', params_dir=_get_feature_params_dir(params), time_range=time_range, columns=columns,
+        dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode,
+        cache_base_path=FEATURE_CACHE_BASE_PATH
     )

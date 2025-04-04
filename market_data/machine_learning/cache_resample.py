@@ -72,10 +72,20 @@ def calculate_and_cache_resampled(
     
     Parameters:
     -----------
+    dataset_mode : DATASET_MODE, optional
+        Dataset mode for cache path. If None, uses default dataset mode.
+    export_mode : EXPORT_MODE, optional
+        Export mode for cache path. If None, uses default export mode.
+    aggregation_mode : AGGREGATION_MODE, optional
+        Aggregation mode for cache path. If None, uses default aggregation mode.
     params : ResampleParams, optional
         Resampling parameters. If None, uses default parameters.
     time_range : TimeRange, optional
         Time range for resampling. If None, must provide individual time parameters.
+    calculation_batch_days : int, optional
+        Number of days to calculate resampled data for in each batch.
+    overwrite_cache : bool, optional
+        If True, overwrite existing cache files. If False, skip cache files that already exist.
     """
     params = params or ResampleParams()
     
@@ -140,7 +150,24 @@ def load_cached_resampled_data(
         export_mode: EXPORT_MODE = None,
         aggregation_mode: AGGREGATION_MODE = None
     ) -> pd.DataFrame:
-    """Load cached resampled data for a specific time range"""
+    """
+    Load cached resampled data for a specific time range
+
+    Parameters:
+    -----------
+    params : ResampleParams, optional
+        Resampling parameters. If None, uses default parameters.
+    time_range : TimeRange, optional
+        Time range for resampling. If None, must provide individual time parameters.
+    columns : typing.List[str], optional
+        Columns to load from cache. If None, all columns are loaded.
+    dataset_mode : DATASET_MODE, optional
+        Dataset mode for cache path. If None, uses default dataset mode.
+    export_mode : EXPORT_MODE, optional
+        Export mode for cache path. If None, uses default export mode.
+    aggregation_mode : AGGREGATION_MODE, optional
+        Aggregation mode for cache path. If None, uses default aggregation mode.
+    """
     resample_label = "resampled"
     
     # Get dataset ID for cache path if dataset_mode, export_mode, and aggregation_mode are provided

@@ -68,15 +68,6 @@ def _cache_targets(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to
         cache_base_path=TARGET_CACHE_BASE_PATH
     )
 
-def _read_targets_from_cache(dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE, aggregation_mode: AGGREGATION_MODE,
-                           time_range: TimeRange, params_dir: str = None, columns: typing.List[str] = None) -> pd.DataFrame:
-    """Read target features from cache"""
-    return read_from_cache_generic(
-        'targets', params_dir, time_range, columns,
-        dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode,
-        cache_base_path=TARGET_CACHE_BASE_PATH
-    )
-
 def _calculate_target_batch(raw_df: pd.DataFrame, params: TargetParams = None) -> pd.DataFrame:
     """Calculate targets for a batch of data using pandas implementation"""
     params = params or TargetParams()
@@ -108,13 +99,23 @@ def calculate_and_cache_targets(
     
     Parameters:
     -----------
+    dataset_mode : DATASET_MODE, optional
+        Dataset mode for cache path. If None, uses default dataset mode.
+    export_mode : EXPORT_MODE, optional
+        Export mode for cache path. If None, uses default export mode.
+    aggregation_mode : AGGREGATION_MODE, optional
+        Aggregation mode for cache path. If None, uses default aggregation mode.
     params : TargetParams, optional
         Target calculation parameters. If None, uses default parameters.
     time_range : TimeRange, optional
         Time range for target calculation. If None, must provide individual time parameters.
+    calculation_batch_days : int, optional
+        Number of days to calculate targets for in each batch.
     warm_up_days : int, optional
         Number of warm-up days for target calculation. If None, 
         automatically determined based on the maximum forward period.
+    overwrite_cache : bool, optional
+        If True, overwrite existing cache files. If False, skip cache files that already exist.
     """
     params = params or TargetParams()
     
@@ -198,17 +199,26 @@ def load_cached_targets(
         export_mode: EXPORT_MODE = None,
         aggregation_mode: AGGREGATION_MODE = None
     ) -> pd.DataFrame:
-    """Load cached targets for a specific time range"""
-    target_label = "targets"
-    
-    # Get dataset ID for cache path if dataset_mode, export_mode, and aggregation_mode are provided
-    dataset_id = None
-    if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    
-    return _read_targets_from_cache(
-        dataset_mode, export_mode, aggregation_mode,
-        time_range,
-        params_dir=_get_target_params_dir(params),
-        columns=columns
+    """
+    Load cached targets for a specific time range
+
+    Parameters:
+    -----------
+    params : TargetParams, optional
+        Target calculation parameters. If None, uses default parameters.
+    time_range : TimeRange, optional
+        Time range for target calculation. If None, must provide individual time parameters.
+    columns : typing.List[str], optional
+        Columns to load from cache. If None, all columns are loaded.
+    dataset_mode : DATASET_MODE, optional
+        Dataset mode for cache path. If None, uses default dataset mode.
+    export_mode : EXPORT_MODE, optional
+        Export mode for cache path. If None, uses default export mode.
+    aggregation_mode : AGGREGATION_MODE, optional
+        Aggregation mode for cache path. If None, uses default aggregation mode.
+    """
+    return read_from_cache_generic(
+        'targets', params_dir=_get_target_params_dir(params), time_range=time_range, columns=columns,
+        dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode,
+        cache_base_path=TARGET_CACHE_BASE_PATH
     )
