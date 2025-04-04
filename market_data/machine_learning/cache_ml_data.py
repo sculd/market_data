@@ -11,7 +11,7 @@ from market_data.feature.feature import FeatureParams, DEFAULT_RETURN_PERIODS, D
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample import ResampleParams
-from market_data.machine_learning.data import prepare_ml_data
+from market_data.machine_learning.ml_data import prepare_ml_data
 from market_data.util.cache.time import (
     split_t_range,
 )
