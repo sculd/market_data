@@ -1,5 +1,5 @@
 Welcome to Market Data's documentation!
-=====================================
+=======================================
 
 .. toctree::
    :maxdepth: 2
@@ -25,18 +25,18 @@ This documentation covers the Market Data project, which provides tools for proc
 * Data resampling and preprocessing
 
 Getting Started
-==============
+===============
 
 To get started with the Market Data project:
 
-1. Install the required dependencies:
+1. Install the package in development mode:
    .. code-block:: bash
-      pip install -r requirements.txt
+      pip install -e .
 
 2. Import the modules you need:
    .. code-block:: python
-      from machine_learning import resample
-      from feature import feature
-      from ingest import bq
+      from market_data.machine_learning import resample
+      from market_data.feature import feature
+      from market_data.ingest import bq
 
 For more detailed information about specific modules, please refer to the API documentation below. 

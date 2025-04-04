@@ -64,4 +64,7 @@ autodoc_default_options = {
 
 # Copy button settings
 copybutton_prompt_text = r">>> |\.\.\. |\. |: |\$ |In \[\d*\]: | {2,5}\.\.\.: | {5,8}: "
-copybutton_prompt_is_regexp = True 
+copybutton_prompt_is_regexp = True
+
+# Add market_data to the Python path
+sys.path.insert(0, os.path.abspath('../../market_data')) 
