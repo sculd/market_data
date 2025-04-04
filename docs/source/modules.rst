@@ -40,12 +40,12 @@ Machine Learning Module
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: market_data.machine_learning.data
+.. automodule:: market_data.machine_learning.ml_data
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: market_data.machine_learning.cache_data
+.. automodule:: market_data.machine_learning.cache_ml_data
    :members:
    :undoc-members:
    :show-inheritance:
