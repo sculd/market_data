@@ -69,11 +69,10 @@ def read_features_from_cache(label: str,
                            dataset_id=None) -> pd.DataFrame:
     """Read cached feature data for a specified time range"""
     params_dir = get_feature_params_dir(params)
-    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
     return read_from_cache_generic(
         label,
         params_dir=params_dir,
-        t_from=t_from, t_to=t_to,
+        time_range=time_range,
         columns=columns,
         dataset_id=dataset_id,
         cache_base_path=FEATURE_CACHE_BASE_PATH

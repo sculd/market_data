@@ -5,7 +5,7 @@ import logging
 import warnings
 import numba as nb
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 logger = logging.getLogger(__name__)
 
@@ -32,24 +32,9 @@ class TargetParams:
         tp_values (List[float]): Take-profit threshold values (as decimal)
         sl_values (List[float]): Stop-loss threshold values (as decimal)
     """
-    
-    def __init__(
-        self,
-        forward_periods: List[int] = None,
-        tp_values: List[float] = None,
-        sl_values: List[float] = None
-    ):
-        """
-        Initialize target parameters.
-        
-        Args:
-            forward_periods: Periods for forward returns calculation. If None, uses DEFAULT_FORWARD_PERIODS
-            tp_values: Take-profit threshold values. If None, uses DEFAULT_TP_VALUES
-            sl_values: Stop-loss threshold values. If None, uses DEFAULT_SL_VALUES
-        """
-        self.forward_periods = forward_periods or DEFAULT_FORWARD_PERIODS
-        self.tp_values = tp_values or DEFAULT_TP_VALUES
-        self.sl_values = sl_values or DEFAULT_SL_VALUES
+    forward_periods: List[int] = field(default_factory=lambda: DEFAULT_FORWARD_PERIODS)
+    tp_values: List[float] = field(default_factory=lambda: DEFAULT_TP_VALUES)
+    sl_values: List[float] = field(default_factory=lambda: DEFAULT_SL_VALUES)
     
     def __repr__(self) -> str:
         """String representation of the parameters."""

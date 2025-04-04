@@ -110,9 +110,9 @@ def to_filename(basedir: str, label: str, t_from: datetime.datetime, t_to: datet
     t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
     
     # Generate dataset_id if not provided but we have the necessary parameters
-    if dataset_id is None and all(x is not None for x in [dataset_mode, export_mode, aggregation_mode]):
-        dataset_id = get_full_table_id(dataset_mode, export_mode, aggregation_mode)
-    
+    if dataset_id is None and all(x is not None for x in [dataset_mode, export_mode]):
+        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+
     # Base directory structure with dataset_id if provided
     if dataset_id:
         base_dir = os.path.join(basedir, label, dataset_id)

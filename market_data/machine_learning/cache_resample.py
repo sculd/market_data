@@ -43,11 +43,10 @@ def read_resampled_data_from_cache(label: str,
                                  dataset_id=None) -> pd.DataFrame:
     """Read cached resampled data for a specified time range"""
     params_dir = params_to_dir_name(asdict(params or ResampleParams()))
-    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
     return read_from_cache_generic(
         label,
         params_dir=params_dir,
-        t_from=t_from, t_to=t_to,
+        time_range=time_range,
         columns=columns,
         dataset_id=dataset_id,
         cache_base_path=RESAMPLE_CACHE_BASE_PATH

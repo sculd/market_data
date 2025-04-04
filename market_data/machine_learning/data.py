@@ -55,25 +55,27 @@ def prepare_ml_data(
     target_params = target_params or TargetParams()
     resample_params = resample_params or ResampleParams()
     
+    t_from, t_to = time_range.to_datetime()
     # 1. Ensure raw data is present
     raw_df = read_from_cache_or_query_and_cache(
         dataset_mode=dataset_mode,
         export_mode=export_mode,
         aggregation_mode=aggregation_mode,
-        time_range=time_range,
+        t_from=t_from, t_to=t_to,
         overwirte_cache=overwrite_cache
     )
     
     if raw_df is None or len(raw_df) == 0:
         logger.error("No raw data available")
         return pd.DataFrame()
-    
+
     # 2. Ensure feature data is present
     features_df = load_cached_features(
+        params=feature_params,
+        time_range=time_range,
         dataset_mode=dataset_mode,
         export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-        time_range=time_range
+        aggregation_mode=aggregation_mode
     )
     
     if features_df is None:
@@ -94,10 +96,11 @@ def prepare_ml_data(
     
     # 3. Ensure target data is present
     targets_df = load_cached_targets(
+        params=target_params,
+        time_range=time_range,
         dataset_mode=dataset_mode,
         export_mode=export_mode,
         aggregation_mode=aggregation_mode,
-        time_range=time_range
     )
     
     if targets_df is None:
@@ -148,16 +151,12 @@ def prepare_ml_data(
         return pd.DataFrame()
     
     # 5. Join feature, target and resampled data
-    # First join features and targets
-    combined_df = features_df.join(targets_df, how='inner')
+    features_targets_df = features_df.reset_index().set_index(["timestamp", "symbol"]).join(targets_df.reset_index().set_index(["timestamp", "symbol"]))
+    data_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(features_targets_df)
     
-    # Then filter to resampled timestamps
-    resampled_timestamps = resampled_df.index
-    final_df = combined_df[combined_df.index.isin(resampled_timestamps)]
-    
-    if len(final_df) == 0:
+    if len(data_df) == 0:
         logger.error("No data after joining features, targets and resampled timestamps")
         return pd.DataFrame()
     
-    logger.info(f"Successfully prepared ML data with {len(final_df)} rows")
-    return final_df
+    logger.info(f"Successfully prepared ML data with {len(data_df)} rows")
+    return data_df

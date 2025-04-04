@@ -5,7 +5,7 @@ import logging
 import warnings
 import numba as nb
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 # Default values for feature parameters
@@ -29,24 +29,9 @@ class FeatureParams:
         ema_periods (List[int]): Periods (in minutes) for calculating EMAs
         add_btc_features (bool): Whether to add BTC-related features
     """
-    
-    def __init__(
-        self,
-        return_periods: List[int] = None,
-        ema_periods: List[int] = None,
-        add_btc_features: bool = True
-    ):
-        """
-        Initialize feature parameters.
-        
-        Args:
-            return_periods: Periods for returns calculation. If None, uses DEFAULT_RETURN_PERIODS
-            ema_periods: Periods for EMA calculation. If None, uses DEFAULT_EMA_PERIODS
-            add_btc_features: Whether to add BTC-related features
-        """
-        self.return_periods = return_periods or DEFAULT_RETURN_PERIODS
-        self.ema_periods = ema_periods or DEFAULT_EMA_PERIODS
-        self.add_btc_features = add_btc_features
+    return_periods: List[int] = field(default_factory=lambda: DEFAULT_RETURN_PERIODS)
+    ema_periods: List[int] = field(default_factory=lambda: DEFAULT_EMA_PERIODS)
+    add_btc_features: bool = True
     
     def __repr__(self) -> str:
         """String representation of the parameters."""

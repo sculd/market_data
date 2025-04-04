@@ -69,8 +69,7 @@ def fetch_from_daily_cache(label: str, t_from: datetime.datetime, t_to: datetime
         cache_base_path = os.path.expanduser('~/algo_cache')
         Path(cache_base_path).mkdir(parents=True, exist_ok=True)
 
-    filename = to_filename(cache_base_path, label, t_from, t_to, params_dir, dataset_id,
-                          dataset_mode, export_mode, aggregation_mode)
+    filename = to_filename(cache_base_path, label, t_from, t_to, params_dir, dataset_id, dataset_mode, export_mode, aggregation_mode)
     if os.path.exists(filename):
         logger.info(f"{filename} exists.")
         return pd.read_parquet(filename, columns=columns)

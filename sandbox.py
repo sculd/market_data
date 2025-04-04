@@ -74,7 +74,7 @@ market_data.machine_learning.cache_resample.resample_and_cache_data(
 
 #'''
 import market_data.machine_learning.cache_data
-market_data.machine_learning.cache_data.prepare_ml_data(
+market_data.machine_learning.cache_data.calculate_and_cache_data(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
 )
