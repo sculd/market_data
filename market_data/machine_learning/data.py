@@ -12,7 +12,7 @@ from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_
 from market_data.util.time import TimeRange
 from market_data.feature.cache_feature import load_cached_features, calculate_and_cache_features
 from market_data.feature.cache_target import load_cached_targets, calculate_and_cache_targets
-from market_data.machine_learning.cache_resample import load_cached_resampled_data, resample_and_cache_data
+from market_data.machine_learning.cache_resample import load_cached_resampled_data, calculate_and_cache_resampled
 from market_data.machine_learning.resample import ResampleParams
 
 logger = logging.getLogger(__name__)
@@ -130,7 +130,7 @@ def prepare_ml_data(
     
     if resampled_df is None:
         logger.info("Calculating and caching resampled data")
-        resample_and_cache_data(
+        calculate_and_cache_resampled(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,

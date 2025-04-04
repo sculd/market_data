@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/ml_data')
 Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
-def get_resample_params_dir(
+def _get_resample_params_dir(
     resample_params: ResampleParams = None,
     feature_params: FeatureParams = None,
     target_params: TargetParams = None
@@ -68,7 +68,7 @@ def get_resample_params_dir(
         
     return params_to_dir_name(params_dict)
 
-def calculate_and_cache_data(
+def calculate_and_cache_ml_data(
     dataset_mode: DATASET_MODE,
     export_mode: EXPORT_MODE,
     aggregation_mode: AGGREGATION_MODE,
@@ -130,7 +130,7 @@ def calculate_and_cache_data(
     # Cache the data by day
     logger.info("Caching ML data by day")
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    params_dir = get_resample_params_dir(resample_params, feature_params, target_params)
+    params_dir = _get_resample_params_dir(resample_params, feature_params, target_params)
     
     cache_data_by_day(
         df=ml_data_df,
@@ -146,7 +146,7 @@ def calculate_and_cache_data(
     
     logger.info(f"Successfully cached ML data with {len(ml_data_df)} rows")
 
-def load_cached_data(
+def load_cached_ml_data(
     dataset_mode: DATASET_MODE,
     export_mode: EXPORT_MODE,
     aggregation_mode: AGGREGATION_MODE,
@@ -181,7 +181,7 @@ def load_cached_data(
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
     
     # Get parameters directory name
-    params_dir = get_resample_params_dir(resample_params, feature_params, target_params)
+    params_dir = _get_resample_params_dir(resample_params, feature_params, target_params)
     
     # Read from cache
     return read_from_cache_generic(

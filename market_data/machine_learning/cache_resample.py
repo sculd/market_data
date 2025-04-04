@@ -29,14 +29,14 @@ from market_data.util.cache.path import (
 RESAMPLE_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
 Path(RESAMPLE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
-def cache_resampled_data(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
+def _cache_resampled_data(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                         params: ResampleParams = None, overwrite=True, dataset_id=None) -> None:
     """Cache a resampled DataFrame, splitting it into daily pieces"""
     params_dir = params_to_dir_name(asdict(params or ResampleParams()))
     return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, dataset_id=dataset_id,
                             cache_base_path=RESAMPLE_CACHE_BASE_PATH, warm_up_period_days=0)
 
-def read_resampled_data_from_cache(label: str, 
+def _read_resampled_data_from_cache(label: str, 
                                  params: ResampleParams = None,
                                  time_range: TimeRange = None,
                                  columns: typing.List[str] = None,
@@ -52,7 +52,8 @@ def read_resampled_data_from_cache(label: str,
         cache_base_path=RESAMPLE_CACHE_BASE_PATH
     )
 
-def resample_and_cache_data(
+
+def calculate_and_cache_resampled(
         dataset_mode: DATASET_MODE,
         export_mode: EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
@@ -119,7 +120,7 @@ def resample_and_cache_data(
                 continue
                 
             # 4. Cache resampled data daily
-            cache_resampled_data(
+            _cache_resampled_data(
                 resampled_df, resample_label, 
                 calc_t_from, calc_t_to,
                 params=params,
@@ -147,7 +148,7 @@ def load_cached_resampled_data(
     if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
         dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
     
-    return read_resampled_data_from_cache(
+    return _read_resampled_data_from_cache(
         resample_label,
         params=params,
         time_range=time_range,
