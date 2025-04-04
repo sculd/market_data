@@ -30,11 +30,15 @@ Getting Started
 To get started with the Market Data project:
 
 1. Install the package in development mode:
+
    .. code-block:: bash
+
       pip install -e .
 
 2. Import the modules you need:
+
    .. code-block:: python
+
       from market_data.machine_learning import resample
       from market_data.feature import feature
       from market_data.ingest import bq
