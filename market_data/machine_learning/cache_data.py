@@ -76,7 +76,7 @@ def calculate_and_cache_ml_data(
     feature_params: FeatureParams = None,
     target_params: TargetParams = None,
     resample_params: ResampleParams = None,
-    overwrite_cache: bool = False
+    overwrite_cache: bool = True
 ) -> None:
     """
     Calculate and cache ML data by preparing the data and caching it daily.
