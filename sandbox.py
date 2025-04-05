@@ -1,6 +1,5 @@
 import logging
-import sys
-import os
+import os, sys, datetime
 from dotenv import load_dotenv
 import importlib
 import pandas as pd
@@ -45,7 +44,7 @@ print(df)
 
 
 time_range = market_data.util.time.TimeRange(
-    date_str_from='2024-01-01', date_str_to='2024-01-03',
+    date_str_from='2024-01-01', date_str_to='2025-01-01',
     )
 
 '''
@@ -72,12 +71,35 @@ market_data.machine_learning.cache_resample.calculate_and_cache_resampled(
 )
 #'''
 
-#'''
-import market_data.machine_learning.cache_data
-market_data.machine_learning.cache_data.calculate_and_cache_ml_data(
+'''
+import market_data.machine_learning.cache_ml_data
+market_data.machine_learning.cache_ml_data.calculate_and_cache_ml_data(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
 )
+#'''
+
+
+#'''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2024-06-01',
+    )
+
+import market_data.machine_learning.validation_data
+data_sets = market_data.machine_learning.validation_data.create_train_validation_test_splits(
+    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    time_range=time_range,
+    fixed_window_size = datetime.timedelta(days=90),
+    step_size = datetime.timedelta(days=10),
+    purge_period = datetime.timedelta(days=0),
+    embargo_period = datetime.timedelta(days=1),
+    split_ratio = [0.7, 0.3, 0.0],
+)
+for i, d in enumerate(data_sets):
+    print(f'{i}')
+    print(f'train: {len(d[0])}\n{d[0].head(1).index}\n{d[0].tail(1).index}')
+    print(f'validation: {len(d[1])}\n{d[1].head(1).index}\n{d[1].tail(1).index}')
+    print(f'test: {len(d[2])}\n{d[2].head(1).index}\n{d[2].tail(1).index}')
 #'''
 
 print('done')

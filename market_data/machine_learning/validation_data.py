@@ -102,8 +102,8 @@ def create_train_validation_test_splits(
         
         # Calculate split points based on ratios
         total_points = len(window_data)
-        train_end_idx = int(total_points * split_train)
-        val_end_idx = int(total_points * (split_train + split_validation))
+        train_end_idx = int(total_points * split_train) - 1 
+        val_end_idx = int(total_points * (split_train + split_validation)) - 1
 
         # Apply purge and embargo periods
         train_end = window_data.index[train_end_idx]
