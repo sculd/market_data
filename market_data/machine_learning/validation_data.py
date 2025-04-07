@@ -100,23 +100,18 @@ def create_train_validation_test_splits(
         # Get the data up to window_end
         window_data = ml_data[window_start:window_end]
         
-        # Calculate split points based on time ranges
-        window_duration = window_end - window_start
-        train_duration = window_duration * split_train
-        val_duration = window_duration * split_validation
-        
-        # Calculate split timestamps
-        train_end = window_start + train_duration
-        val_start = train_end + embargo_period
-        val_end = val_start + val_duration
-        test_start = val_end + embargo_period
+        # Calculate split points based on ratios
+        total_points = len(window_data)
+        train_end_idx = int(total_points * split_train) - 1 
+        val_end_idx = int(total_points * (split_train + split_validation)) - 1
 
-        # Split the data
-        train_data = window_data[:train_end]
-        val_data = window_data[val_start:val_end]
-        test_data = window_data[test_start:]
+        # Apply purge and embargo periods
+        train_end = window_data.index[train_end_idx]
+        val_start = window_data.index[train_end_idx] + embargo_period
+        val_end = window_data.index[val_end_idx]
+        test_start = window_data.index[val_end_idx] + embargo_period
 
-        data_sets.append((train_data, val_data, test_data))
+        data_sets.append((window_data[:train_end], window_data[val_start:val_end], window_data[test_start:],))
 
         # Move the window by step_size
         if window_type == 'fixed':
