@@ -1,13 +1,18 @@
+"""
+Target caching module.
+
+This module provides functions for calculating and caching targets.
+"""
+
 import pandas as pd
-import datetime
 import logging
-import typing
-import math
 import os
+import datetime
 from pathlib import Path
 from typing import Optional, List, Union, Tuple
 
-from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
+from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.target.target import create_targets, TargetParams
 from market_data.util.cache.time import (
@@ -16,6 +21,7 @@ from market_data.util.cache.time import (
 from market_data.util.cache.dataframe import (
     cache_data_by_day,
     read_from_cache_generic,
+    cache_daily_df
 )
 from market_data.util.cache.path import (
     params_to_dir_name
@@ -30,6 +36,7 @@ Path(TARGET_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 
 def _get_target_params_dir(params: TargetParams = None) -> str:
+    """Convert target parameters to a directory name string"""
     params = params or TargetParams()
     params_dict = {
         'fp': params.forward_periods,
@@ -53,6 +60,7 @@ def _get_recommended_warm_up_days(params: TargetParams) -> int:
     
     # Convert to days (assuming periods are in minutes for 24/7 markets)
     # Add a small buffer of 2 days to be safe
+    import math
     days_needed = math.ceil(max_forward / (24 * 60)) + 2
     
     # Ensure at least 3 days minimum
@@ -98,6 +106,9 @@ def calculate_and_cache_targets(
         warm_up_days = _get_recommended_warm_up_days(params)
         logger.info(f"Using {warm_up_days} warm-up days for targets")
     
+    # Get the params directory name
+    params_dir = _get_target_params_dir(params)
+    
     # Use the generic calculate_and_cache_data function
     calculate_and_cache_data(
         dataset_mode=dataset_mode,
@@ -110,13 +121,14 @@ def calculate_and_cache_targets(
         overwrite_cache=overwrite_cache,
         label="targets",
         calculate_batch_fn=create_targets,
-        cache_base_path=TARGET_CACHE_BASE_PATH
+        cache_base_path=TARGET_CACHE_BASE_PATH,
+        params_dir=params_dir
     )
 
 def load_cached_targets(
         params: TargetParams = None,
         time_range: TimeRange = None,
-        columns: typing.List[str] = None,
+        columns: List[str] = None,
         dataset_mode: DATASET_MODE = None,
         export_mode: EXPORT_MODE = None,
         aggregation_mode: AGGREGATION_MODE = None
@@ -130,7 +142,7 @@ def load_cached_targets(
         Target calculation parameters. If None, uses default parameters.
     time_range : TimeRange, optional
         Time range for target calculation. If None, must provide individual time parameters.
-    columns : typing.List[str], optional
+    columns : List[str], optional
         Columns to load from cache. If None, all columns are loaded.
     dataset_mode : DATASET_MODE, optional
         Dataset mode for cache path. If None, uses default dataset mode.
@@ -143,4 +155,4 @@ def load_cached_targets(
         'targets', params_dir=_get_target_params_dir(params), time_range=time_range, columns=columns,
         dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode,
         cache_base_path=TARGET_CACHE_BASE_PATH
-    )
+    ) 

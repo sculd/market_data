@@ -97,7 +97,9 @@ def calculate_and_cache_features(
     # If warm_up_days not provided, calculate based on feature parameters
     if warm_up_days is None:
         warm_up_days = _get_recommended_warm_up_days(params)
-        logging.info(f"Using auto-calculated warm-up period of {warm_up_days} days based on feature parameters")
+    
+    # Get the params directory name
+    params_dir = _get_feature_params_dir(params)
     
     # Use the generic calculate_and_cache_data function
     calculate_and_cache_data(
@@ -111,7 +113,8 @@ def calculate_and_cache_features(
         overwrite_cache=overwrite_cache,
         label="features",
         calculate_batch_fn=create_features,
-        cache_base_path=FEATURE_CACHE_BASE_PATH
+        cache_base_path=FEATURE_CACHE_BASE_PATH,
+        params_dir=params_dir
     )
 
 def load_cached_features(

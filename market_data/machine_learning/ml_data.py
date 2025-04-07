@@ -5,13 +5,13 @@ from typing import List, Dict, Tuple, Optional, Union, Any
 import logging
 from pathlib import Path
 
-from market_data.feature.target import TargetParams
+from market_data.target.target import TargetParams
 from market_data.feature.feature import FeatureParams
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.feature.cache_feature import load_cached_features, calculate_and_cache_features
-from market_data.feature.cache_target import load_cached_targets, calculate_and_cache_targets
+from market_data.target.cache_target import load_cached_targets, calculate_and_cache_targets
 from market_data.machine_learning.cache_resample import load_cached_resampled_data, calculate_and_cache_resampled
 from market_data.machine_learning.resample import ResampleParams
 
@@ -151,13 +151,14 @@ def prepare_ml_data(
         return pd.DataFrame()
     
     # 5. Join feature, target and resampled data
-    features_targets_df = features_df.reset_index().set_index(["timestamp", "symbol"]).join(targets_df.reset_index().set_index(["timestamp", "symbol"]))
-    data_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(features_targets_df).reset_index().set_index("timestamp")
-    data_df.drop(["open", "high", "low", "close", "volume"], axis=1, inplace=True)
-    
-    if len(data_df) == 0:
+    resampled_df.drop(["open", "high", "low", "close", "volume"], axis=1, inplace=True)
+    feature_resampled_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(features_df.reset_index().set_index(["timestamp", "symbol"]))
+    targets_resampled_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(targets_df.reset_index().set_index(["timestamp", "symbol"]))
+    ml_data_df = feature_resampled_df.join(targets_resampled_df).reset_index().set_index("timestamp")
+
+    if len(ml_data_df) == 0:
         logger.error("No data after joining features, targets and resampled timestamps")
         return pd.DataFrame()
     
-    logger.info(f"Successfully prepared ML data with {len(data_df)} rows")
-    return data_df
+    logger.info(f"Successfully prepared ML data with {len(ml_data_df)} rows")
+    return ml_data_df

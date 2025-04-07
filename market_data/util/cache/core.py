@@ -36,6 +36,7 @@ def calculate_and_cache_data(
         label: str = None,
         calculate_batch_fn: Callable[[pd.DataFrame, T], pd.DataFrame] = None,
         cache_base_path: str = None,
+        params_dir: str = None,
         ) -> None:
     """
     Generic function to calculate and cache data for a specified time range.
@@ -69,6 +70,8 @@ def calculate_and_cache_data(
         Function to calculate data for a batch
     cache_base_path : str, optional
         Base path for caching data
+    params_dir : str, optional
+        Directory name string generated from the parameters for caching
     """
     # Resolve time range
     t_from, t_to = time_range.to_datetime()
@@ -121,23 +124,7 @@ def calculate_and_cache_data(
                 # warm_up_days is enough because warm_up is aligned to day boundaries
                 warm_up_period_days = warm_up_days
                 
-            # Use cache_data_by_day instead of cache_daily_df to handle multiple days properly
-            
-            # Get param directory based on the params object
-            if hasattr(params, 'forward_periods'):
-                # It's a TargetParams
-                from market_data.feature.cache_target import _get_target_params_dir
-                params_dir = _get_target_params_dir(params)
-            elif hasattr(params, 'return_periods'):
-                # It's a FeatureParams
-                from market_data.feature.cache_feature import _get_feature_params_dir
-                params_dir = _get_feature_params_dir(params)
-            else:
-                # Generic params
-                from market_data.util.cache.path import params_to_dir_name
-                params_dict = params.__dict__ if hasattr(params, '__dict__') else {}
-                params_dir = params_to_dir_name(params_dict)
-            
+            # Use cache_data_by_day to handle multiple days properly
             cache_data_by_day(
                 result_df, label,
                 calc_t_from, calc_t_to,
