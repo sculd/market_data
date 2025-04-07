@@ -15,8 +15,8 @@ import warnings
 
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
-from market_data.util.cache.time import split_t_range, anchor_to_begin_of_day
-from market_data.util.cache.dataframe import TIMESTAMP_INDEX_NAME, cache_daily_df, fetch_from_daily_cache, cache_data_by_day
+from market_data.util.cache.time import split_t_range
+from market_data.util.cache.dataframe import cache_data_by_day
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 
 logger = logging.getLogger(__name__)

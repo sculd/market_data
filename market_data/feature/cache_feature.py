@@ -28,37 +28,6 @@ Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 
-def _get_feature_params_dir(params: FeatureParams = None) -> str:
-    params = params or FeatureParams()
-    params_dict = {
-        'rp': params.return_periods,
-        'ep': params.ema_periods,
-        'btc': params.add_btc_features
-    }
-    return params_to_dir_name(params_dict)
-
-def _get_recommended_warm_up_days(params: FeatureParams) -> int:
-    """
-    Calculate the recommended warm-up period based on feature parameters.
-    
-    Uses the maximum window size from return_periods, ema_periods, and volatility_windows,
-    plus a buffer to ensure sufficient historical data for feature calculations.
-    
-    Returns:
-        int: Recommended number of warm-up days
-    """
-    # Find the maximum window period from all feature types
-    max_window = max(
-        max(params.return_periods),
-        max(params.ema_periods),
-        max(params.volatility_windows) if params.volatility_windows else 0
-    )
-    
-    # Convert to days (assuming periods are in minutes for 24/7 markets)
-    days_needed = math.ceil(max_window / (24 * 60))
-    
-    return days_needed
-
 def calculate_and_cache_features(
         dataset_mode: DATASET_MODE,
         export_mode: EXPORT_MODE,
@@ -96,10 +65,10 @@ def calculate_and_cache_features(
     
     # If warm_up_days not provided, calculate based on feature parameters
     if warm_up_days is None:
-        warm_up_days = _get_recommended_warm_up_days(params)
+        warm_up_days = params.get_warm_up_days()
     
-    # Get the params directory name
-    params_dir = _get_feature_params_dir(params)
+    # Get the params directory name using the method from FeatureParams
+    params_dir = params.get_params_dir()
     
     # Use the generic calculate_and_cache_data function
     calculate_and_cache_data(
@@ -143,8 +112,11 @@ def load_cached_features(
     aggregation_mode : AGGREGATION_MODE, optional
         Aggregation mode for cache path. If None, uses default aggregation mode.
     """
+    # Create default params if None
+    params = params or FeatureParams()
+    
     return read_from_cache_generic(
-        'features', params_dir=_get_feature_params_dir(params), time_range=time_range, columns=columns,
+        'features', params_dir=params.get_params_dir(), time_range=time_range, columns=columns,
         dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode,
         cache_base_path=FEATURE_CACHE_BASE_PATH
     )

@@ -28,18 +28,61 @@ class FeatureParams:
         return_periods (List[int]): Periods (in minutes) for calculating returns
         ema_periods (List[int]): Periods (in minutes) for calculating EMAs
         add_btc_features (bool): Whether to add BTC-related features
+        volatility_windows (List[int]): Window sizes in minutes for volatility regime calculation
     """
     return_periods: List[int] = field(default_factory=lambda: DEFAULT_RETURN_PERIODS)
     ema_periods: List[int] = field(default_factory=lambda: DEFAULT_EMA_PERIODS)
     add_btc_features: bool = True
+    volatility_windows: List[int] = field(default_factory=lambda: [240])  # 1d (1w, 1m)
     
     def __repr__(self) -> str:
         """String representation of the parameters."""
         return (
             f"FeatureParams(return_periods={self.return_periods}, "
             f"ema_periods={self.ema_periods}, "
-            f"add_btc_features={self.add_btc_features})"
+            f"add_btc_features={self.add_btc_features}, "
+            f"volatility_windows={self.volatility_windows})"
         )
+    
+    def get_params_dir(self) -> str:
+        """
+        Generate a directory name string from feature parameters.
+        
+        Returns:
+            str: Directory name string suitable for caching
+        """
+        from market_data.util.cache.path import params_to_dir_name
+        
+        params_dict = {
+            'rp': self.return_periods,
+            'ep': self.ema_periods,
+            'btc': self.add_btc_features
+        }
+        return params_to_dir_name(params_dict)
+        
+    def get_warm_up_days(self) -> int:
+        """
+        Calculate the recommended warm-up period based on feature parameters.
+        
+        Uses the maximum window size from return_periods, ema_periods, and volatility_windows,
+        plus a buffer to ensure sufficient historical data for feature calculations.
+        
+        Returns:
+            int: Recommended number of warm-up days
+        """
+        import math
+        
+        # Find the maximum window period from all feature types
+        max_window = max(
+            max(self.return_periods) if self.return_periods else 0,
+            max(self.ema_periods) if self.ema_periods else 0,
+            max(self.volatility_windows) if self.volatility_windows else 0
+        )
+        
+        # Convert to days (assuming periods are in minutes for 24/7 markets)
+        days_needed = math.ceil(max_window / (24 * 60))
+        
+        return days_needed
 
 # Numba-accelerated functions for performance-critical calculations
 @nb.njit(cache=True)
@@ -166,6 +209,102 @@ def _calculate_bollinger_bands_numba(closes, period, std_dev):
     
     return upper_band, middle_band, lower_band
 
+@nb.njit(cache=True, parallel=False, fastmath=True)
+def _calculate_garch_volatility(returns, omega=0.1, alpha=0.1, beta=0.8):
+    """Numba-accelerated GARCH(1,1) volatility calculation."""
+    n = len(returns)
+    sigma2 = np.zeros(n)
+    
+    # Initialize with variance of non-NaN returns
+    valid_mask = ~np.isnan(returns)
+    if np.any(valid_mask):
+        sigma2[0] = np.nanvar(returns[valid_mask])
+    else:
+        sigma2[0] = omega  # Default value if all returns are NaN
+    
+    # Pre-calculate squared returns for performance
+    squared_returns = np.where(np.isnan(returns), 0.0, returns * returns)
+    
+    # Main GARCH loop with optimized operations
+    for i in range(1, n):
+        if np.isnan(returns[i-1]):
+            sigma2[i] = sigma2[i-1]
+        else:
+            sigma2[i] = omega + alpha * squared_returns[i-1] + beta * sigma2[i-1]
+    
+    return np.sqrt(sigma2)
+
+@nb.njit(cache=True)
+def _calculate_rolling_volatility_regime(volatility: np.ndarray, window: int = 1440) -> np.ndarray:
+    """
+    Calculate rolling volatility regime using a moving window.
+    
+    Args:
+        volatility: Array of volatility values
+        window: Rolling window size in minutes (default: 1440 = 1 day)
+    
+    Returns:
+        Array of regime classifications:
+        -1: Low volatility (stable/bull)
+        0: Medium volatility (transition)
+        1: High volatility (bear)
+    """
+    n = len(volatility)
+    regime = np.zeros(n)
+    
+    for i in range(window, n):
+        # Get the window of volatility values
+        window_vol = volatility[i-window:i]
+        
+        # Calculate percentiles for this window
+        low_threshold = np.percentile(window_vol, 33)
+        high_threshold = np.percentile(window_vol, 66)
+        
+        # Classify current point
+        if volatility[i] > high_threshold:
+            regime[i] = 1  # High volatility
+        elif volatility[i] < low_threshold:
+            regime[i] = -1  # Low volatility
+    
+    # Fill initial window with zeros
+    regime[:window] = 0
+    
+    return regime
+
+@nb.njit(cache=True)
+def _calculate_rolling_zscore(volatility: np.ndarray, window: int = 1440) -> np.ndarray:
+    """
+    Calculate rolling z-score of volatility using a moving window.
+    
+    Args:
+        volatility: Array of volatility values
+        window: Rolling window size in minutes (default: 1440 = 1 day)
+    
+    Returns:
+        Array of z-scores
+    """
+    n = len(volatility)
+    zscore = np.zeros(n)
+    
+    for i in range(window, n):
+        # Get the window of volatility values
+        window_vol = volatility[i-window:i]
+        
+        # Calculate mean and std for this window
+        mean = np.mean(window_vol)
+        std = np.std(window_vol)
+        
+        # Calculate z-score
+        if std > 0:
+            zscore[i] = (volatility[i] - mean) / std
+        else:
+            zscore[i] = 0
+    
+    # Fill initial window with zeros
+    zscore[:window] = 0
+    
+    return zscore
+
 class FeatureEngineer:
     """
     Class for engineering features from OHLCV market data.
@@ -230,9 +369,26 @@ class FeatureEngineer:
             # Create a dictionary to hold all feature columns
             feature_data = {'symbol': symbol}
             
+            # Calculate period 1 returns (needed for GARCH)
+            returns_1 = self.calculate_return(group, period=1)
+            i = 0
+            while i < len(returns_1) and np.isnan(returns_1.iloc[i]):
+                returns_1.iloc[i] = 0
+                i += 1
+            
+            # Calculate GARCH volatility
+            volatility = _calculate_garch_volatility(returns_1.values)
+            feature_data['garch_volatility'] = volatility
+            
+            # Calculate rolling regime and zscore for different time horizons
+            for window in self.params.volatility_windows:
+                feature_data[f'volatility_regime_{window}'] = _calculate_rolling_volatility_regime(volatility, window=window)
+                feature_data[f'volatility_zscore_{window}'] = _calculate_rolling_zscore(volatility, window=window)
+            
             # Price indicators
             for period in self.params.return_periods:
-                feature_data[f'return_{period}m'] = self.calculate_return(group, period)
+                if period != 1:  # Skip if we already calculated it
+                    feature_data[f'return_{period}m'] = self.calculate_return(group, period)
             
             for period in self.params.ema_periods:
                 ema = self.calculate_ema(group, period)
