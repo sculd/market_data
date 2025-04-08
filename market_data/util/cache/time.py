@@ -87,6 +87,7 @@ def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime,
 def is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) -> bool:
     """Check if time range is exactly one cache interval (day) starting at zero hour"""
     t_from_plus_interval = anchor_to_begin_of_day(t_from + CACHE_INTERVAL)
+    #t_from_plus_interval = t_from + CACHE_INTERVAL
     if t_to != t_from_plus_interval:
         return False
 

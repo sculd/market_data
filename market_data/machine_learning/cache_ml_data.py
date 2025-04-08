@@ -13,7 +13,7 @@ from market_data.util.time import TimeRange
 from market_data.machine_learning.resample import ResampleParams
 from market_data.machine_learning.ml_data import prepare_ml_data
 from market_data.util.cache.time import (
-    split_t_range,
+    anchor_to_begin_of_day
 )
 from market_data.util.cache.dataframe import (
     cache_data_by_day,
@@ -192,7 +192,8 @@ def calculate_and_cache_ml_data(
             overwrite_cache=overwrite_cache
         )
 
-        current_date += datetime.timedelta(days=1)
+        current_date = anchor_to_begin_of_day(current_date + datetime.timedelta(days=1))
+
 
 def load_cached_ml_data(
     dataset_mode: DATASET_MODE,
