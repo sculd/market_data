@@ -115,25 +115,46 @@ class VolatilityFeature:
         if params.price_col not in df.columns:
             raise ValueError(f"Price column '{params.price_col}' not found in DataFrame")
         
-        # Create result DataFrame
-        result = pd.DataFrame(index=df.index)
+        # Check if 'symbol' column exists
+        has_symbol = 'symbol' in df.columns
+        if not has_symbol:
+            logger.warning("DataFrame does not have a 'symbol' column, will use a single default symbol")
+            df = df.copy()
+            df['symbol'] = 'default'
         
-        # Extract prices as numpy array for Numba functions
-        prices = df[params.price_col].values
+        # Create list to store DataFrames for each symbol
+        results = []
         
-        # Calculate returns (period-to-period) using function from returns module
-        returns = _calculate_simple_returns_numba(prices, 1)
-        
-        # Calculate volatility for each window using Numba
-        for window in params.windows:
-            # Calculate rolling standard deviation of returns
-            vol = _calculate_rolling_std_numba(returns, window)
+        # Process each symbol separately
+        for symbol, group_df in df.groupby('symbol'):
+            # Create result DataFrame for this symbol
+            symbol_result = pd.DataFrame(index=group_df.index)
             
-            # Annualize if requested
-            if params.annualize:
-                annualization_factor = np.sqrt(params.trading_periods_per_year / window)
-                vol = _annualize_volatility_numba(vol, params.trading_periods_per_year / window)
+            # Add symbol column
+            symbol_result['symbol'] = symbol
             
-            result[f'volatility_{window}'] = vol
+            # Extract prices as numpy array for Numba functions
+            prices = group_df[params.price_col].values
+            
+            # Calculate returns (period-to-period) using function from returns module
+            returns = _calculate_simple_returns_numba(prices, 1)
+            
+            # Calculate volatility for each window using Numba
+            for window in params.windows:
+                # Calculate rolling standard deviation of returns
+                vol = _calculate_rolling_std_numba(returns, window)
+                
+                # Annualize if requested
+                if params.annualize:
+                    annualization_factor = np.sqrt(params.trading_periods_per_year / window)
+                    vol = _annualize_volatility_numba(vol, params.trading_periods_per_year / window)
+                
+                symbol_result[f'volatility_{window}'] = vol
+            
+            # Add to results list
+            results.append(symbol_result)
+        
+        # Combine results from all symbols
+        result = pd.concat(results).reset_index().set_index(['timestamp', 'symbol'])
         
         return result 

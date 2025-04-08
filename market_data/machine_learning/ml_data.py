@@ -31,11 +31,11 @@ def prepare_ml_data(
     Prepare machine learning data by ensuring all required data is present and properly joined.
     
     This function:
-    1. Ensures raw data is present (caches if not)
-    2. Ensures feature data is present (calculates and caches if not)
-    3. Ensures target data is present (calculates and caches if not)
-    4. Ensures resampled data is present (calculates and caches if not)
-    5. Joins feature, target and resampled data
+    * Ensures raw data is present (caches if not)
+    * Ensures resampled data is present (calculates and caches if not)
+    * Ensures feature data is present (calculates and caches if not)
+    * Ensures target data is present (calculates and caches if not)
+    * Joins feature, target and resampled data
     
     Args:
         dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
@@ -56,7 +56,7 @@ def prepare_ml_data(
     resample_params = resample_params or ResampleParams()
     
     t_from, t_to = time_range.to_datetime()
-    # 1. Ensure raw data is present
+    # Ensure raw data is present
     raw_df = read_from_cache_or_query_and_cache(
         dataset_mode=dataset_mode,
         export_mode=export_mode,
@@ -69,57 +69,7 @@ def prepare_ml_data(
         logger.error("No raw data available")
         return pd.DataFrame()
 
-    # 2. Ensure feature data is present
-    features_df = load_cached_features(
-        params=feature_params,
-        time_range=time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode
-    )
-    
-    if features_df is None:
-        logger.info("Calculating and caching features")
-        features_df = calculate_and_cache_features(
-            raw_df,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            time_range=time_range,
-            params=feature_params,
-            overwrite_cache=overwrite_cache
-        )
-    
-    if features_df is None or len(features_df) == 0:
-        logger.error("No feature data available")
-        return pd.DataFrame()
-    
-    # 3. Ensure target data is present
-    targets_df = load_cached_targets(
-        params=target_params,
-        time_range=time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-    )
-    
-    if targets_df is None:
-        logger.info("Calculating and caching targets")
-        targets_df = calculate_and_cache_targets(
-            raw_df,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            time_range=time_range,
-            params=target_params,
-            overwrite_cache=overwrite_cache
-        )
-    
-    if targets_df is None or len(targets_df) == 0:
-        logger.error("No target data available")
-        return pd.DataFrame()
-    
-    # 4. Ensure resampled data is present
+    # Ensure resampled data is present
     resampled_df = load_cached_resampled_data(
         params=resample_params,
         time_range=time_range,
@@ -150,12 +100,65 @@ def prepare_ml_data(
         logger.error("No resampled data available")
         return pd.DataFrame()
     
-    # 5. Join feature, target and resampled data
+    # Join feature, target and resampled data
     resampled_df.drop(["open", "high", "low", "close", "volume"], axis=1, inplace=True)
-    feature_resampled_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(features_df.reset_index().set_index(["timestamp", "symbol"]))
-    targets_resampled_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(targets_df.reset_index().set_index(["timestamp", "symbol"]))
-    ml_data_df = feature_resampled_df.join(targets_resampled_df).reset_index().set_index("timestamp")
 
+    # Ensure feature data is present
+    features_df = load_cached_features(
+        params=feature_params,
+        time_range=time_range,
+        dataset_mode=dataset_mode,
+        export_mode=export_mode,
+        aggregation_mode=aggregation_mode
+    )
+    
+    if features_df is None:
+        logger.info("Calculating and caching features")
+        features_df = calculate_and_cache_features(
+            raw_df,
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            time_range=time_range,
+            params=feature_params,
+            overwrite_cache=overwrite_cache
+        )
+    
+    if features_df is None or len(features_df) == 0:
+        logger.error("No feature data available")
+        return pd.DataFrame()
+
+    feature_resampled_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(features_df.reset_index().set_index(["timestamp", "symbol"]))
+    
+    # Ensure target data is present
+    targets_df = load_cached_targets(
+        params=target_params,
+        time_range=time_range,
+        dataset_mode=dataset_mode,
+        export_mode=export_mode,
+        aggregation_mode=aggregation_mode,
+    )
+    
+    if targets_df is None:
+        logger.info("Calculating and caching targets")
+        targets_df = calculate_and_cache_targets(
+            raw_df,
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            time_range=time_range,
+            params=target_params,
+            overwrite_cache=overwrite_cache
+        )
+    
+    if targets_df is None or len(targets_df) == 0:
+        logger.error("No target data available")
+        return pd.DataFrame()
+
+    targets_resampled_df = resampled_df.reset_index().set_index(["timestamp", "symbol"]).join(targets_df.reset_index().set_index(["timestamp", "symbol"]))
+
+
+    ml_data_df = feature_resampled_df.join(targets_resampled_df).reset_index().set_index("timestamp")
     if len(ml_data_df) == 0:
         logger.error("No data after joining features, targets and resampled timestamps")
         return pd.DataFrame()

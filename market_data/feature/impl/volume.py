@@ -182,30 +182,51 @@ class VolumeFeature:
         if params.volume_col not in df.columns:
             raise ValueError(f"Volume column '{params.volume_col}' not found in DataFrame")
         
-        # Create result DataFrame
-        result = pd.DataFrame(index=df.index)
+        # Check if 'symbol' column exists
+        has_symbol = 'symbol' in df.columns
+        if not has_symbol:
+            logger.warning("DataFrame does not have a 'symbol' column, will use a single default symbol")
+            df = df.copy()
+            df['symbol'] = 'default'
         
-        # Extract arrays for Numba functions
-        prices = df[params.price_col].values
-        volumes = df[params.volume_col].values
+        # Create list to store DataFrames for each symbol
+        results = []
         
-        # Calculate On-Balance Volume using Numba
-        obv = _calculate_obv_numba(prices, volumes)
-        result['obv'] = obv
-        
-        # Calculate OBV Z-score
-        obv_mean = _calculate_rolling_mean_numba(obv, params.obv_zscore_window)
-        obv_std = _calculate_rolling_std_numba(obv, params.obv_zscore_window)
-        obv_zscore = _calculate_zscore_numba(obv, obv_mean, obv_std)
-        result['obv_zscore'] = obv_zscore
-        
-        # Calculate volume ratios for each period
-        for period in params.ratio_periods:
-            # Calculate rolling mean of volume
-            avg_volume = _calculate_rolling_mean_numba(volumes, period)
+        # Process each symbol separately
+        for symbol, group_df in df.groupby('symbol'):
+            # Create result DataFrame for this symbol
+            symbol_result = pd.DataFrame(index=group_df.index)
             
-            # Calculate volume to average ratio
-            volume_ratio = _calculate_ratio_numba(volumes, avg_volume)
-            result[f'volume_ratio_{period}'] = volume_ratio
+            # Add symbol column
+            symbol_result['symbol'] = symbol
+            
+            # Extract arrays for Numba functions
+            prices = group_df[params.price_col].values
+            volumes = group_df[params.volume_col].values
+            
+            # Calculate On-Balance Volume using Numba
+            obv = _calculate_obv_numba(prices, volumes)
+            symbol_result['obv'] = obv
+            
+            # Calculate OBV Z-score
+            obv_mean = _calculate_rolling_mean_numba(obv, params.obv_zscore_window)
+            obv_std = _calculate_rolling_std_numba(obv, params.obv_zscore_window)
+            obv_zscore = _calculate_zscore_numba(obv, obv_mean, obv_std)
+            symbol_result['obv_zscore'] = obv_zscore
+            
+            # Calculate volume ratios for each period
+            for period in params.ratio_periods:
+                # Calculate rolling mean of volume
+                avg_volume = _calculate_rolling_mean_numba(volumes, period)
+                
+                # Calculate volume to average ratio
+                volume_ratio = _calculate_ratio_numba(volumes, avg_volume)
+                symbol_result[f'volume_ratio_{period}'] = volume_ratio
+            
+            # Add to results list
+            results.append(symbol_result)
+        
+        # Combine all symbol results
+        result = pd.concat(results).reset_index().set_index(['timestamp', 'symbol'])
         
         return result 

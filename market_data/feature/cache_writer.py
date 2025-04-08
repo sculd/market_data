@@ -78,7 +78,7 @@ def cache_feature_cache(
         )
         ```
     """
-    # Handle case where only feature_label is provided
+    # Parse feature_label and params
     if isinstance(feature_label_param, str):
         feature_label = feature_label_param
         params = None
@@ -86,7 +86,9 @@ def cache_feature_cache(
         feature_label, params = feature_label_param
     
     # Validate inputs
-    assert time_range is not None, "TimeRange must be provided"
+    if time_range is None:
+        logger.error("TimeRange must be provided")
+        return False
     
     # Get feature module
     feature_module = get_feature_by_label(feature_label)
@@ -94,7 +96,7 @@ def cache_feature_cache(
         logger.error(f"Feature module '{feature_label}' not found in registry")
         return False
     
-    # If params is None, try to create a default instance of the appropriate parameter class
+    # Create default params if needed
     if params is None:
         params = _create_default_params(feature_module, feature_label)
         if params is None:
@@ -102,7 +104,7 @@ def cache_feature_cache(
             return False
         logger.info(f"Created default parameters for feature '{feature_label}': {params}")
     
-    # Check if params has get_params_dir method
+    # Verify params has required method
     if not hasattr(params, 'get_params_dir'):
         logger.error(f"Parameters object for feature '{feature_label}' must have get_params_dir method")
         return False
@@ -110,20 +112,19 @@ def cache_feature_cache(
     # Get params directory
     params_dir = params.get_params_dir()
     
-    # If warm_up_days not provided, use the get_warm_up_days method if available
+    # Determine warm-up days
     if warm_up_days is None:
         if hasattr(params, 'get_warm_up_days'):
             warm_up_days = params.get_warm_up_days()
             logger.info(f"Using warm-up days {warm_up_days} from {feature_label} params")
         else:
-            # Default to 1 day if we can't determine warm-up period
             warm_up_days = 1
             logger.warning(f"Params for {feature_label} does not have get_warm_up_days method, using {warm_up_days} day(s)")
     
-    # Cache base path including feature label
+    # Define cache path
     cache_path = f"{FEATURE_CACHE_BASE_PATH}/features"
     
-    # Create a calculation function that calls the feature module's calculate method
+    # Create calculation function
     def calculate_batch_fn(raw_df: pd.DataFrame, feature_params: Any) -> pd.DataFrame:
         calculate_fn = getattr(feature_module, 'calculate', None)
         if calculate_fn is None:
@@ -131,7 +132,7 @@ def cache_feature_cache(
         return calculate_fn(raw_df, feature_params)
     
     try:
-        # Use the core calculate_and_cache_data function
+        # Use core calculation and caching function
         calculate_and_cache_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
@@ -146,6 +147,7 @@ def cache_feature_cache(
             cache_base_path=cache_path,
             params_dir=params_dir
         )
+        logger.info(f"Successfully cached {feature_label} for {time_range}")
         return True
     except Exception as e:
         logger.error(f"Error calculating/caching {feature_label}: {e}")

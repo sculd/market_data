@@ -154,21 +154,42 @@ class EMAFeature:
         if params.price_col not in df.columns:
             raise ValueError(f"Price column '{params.price_col}' not found in DataFrame")
         
-        # Create result DataFrame
-        result = pd.DataFrame(index=df.index)
+        # Check if 'symbol' column exists
+        has_symbol = 'symbol' in df.columns
+        if not has_symbol:
+            logger.warning("DataFrame does not have a 'symbol' column, will use a single default symbol")
+            df = df.copy()
+            df['symbol'] = 'default'
         
-        # Extract prices as numpy array for Numba functions
-        prices = df[params.price_col].values
+        # Create list to store DataFrames for each symbol
+        results = []
         
-        # Calculate EMA for each period using Numba
-        for period in params.periods:
-            # Calculate EMA
-            ema = _calculate_ema_numba(prices, period)
-            result[f'ema_{period}'] = ema
+        # Process each symbol separately
+        for symbol, group_df in df.groupby('symbol'):
+            # Create result DataFrame for this symbol
+            symbol_result = pd.DataFrame(index=group_df.index)
             
-            # Calculate price relative to EMA if requested
-            if params.include_price_relatives:
-                price_to_ema = _calculate_price_to_ema_ratio_numba(prices, ema)
-                result[f'ema_rel_{period}'] = price_to_ema
+            # Add symbol column
+            symbol_result['symbol'] = symbol
+            
+            # Extract prices as numpy array for Numba functions
+            prices = group_df[params.price_col].values
+            
+            # Calculate EMA for each period using Numba
+            for period in params.periods:
+                # Calculate EMA
+                ema = _calculate_ema_numba(prices, period)
+                symbol_result[f'ema_{period}'] = ema
+                
+                # Calculate price relative to EMA if requested
+                if params.include_price_relatives:
+                    price_to_ema = _calculate_price_to_ema_ratio_numba(prices, ema)
+                    symbol_result[f'ema_rel_{period}'] = price_to_ema
+            
+            # Add to results list
+            results.append(symbol_result)
+        
+        # Combine all symbol results
+        result = pd.concat(results).reset_index().set_index(['timestamp', 'symbol'])
         
         return result 

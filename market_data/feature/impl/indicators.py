@@ -345,53 +345,75 @@ class IndicatorsFeature:
         logger.info(f"Calculating technical indicators with RSI period={params.rsi_period}")
         
         # Ensure we have the required columns
-        if params.price_col not in df.columns:
-            raise ValueError(f"Price column '{params.price_col}' not found in DataFrame")
+        if 'open' not in df.columns:
+            raise ValueError("'open' column not found in DataFrame")
+        if 'high' not in df.columns:
+            raise ValueError("'high' column not found in DataFrame")
+        if 'low' not in df.columns:
+            raise ValueError("'low' column not found in DataFrame")
+        if 'close' not in df.columns:
+            raise ValueError("'close' column not found in DataFrame")
         
-        # Create result DataFrame
-        result = pd.DataFrame(index=df.index)
+        # Check if 'symbol' column exists
+        has_symbol = 'symbol' in df.columns
+        if not has_symbol:
+            logger.warning("DataFrame does not have a 'symbol' column, will use a single default symbol")
+            df = df.copy()
+            df['symbol'] = 'default'
         
-        # Extract price data as numpy arrays for Numba functions
-        close = df[params.price_col].values
+        # Create list to store DataFrames for each symbol
+        results = []
         
-        # Calculate RSI using Numba
-        rsi = _calculate_rsi_numba(close, params.rsi_period)
-        result['rsi'] = rsi
-        
-        # Calculate true range if high/low are available
-        if all(col in df.columns for col in ['high', 'low']):
-            high = df['high'].values
-            low = df['low'].values
+        # Process each symbol separately
+        for symbol, group_df in df.groupby('symbol'):
+            # Create result DataFrame for this symbol
+            symbol_result = pd.DataFrame(index=group_df.index)
             
-            true_range = _calculate_true_range_numba(high, low, close)
-            result['true_range'] = true_range
+            # Add symbol column
+            symbol_result['symbol'] = symbol
             
-            # Calculate high-low range as percentage of price
+            # Extract arrays for Numba functions
+            open_prices = group_df['open'].values
+            high = group_df['high'].values
+            low = group_df['low'].values
+            close = group_df['close'].values
+            
+            # Calculate RSI
+            rsi = _calculate_rsi_numba(close, params.rsi_period)
+            symbol_result['rsi'] = rsi
+            
+            # Calculate true range
+            tr = _calculate_true_range_numba(high, low, close)
+            symbol_result['true_range'] = tr
+            
+            # Calculate open/close ratio
+            oc_ratio = _calculate_open_close_ratio_numba(open_prices, close)
+            symbol_result['open_close_ratio'] = oc_ratio
+            
+            # Calculate autocorrelation with lag
+            lagged = _calculate_lagged_series_numba(close, params.autocorr_lag)
+            autocorr = _calculate_rolling_correlation_numba(close, lagged, params.autocorr_window)
+            symbol_result['autocorr_lag1'] = autocorr
+            
+            # Calculate high-low range percentage
             hl_range_pct = _calculate_hl_range_pct_numba(high, low, close)
-            result['hl_range_pct'] = hl_range_pct
+            symbol_result['hl_range_pct'] = hl_range_pct
+            
+            # Calculate z-score
+            mean = _calculate_rolling_mean_numba(close, params.zscore_window)
+            std = _calculate_rolling_std_numba(close, params.zscore_window)
+            zscore = _calculate_zscore_numba(close, mean, std)
+            symbol_result['close_zscore'] = zscore
+            
+            # Calculate min-max scaling
+            roll_min, roll_max = _calculate_rolling_min_max_numba(close, params.minmax_window)
+            minmax = _calculate_minmax_scaling_numba(close, roll_min, roll_max)
+            symbol_result['close_minmax'] = minmax
+            
+            # Add to results list
+            results.append(symbol_result)
         
-        # Calculate open/close ratio if open is available
-        if 'open' in df.columns:
-            open_prices = df['open'].values
-            open_close_ratio = _calculate_open_close_ratio_numba(open_prices, close)
-            result['open_close_ratio'] = open_close_ratio
-        
-        # Calculate autocorrelation
-        lagged = _calculate_lagged_series_numba(close, params.autocorr_lag)
-        autocorr = _calculate_rolling_correlation_numba(
-            lagged, close, params.autocorr_window
-        )
-        result['autocorr_lag1'] = autocorr
-        
-        # Calculate z-score normalization
-        mean = _calculate_rolling_mean_numba(close, params.zscore_window)
-        std = _calculate_rolling_std_numba(close, params.zscore_window)
-        zscore = _calculate_zscore_numba(close, mean, std)
-        result['close_zscore'] = zscore
-        
-        # Calculate min-max scaling
-        roll_min, roll_max = _calculate_rolling_min_max_numba(close, params.minmax_window)
-        minmax = _calculate_minmax_scaling_numba(close, roll_min, roll_max)
-        result['close_minmax'] = minmax
+        # Combine all symbol results
+        result = pd.concat(results).reset_index().set_index(['timestamp', 'symbol'])
         
         return result 

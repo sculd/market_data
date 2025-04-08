@@ -133,4 +133,7 @@ class BTCFeature:
         # Ensure all rows have symbol from the original dataframe
         result['symbol'] = df['symbol']
         
+        # Combine all symbol results
+        result = result.reset_index().set_index(['timestamp', 'symbol'])
+        
         return result 

@@ -121,15 +121,38 @@ def read_multi_feature_cache(
         except Exception as e:
             logger.error(f"Error reading cache for feature '{label}': {e}")
     
-    if not all_dfs:
-        logger.warning("No data found in cache for any of the requested features")
-        return pd.DataFrame()
-    
     # Combine all feature DataFrames
     try:
-        result = pd.concat(all_dfs, axis=1)
-        logger.info(f"Combined {len(all_dfs)} feature sets into DataFrame with {len(result)} rows")
-        return result
+        if not all_dfs:
+            logger.warning("No data found in cache for any of the requested features")
+            return pd.DataFrame()
+            
+        # Proper join on timestamp and symbol instead of simple concatenation
+        logger.info("Joining feature DataFrames on timestamp and symbol")
+        
+        # Create multi-index DataFrames for proper joining
+        joined_df = None
+        for i, df in enumerate(all_dfs):
+            # Ensure DataFrame has timestamp and symbol columns
+            if not all(col in df.index.names for col in ['timestamp','symbol']):
+                logger.warning(f"DataFrame {i} is missing required columns (timestamp, symbol), skipping")
+                continue
+                
+            # Create multi-index DataFrame for joining
+            df_indexed = df
+            
+            if joined_df is None:
+                joined_df = df_indexed
+            else:
+                # Outer join to preserve all timestamps and symbols
+                joined_df = joined_df.join(df_indexed, how='outer')
+        
+        if joined_df is None:
+            logger.warning("No valid DataFrames found with timestamp and symbol columns")
+            return pd.DataFrame()
+        
+        logger.info(f"Combined {len(all_dfs)} feature sets into DataFrame with {len(joined_df)} rows")
+        return joined_df
     except Exception as e:
         logger.error(f"Error combining feature DataFrames: {e}")
         return pd.DataFrame() 

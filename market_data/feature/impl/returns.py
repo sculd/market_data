@@ -133,22 +133,43 @@ class ReturnsFeature:
         if params.price_col not in df.columns:
             raise ValueError(f"Price column '{params.price_col}' not found in DataFrame")
         
-        # Create result DataFrame
-        result = pd.DataFrame(index=df.index)
+        # Check if 'symbol' column exists
+        has_symbol = 'symbol' in df.columns
+        if not has_symbol:
+            logger.warning("DataFrame does not have a 'symbol' column, will use a single default symbol")
+            df = df.copy()
+            df['symbol'] = 'default'
         
-        # Extract prices as numpy array for Numba functions
-        prices = df[params.price_col].values
+        # Create list to store DataFrames for each symbol
+        results = []
         
-        # Calculate returns for each period using Numba
-        for period in params.periods:
-            if params.log_returns:
-                # Log returns with Numba
-                returns = _calculate_log_returns_numba(prices, period)
-            else:
-                # Simple returns with Numba
-                returns = _calculate_simple_returns_numba(prices, period)
-                
-            # Add to result DataFrame
-            result[f'return_{period}'] = returns
+        # Process each symbol separately
+        for symbol, group_df in df.groupby('symbol'):
+            # Create result DataFrame for this symbol
+            symbol_result = pd.DataFrame(index=group_df.index)
+            
+            # Add symbol column
+            symbol_result['symbol'] = symbol
+            
+            # Extract prices as numpy array for Numba functions
+            prices = group_df[params.price_col].values
+            
+            # Calculate returns for each period using Numba
+            for period in params.periods:
+                if params.log_returns:
+                    # Log returns with Numba
+                    returns = _calculate_log_returns_numba(prices, period)
+                else:
+                    # Simple returns with Numba
+                    returns = _calculate_simple_returns_numba(prices, period)
+                    
+                # Add to result DataFrame
+                symbol_result[f'return_{period}'] = returns
+            
+            # Add to results list
+            results.append(symbol_result)
+        
+        # Combine all symbol results
+        result = pd.concat(results).reset_index().set_index(['timestamp', 'symbol'])
         
         return result 

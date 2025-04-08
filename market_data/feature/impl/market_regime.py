@@ -186,9 +186,10 @@ class MarketRegimeParams:
     """Parameters for market regime calculations."""
     volatility_windows: List[int] = field(default_factory=lambda: [240, 1440, 4320])  # 4h, 1d, 3d
     price_col: str = "close"
-    garch_omega: float = 0.1
-    garch_alpha: float = 0.1
-    garch_beta: float = 0.8
+    include_mean: bool = True
+    include_variance: bool = True
+    include_skewness: bool = True
+    include_kurtosis: bool = True
     
     def get_params_dir(self) -> str:
         """
@@ -199,37 +200,37 @@ class MarketRegimeParams:
         """
         from market_data.util.cache.path import params_to_dir_name
         
-        windows_str = '_'.join(str(w) for w in self.volatility_windows)
+        # Generate string indicators for included statistics
+        stats = []
+        if self.include_mean:
+            stats.append('mean')
+        if self.include_variance:
+            stats.append('var')
+        if self.include_skewness:
+            stats.append('skew')
+        if self.include_kurtosis:
+            stats.append('kurt')
+        
+        stats_str = '_'.join(stats)
         
         params_dict = {
             'windows': self.volatility_windows,
             'price': self.price_col,
-            'garch_params': [self.garch_omega, self.garch_alpha, self.garch_beta]
+            'stats': stats_str
         }
         return params_to_dir_name(params_dict)
-        
+    
     def get_warm_up_days(self) -> int:
         """
-        Calculate the recommended warm-up period based on the maximum volatility window
-        and GARCH parameters.
+        Calculate the recommended warm-up period for market regime calculation.
         
         Returns:
             int: Recommended number of warm-up days
         """
-        import math
-        
-        if not self.volatility_windows:
-            # Default GARCH warm-up if no windows specified
-            return 3
-            
-        # Find the maximum window
-        max_window = max(self.volatility_windows)
-        
-        # Convert to days (assuming windows are in minutes for 24/7 markets)
-        # Add 3 days for GARCH convergence as additional safety
-        days_needed = math.ceil(max_window / (24 * 60)) + 3
-        
-        return max(3, days_needed)  # At least 3 days for GARCH
+        # For market regime calculations, we need at least window size data points
+        # plus a little extra for stability
+        max_window = max(self.volatility_windows) if self.volatility_windows else 240
+        return max(1, (max_window // (24 * 60)) + 1)  # Convert minutes to days
 
 @register_feature(FEATURE_LABEL)
 class MarketRegimeFeature:
@@ -238,56 +239,91 @@ class MarketRegimeFeature:
     @staticmethod
     def calculate(df: pd.DataFrame, params: Optional[MarketRegimeParams] = None) -> pd.DataFrame:
         """
-        Calculate market regime features based on volatility.
+        Calculate market regime indicators.
         
         Args:
             df: Input DataFrame with OHLCV data
             params: Parameters for market regime calculation
             
         Returns:
-            DataFrame with calculated market regime features
+            DataFrame with calculated market regime indicators
         """
         if params is None:
             params = MarketRegimeParams()
             
-        logger.info(f"Calculating market regime features for windows {params.volatility_windows}")
+        logger.info(f"Calculating market regime indicators with windows {params.volatility_windows}")
         
         # Ensure we have the price column
         if params.price_col not in df.columns:
             raise ValueError(f"Price column '{params.price_col}' not found in DataFrame")
         
-        # Create result DataFrame
-        result = pd.DataFrame(index=df.index)
+        # Check if 'symbol' column exists
+        has_symbol = 'symbol' in df.columns
+        if not has_symbol:
+            logger.warning("DataFrame does not have a 'symbol' column, will use a single default symbol")
+            df = df.copy()
+            df['symbol'] = 'default'
         
-        # Extract prices as numpy array for Numba functions
-        prices = df[params.price_col].values
+        # Create list to store DataFrames for each symbol
+        results = []
         
-        # Calculate returns using _calculate_simple_returns_numba from returns module
-        returns = _calculate_simple_returns_numba(prices, 1)
-        
-        # Initialize returns (replace NaN values at beginning)
-        returns_init = _initialize_returns_numba(returns)
-        
-        # Calculate GARCH volatility
-        volatility = _calculate_garch_volatility_numba(
-            returns_init, 
-            params.garch_omega, 
-            params.garch_alpha, 
-            params.garch_beta
-        )
-        
-        result['garch_volatility'] = volatility
-        
-        # Calculate rolling regime and zscore for different time horizons
-        for window in params.volatility_windows:
-            # Calculate volatility regime
-            regime = _calculate_volatility_regime_numba(volatility, window)
-            result[f'volatility_regime_{window}'] = regime
+        # Process each symbol separately
+        for symbol, group_df in df.groupby('symbol'):
+            # Create result DataFrame for this symbol
+            symbol_result = pd.DataFrame(index=group_df.index)
             
-            # Calculate volatility z-score
-            mean = _calculate_rolling_mean_numba(volatility, window)
-            std = _calculate_rolling_std_numba(volatility, window)
-            zscore = _calculate_zscore_numba(volatility, mean, std)
-            result[f'volatility_zscore_{window}'] = zscore
+            # Add symbol column
+            symbol_result['symbol'] = symbol
+            
+            # Extract prices as numpy array for Numba functions
+            prices = group_df[params.price_col].values
+            
+            # Calculate returns using function from returns module
+            returns = _calculate_simple_returns_numba(prices, 1)
+            
+            # Use a standard window for the basic statistics (use the smallest window or 20 by default)
+            stat_window = min(params.volatility_windows) if params.volatility_windows else 20
+            
+            # Calculate rolling statistics as needed
+            if params.include_mean:
+                mean = _calculate_rolling_mean_numba(returns, stat_window)
+                symbol_result['return_mean'] = mean
+            else:
+                mean = None
+                
+            if params.include_variance:
+                variance = _calculate_rolling_variance_numba(returns, stat_window, mean)
+                symbol_result['return_variance'] = variance
+                # Also include volatility (standard deviation)
+                symbol_result['return_volatility'] = np.sqrt(np.maximum(0, variance))  # Ensure non-negative
+            else:
+                variance = None
+                
+            if params.include_skewness:
+                skewness = _calculate_rolling_skew_numba(returns, stat_window, mean, variance)
+                symbol_result['return_skewness'] = skewness
+                
+            if params.include_kurtosis:
+                kurtosis = _calculate_rolling_kurtosis_numba(returns, stat_window, mean, variance)
+                symbol_result['return_excess_kurtosis'] = kurtosis
+            
+            # Calculate volatility regimes for each window
+            for window in params.volatility_windows:
+                # Calculate volatility regime
+                volatility = np.sqrt(np.maximum(0, _calculate_rolling_variance_numba(returns, window)))
+                regime = _calculate_volatility_regime_numba(volatility, window)
+                symbol_result[f'volatility_regime_{window}'] = regime
+                
+                # Calculate volatility z-score
+                mean = _calculate_rolling_mean_numba(volatility, window)
+                std = _calculate_rolling_std_numba(volatility, window)
+                zscore = _calculate_zscore_numba(volatility, mean, std)
+                symbol_result[f'volatility_zscore_{window}'] = zscore
+            
+            # Add to results list
+            results.append(symbol_result)
+        
+        # Combine all symbol results
+        result = pd.concat(results).reset_index().set_index(['timestamp', 'symbol'])
         
         return result 

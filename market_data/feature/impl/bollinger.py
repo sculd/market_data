@@ -162,26 +162,47 @@ class BollingerFeature:
         if params.price_col not in df.columns:
             raise ValueError(f"Price column '{params.price_col}' not found in DataFrame")
         
-        # Create result DataFrame
-        result = pd.DataFrame(index=df.index)
+        # Check if 'symbol' column exists
+        has_symbol = 'symbol' in df.columns
+        if not has_symbol:
+            logger.warning("DataFrame does not have a 'symbol' column, will use a single default symbol")
+            df = df.copy()
+            df['symbol'] = 'default'
         
-        # Extract prices as numpy array for Numba functions
-        prices = df[params.price_col].values
+        # Create list to store DataFrames for each symbol
+        results = []
         
-        # Calculate Bollinger Bands using Numba
-        upper, middle, lower = _calculate_bollinger_bands_numba(
-            prices, params.period, params.std_dev
-        )
-        
-        # Add bands to result
-        result['bb_upper'] = upper
-        result['bb_middle'] = middle
-        result['bb_lower'] = lower
-        
-        # Calculate position within bands (normalized to 0-1 range)
-        result['bb_position'] = _calculate_bb_position_numba(prices, lower, upper)
+        # Process each symbol separately
+        for symbol, group_df in df.groupby('symbol'):
+            # Create result DataFrame for this symbol
+            symbol_result = pd.DataFrame(index=group_df.index)
             
-        # Calculate bandwidth (normalized)
-        result['bb_width'] = _calculate_bb_width_numba(upper, middle, lower)
+            # Add symbol column
+            symbol_result['symbol'] = symbol
+            
+            # Extract prices as numpy array for Numba functions
+            prices = group_df[params.price_col].values
+            
+            # Calculate Bollinger Bands using Numba
+            upper, middle, lower = _calculate_bollinger_bands_numba(
+                prices, params.period, params.std_dev
+            )
+            
+            # Add bands to result
+            symbol_result['bb_upper'] = upper
+            symbol_result['bb_middle'] = middle
+            symbol_result['bb_lower'] = lower
+            
+            # Calculate position within bands (normalized to 0-1 range)
+            symbol_result['bb_position'] = _calculate_bb_position_numba(prices, lower, upper)
+                
+            # Calculate bandwidth (normalized)
+            symbol_result['bb_width'] = _calculate_bb_width_numba(upper, middle, lower)
+            
+            # Add to results list
+            results.append(symbol_result)
+        
+        # Combine all symbol results
+        result = pd.concat(results).reset_index().set_index(['timestamp', 'symbol'])
         
         return result 

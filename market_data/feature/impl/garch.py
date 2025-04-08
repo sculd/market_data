@@ -173,32 +173,53 @@ class GARCHFeature:
         if params.price_col not in df.columns:
             raise ValueError(f"Price column '{params.price_col}' not found in DataFrame")
         
-        # Create result DataFrame
-        result = pd.DataFrame(index=df.index)
+        # Check if 'symbol' column exists
+        has_symbol = 'symbol' in df.columns
+        if not has_symbol:
+            logger.warning("DataFrame does not have a 'symbol' column, will use a single default symbol")
+            df = df.copy()
+            df['symbol'] = 'default'
         
-        # Extract prices as numpy array for Numba functions
-        prices = df[params.price_col].values
+        # Create list to store DataFrames for each symbol
+        results = []
         
-        # Calculate returns using function from returns module
-        returns = _calculate_simple_returns_numba(prices, 1)
-        
-        # Initialize returns (replace NaN values at beginning)
-        returns_init = _initialize_returns_numba(returns)
-        
-        # Calculate GARCH volatility
-        volatility = _calculate_garch_volatility_numba(
-            returns_init, 
-            params.omega, 
-            params.alpha, 
-            params.beta
-        )
-        
-        # Annualize if requested
-        if params.annualize:
-            # Using sqrt(T) rule for annualization
-            annualization_factor = np.sqrt(params.trading_periods_per_year)
-            volatility = _annualize_volatility_numba(volatility, annualization_factor)
+        # Process each symbol separately
+        for symbol, group_df in df.groupby('symbol'):
+            # Create result DataFrame for this symbol
+            symbol_result = pd.DataFrame(index=group_df.index)
             
-        result['garch_volatility'] = volatility
+            # Add symbol column
+            symbol_result['symbol'] = symbol
+            
+            # Extract prices as numpy array for Numba functions
+            prices = group_df[params.price_col].values
+            
+            # Calculate returns using function from returns module
+            returns = _calculate_simple_returns_numba(prices, 1)
+            
+            # Initialize returns (replace NaN values at beginning)
+            returns_init = _initialize_returns_numba(returns)
+            
+            # Calculate GARCH volatility
+            volatility = _calculate_garch_volatility_numba(
+                returns_init, 
+                params.omega, 
+                params.alpha, 
+                params.beta
+            )
+            
+            # Annualize if requested
+            if params.annualize:
+                # Using sqrt(T) rule for annualization
+                annualization_factor = np.sqrt(params.trading_periods_per_year)
+                volatility = _annualize_volatility_numba(volatility, annualization_factor)
+                
+            symbol_result['garch_volatility'] = volatility
+            
+            # Add to results list
+            results.append(symbol_result)
+        
+        # Combine all symbol results
+        result = pd.concat(results).reset_index().set_index(['timestamp', 'symbol'])
         
         return result 
