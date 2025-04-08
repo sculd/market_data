@@ -16,11 +16,12 @@ from market_data.util.time import TimeRange
 from market_data.util.cache.dataframe import read_from_cache_generic
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
+from market_data.feature.cache_writer import _create_default_params
 
 logger = logging.getLogger(__name__)
 
 def read_multi_feature_cache(
-        feature_labels_params: List[Tuple[str, Any]],
+        feature_labels_params: List[Union[str, Tuple[str, Any]]],
         time_range: TimeRange = None,
         columns: typing.List[str] = None,
         dataset_mode: DATASET_MODE = None,
@@ -31,7 +32,9 @@ def read_multi_feature_cache(
     Read cached features for multiple feature types and parameters.
     
     Args:
-        feature_labels_params: List of (label, params) tuples
+        feature_labels_params: List of either:
+            - feature labels (str) - will use default parameters
+            - (label, params) tuples - will use the provided parameters
         time_range: Time range to fetch data for
         columns: Specific columns to retrieve
         dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
@@ -46,7 +49,8 @@ def read_multi_feature_cache(
         features = read_multi_feature_cache(
             feature_labels_params=[
                 ("returns", ReturnParams(periods=[1, 5, 10])),
-                ("volatility", VolatilityParams(window=20))
+                "volatility",  # Will use default VolatilityParams
+                ("market_regime", MarketRegimeParams(volatility_windows=[240, 1440]))
             ],
             time_range=TimeRange(t_from="2023-01-01", t_to="2023-01-31"),
             dataset_mode=DATASET_MODE.OKX,
@@ -57,7 +61,17 @@ def read_multi_feature_cache(
     """
     all_dfs = []
     
-    for label, params in feature_labels_params:
+    for feature_item in feature_labels_params:
+        # Handle both string labels and (label, params) tuples
+        if isinstance(feature_item, tuple) and len(feature_item) == 2:
+            label, params = feature_item
+        elif isinstance(feature_item, str):
+            label = feature_item
+            params = None
+        else:
+            logger.warning(f"Invalid feature item format: {feature_item}, must be string or (label, params) tuple")
+            continue
+        
         logger.info(f"Reading cached feature: {label}")
         
         # Get the feature module
@@ -65,6 +79,15 @@ def read_multi_feature_cache(
         if feature_module is None:
             logger.warning(f"Feature module '{label}' not found, skipping cache read.")
             continue
+        
+        # Use default params if none provided
+        if params is None:
+            # Use the _create_default_params function from cache_writer
+            params = _create_default_params(feature_module, label)
+            if params is None:
+                logger.warning(f"Failed to create default parameters for feature '{label}', skipping")
+                continue
+            logger.info(f"Using default parameters for feature '{label}': {params}")
         
         # Get params_dir directly from the params object
         if hasattr(params, 'get_params_dir'):
@@ -74,7 +97,7 @@ def read_multi_feature_cache(
             continue
         
         # Include feature label in cache path
-        cache_path = f"{FEATURE_CACHE_BASE_PATH}/{label}"
+        cache_path = f"{FEATURE_CACHE_BASE_PATH}/features"
         
         # Read from cache
         try:
