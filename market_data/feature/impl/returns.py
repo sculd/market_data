@@ -64,7 +64,7 @@ def _calculate_log_returns_numba(prices, period):
 @dataclass
 class ReturnParams:
     """Parameters for return feature calculations."""
-    periods: List[int] = field(default_factory=lambda: [1, 5, 15, 30, 60])
+    periods: List[int] = field(default_factory=lambda: [1, 5, 15, 30, 60, 120])
     price_col: str = "close"
     log_returns: bool = False
     

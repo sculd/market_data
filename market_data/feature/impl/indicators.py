@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
 
 from market_data.feature.registry import register_feature
+from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
 
 logger = logging.getLogger(__name__)
 
@@ -176,76 +177,6 @@ def _calculate_lagged_series_numba(values, lag):
     return result
 
 @nb.njit(cache=True)
-def _calculate_rolling_mean_numba(values, window):
-    """
-    Calculate rolling mean using Numba for performance.
-    
-    Args:
-        values: Array of input values
-        window: Window size for calculation
-        
-    Returns:
-        Array of mean values
-    """
-    n = len(values)
-    result = np.full(n, np.nan)
-    
-    for i in range(window, n):
-        window_values = values[i-window:i]
-        valid_values = window_values[~np.isnan(window_values)]
-        
-        if len(valid_values) >= window // 2:  # Require at least half of the window to be valid
-            result[i] = np.mean(valid_values)
-    
-    return result
-
-@nb.njit(cache=True)
-def _calculate_rolling_std_numba(values, window):
-    """
-    Calculate rolling standard deviation using Numba for performance.
-    
-    Args:
-        values: Array of input values
-        window: Window size for calculation
-        
-    Returns:
-        Array of standard deviation values
-    """
-    n = len(values)
-    result = np.full(n, np.nan)
-    
-    for i in range(window, n):
-        window_values = values[i-window:i]
-        valid_values = window_values[~np.isnan(window_values)]
-        
-        if len(valid_values) >= window // 2:  # Require at least half of the window to be valid
-            result[i] = np.std(valid_values)
-    
-    return result
-
-@nb.njit(cache=True)
-def _calculate_zscore_numba(values, mean, std):
-    """
-    Calculate z-score using Numba.
-    
-    Args:
-        values: Array of input values
-        mean: Array of mean values
-        std: Array of standard deviation values
-        
-    Returns:
-        Array of z-score values
-    """
-    n = len(values)
-    result = np.full(n, np.nan)
-    
-    for i in range(n):
-        if not (np.isnan(values[i]) or np.isnan(mean[i]) or np.isnan(std[i])) and std[i] > 0:
-            result[i] = (values[i] - mean[i]) / std[i]
-    
-    return result
-
-@nb.njit(cache=True)
 def _calculate_rolling_min_max_numba(values, window):
     """
     Calculate rolling min and max using Numba for performance.
@@ -314,6 +245,28 @@ def _calculate_hl_range_pct_numba(high, low, close):
         if (not np.isnan(high[i]) and not np.isnan(low[i]) and 
                 not np.isnan(close[i]) and close[i] > 0):
             result[i] = (high[i] - low[i]) / close[i]
+    
+    return result
+
+@nb.njit(cache=True)
+def _calculate_zscore_numba(values, mean, std):
+    """
+    Calculate z-score using Numba.
+    
+    Args:
+        values: Array of input values
+        mean: Array of mean values
+        std: Array of standard deviation values
+        
+    Returns:
+        Array of z-score values
+    """
+    n = len(values)
+    result = np.full(n, np.nan)
+    
+    for i in range(n):
+        if not (np.isnan(values[i]) or np.isnan(mean[i]) or np.isnan(std[i])) and std[i] > 0:
+            result[i] = (values[i] - mean[i]) / std[i]
     
     return result
 

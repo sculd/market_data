@@ -10,9 +10,11 @@ import numpy as np
 import logging
 import numba as nb
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 from market_data.feature.registry import register_feature
+from market_data.feature.impl.returns import _calculate_simple_returns_numba
+from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
 
 logger = logging.getLogger(__name__)
 
@@ -20,26 +22,6 @@ logger = logging.getLogger(__name__)
 FEATURE_LABEL = "market_regime"
 
 # Numba-accelerated calculations
-@nb.njit(cache=True)
-def _calculate_returns_numba(prices):
-    """
-    Calculate period-to-period returns for volatility calculation.
-    
-    Args:
-        prices: Array of price values
-        
-    Returns:
-        Array of returns
-    """
-    n = len(prices)
-    returns = np.full(n, np.nan)
-    
-    for i in range(1, n):
-        if prices[i-1] > 0:  # Avoid division by zero
-            returns[i] = (prices[i] / prices[i-1]) - 1.0
-    
-    return returns
-
 @nb.njit(cache=True)
 def _initialize_returns_numba(returns):
     """
@@ -178,54 +160,6 @@ def _calculate_volatility_regime_numba(volatility, window):
     return regime
 
 @nb.njit(cache=True)
-def _calculate_rolling_mean_numba(values, window):
-    """
-    Calculate rolling mean using Numba for performance.
-    
-    Args:
-        values: Array of input values
-        window: Window size for calculation
-        
-    Returns:
-        Array of mean values
-    """
-    n = len(values)
-    result = np.full(n, np.nan)
-    
-    for i in range(window, n):
-        window_values = values[i-window:i]
-        valid_values = window_values[~np.isnan(window_values)]
-        
-        if len(valid_values) >= window // 2:  # Require at least half of the window to be valid
-            result[i] = np.mean(valid_values)
-    
-    return result
-
-@nb.njit(cache=True)
-def _calculate_rolling_std_numba(values, window):
-    """
-    Calculate rolling standard deviation using Numba for performance.
-    
-    Args:
-        values: Array of input values
-        window: Window size for calculation
-        
-    Returns:
-        Array of standard deviation values
-    """
-    n = len(values)
-    result = np.full(n, np.nan)
-    
-    for i in range(window, n):
-        window_values = values[i-window:i]
-        valid_values = window_values[~np.isnan(window_values)]
-        
-        if len(valid_values) >= window // 2:  # Require at least half of the window to be valid
-            result[i] = np.std(valid_values)
-    
-    return result
-
-@nb.njit(cache=True)
 def _calculate_zscore_numba(values, mean, std):
     """
     Calculate z-score using Numba.
@@ -328,8 +262,8 @@ class MarketRegimeFeature:
         # Extract prices as numpy array for Numba functions
         prices = df[params.price_col].values
         
-        # Calculate returns
-        returns = _calculate_returns_numba(prices)
+        # Calculate returns using _calculate_simple_returns_numba from returns module
+        returns = _calculate_simple_returns_numba(prices, 1)
         
         # Initialize returns (replace NaN values at beginning)
         returns_init = _initialize_returns_numba(returns)

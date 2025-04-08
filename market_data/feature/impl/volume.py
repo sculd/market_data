@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
+from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
 
 logger = logging.getLogger(__name__)
 
@@ -60,56 +61,6 @@ def _calculate_obv_numba(prices, volumes):
                 obv[i] = obv[i-1]  # Price unchanged
     
     return obv
-
-@nb.njit(cache=True)
-def _calculate_rolling_mean_numba(values, window):
-    """
-    Calculate rolling mean using Numba for performance.
-    
-    Args:
-        values: Array of input values
-        window: Window size for rolling calculation
-        
-    Returns:
-        Array of rolling mean values
-    """
-    n = len(values)
-    result = np.full(n, np.nan)
-    
-    for i in range(window, n):
-        # Get window of valid values
-        window_values = values[i-window:i]
-        valid_values = window_values[~np.isnan(window_values)]
-        
-        if len(valid_values) >= window // 2:  # Require at least half of the window to be valid
-            result[i] = np.mean(valid_values)
-    
-    return result
-
-@nb.njit(cache=True)
-def _calculate_rolling_std_numba(values, window):
-    """
-    Calculate rolling standard deviation using Numba for performance.
-    
-    Args:
-        values: Array of input values
-        window: Window size for rolling calculation
-        
-    Returns:
-        Array of rolling standard deviation values
-    """
-    n = len(values)
-    result = np.full(n, np.nan)
-    
-    for i in range(window, n):
-        # Get window of valid values
-        window_values = values[i-window:i]
-        valid_values = window_values[~np.isnan(window_values)]
-        
-        if len(valid_values) >= window // 2:  # Require at least half of the window to be valid
-            result[i] = np.std(valid_values)
-    
-    return result
 
 @nb.njit(cache=True)
 def _calculate_zscore_numba(values, mean, std):

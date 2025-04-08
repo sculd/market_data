@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
 
 from market_data.feature.registry import register_feature
+from market_data.feature.impl.returns import _calculate_simple_returns_numba
 
 logger = logging.getLogger(__name__)
 
@@ -19,26 +20,6 @@ logger = logging.getLogger(__name__)
 FEATURE_LABEL = "garch"
 
 # Numba-accelerated GARCH volatility calculation
-@nb.njit(cache=True)
-def _calculate_returns_numba(prices):
-    """
-    Calculate period-to-period returns for volatility calculation.
-    
-    Args:
-        prices: Array of price values
-        
-    Returns:
-        Array of returns
-    """
-    n = len(prices)
-    returns = np.full(n, np.nan)
-    
-    for i in range(1, n):
-        if prices[i-1] > 0:  # Avoid division by zero
-            returns[i] = (prices[i] / prices[i-1]) - 1.0
-    
-    return returns
-
 @nb.njit(cache=True)
 def _initialize_returns_numba(returns):
     """
@@ -198,8 +179,8 @@ class GARCHFeature:
         # Extract prices as numpy array for Numba functions
         prices = df[params.price_col].values
         
-        # Calculate returns
-        returns = _calculate_returns_numba(prices)
+        # Calculate returns using function from returns module
+        returns = _calculate_simple_returns_numba(prices, 1)
         
         # Initialize returns (replace NaN values at beginning)
         returns_init = _initialize_returns_numba(returns)

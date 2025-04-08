@@ -82,7 +82,7 @@ def _calculate_price_to_ema_ratio_numba(prices, ema):
 @dataclass
 class EMAParams:
     """Parameters for EMA feature calculations."""
-    periods: List[int] = field(default_factory=lambda: [5, 15, 30, 60, 120, 240])
+    periods: List[int] = field(default_factory=lambda: [5, 15, 30, 60, 120])
     price_col: str = "close"
     include_price_relatives: bool = True
     

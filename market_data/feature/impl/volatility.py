@@ -12,57 +12,13 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
+from market_data.feature.impl.returns import _calculate_simple_returns_numba
+from market_data.feature.impl.common_calc import _calculate_rolling_std_numba
 
 logger = logging.getLogger(__name__)
 
 # Feature label for registration
 FEATURE_LABEL = "volatility"
-
-# Numba-accelerated volatility calculations
-@nb.njit(cache=True)
-def _calculate_returns_numba(prices):
-    """
-    Calculate period-to-period returns for volatility calculation.
-    
-    Args:
-        prices: Array of price values
-        
-    Returns:
-        Array of returns
-    """
-    n = len(prices)
-    returns = np.full(n, np.nan)
-    
-    for i in range(1, n):
-        if prices[i-1] > 0:  # Avoid division by zero
-            returns[i] = (prices[i] / prices[i-1]) - 1.0
-    
-    return returns
-
-@nb.njit(cache=True)
-def _calculate_rolling_std_numba(returns, window):
-    """
-    Calculate rolling standard deviation using Numba for performance.
-    
-    Args:
-        returns: Array of return values
-        window: Window size for rolling calculation
-        
-    Returns:
-        Array of standard deviations
-    """
-    n = len(returns)
-    result = np.full(n, np.nan)
-    
-    for i in range(window, n):
-        # Get window of valid returns
-        window_returns = returns[i-window:i]
-        valid_returns = window_returns[~np.isnan(window_returns)]
-        
-        if len(valid_returns) >= window // 2:  # Require at least half of the window to be valid
-            result[i] = np.std(valid_returns)
-    
-    return result
 
 @nb.njit(cache=True)
 def _annualize_volatility_numba(volatility, trading_periods):
@@ -165,8 +121,8 @@ class VolatilityFeature:
         # Extract prices as numpy array for Numba functions
         prices = df[params.price_col].values
         
-        # Calculate returns (period-to-period)
-        returns = _calculate_returns_numba(prices)
+        # Calculate returns (period-to-period) using function from returns module
+        returns = _calculate_simple_returns_numba(prices, 1)
         
         # Calculate volatility for each window using Numba
         for window in params.windows:
