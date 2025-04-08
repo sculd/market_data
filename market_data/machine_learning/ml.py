@@ -139,8 +139,7 @@ def construct_ml_data(
     logger.info("Joining targets with features and resampled data")
     ml_data_df = feature_resampled_df.join(
         targets_df.reset_index().set_index(["timestamp", "symbol"])
-    ).reset_index().set_index("timestamp").drop(["symbol"], axis=1)
-
+    ).reset_index().set_index("timestamp")
     
     if len(ml_data_df) == 0:
         logger.error("No data after joining features, targets, and resampled timestamps")
