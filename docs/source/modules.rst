@@ -17,12 +17,12 @@ Feature Module
 Target Module
 -------------
 
-.. automodule:: market_data.feature.target
+.. automodule:: market_data.target.target
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: market_data.feature.cache_target
+.. automodule:: market_data.target.cache_target
    :members:
    :undoc-members:
    :show-inheritance:
