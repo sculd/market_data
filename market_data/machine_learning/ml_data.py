@@ -16,7 +16,7 @@ from market_data.machine_learning.cache_resample import load_cached_resampled_da
 from market_data.machine_learning.resample import ResampleParams
 from market_data.feature.registry import list_registered_features
 from market_data.feature.cache_reader import read_multi_feature_cache
-from market_data.feature.cache_writer import _create_default_params
+from market_data.feature.util import _create_default_params
 from market_data.feature.registry import get_feature_by_label
 
 logger = logging.getLogger(__name__)

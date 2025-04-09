@@ -18,9 +18,6 @@ from market_data.feature.cache_writer import (
     cache_feature_cache
 )
 
-# Import implementations package to ensure all features are registered
-import market_data.feature.impl
-
 __all__ = [
     'register_feature',
     'get_feature_by_label',

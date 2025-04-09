@@ -16,7 +16,7 @@ from market_data.util.time import TimeRange
 from market_data.util.cache.dataframe import read_from_cache_generic
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
-from market_data.feature.cache_writer import _create_default_params
+from market_data.feature.util import _create_default_params
 
 logger = logging.getLogger(__name__)
 
