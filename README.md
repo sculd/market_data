@@ -165,35 +165,6 @@ targets_df = create_targets(df)
 
 All target columns have the `label_` prefix to easily identify them as machine learning targets.
 
-### Sequence Features
-
-For sequence-based models (LSTMs, Transformers), the module can generate arrays of past values for each feature:
-
-```python
-from feature import create_sequence_features
-
-# Generate sequence features with 60-point history for each feature
-sequence_df = create_sequence_features(df, sequence_length=60)
-```
-
-
-The export functions:
-1. Create event-based resampled datasets (regular or sequence features)
-2. Split the data by target variable (e.g., separate files for 10m returns, 30m returns, etc.)
-3. Filter out rows with NaN targets to ensure clean training data
-4. Save to the specified format and location with informative filenames
-5. **Regular features**: Exported as Parquet files by default to preserve timestamp precision
-6. **Sequence features**: Automatically detected based on numpy array content and exported as pickle files
-7. **Symbol independence**: The 'symbol' column is excluded from exported datasets, ensuring models focus on price patterns rather than specific cryptocurrencies
-
-This approach simplifies the process of preparing data for training separate models on different target variables, while ensuring all datasets are properly resampled based on significant market events.
-
-To try the feature engineering module with example data:
-
-```
-python -m feature.example
-```
-
 ## Project Structure
 
 - `ingest/`: Data ingestion modules
