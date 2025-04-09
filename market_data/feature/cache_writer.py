@@ -12,6 +12,7 @@ import inspect
 import importlib
 from typing import List, Optional, Union, Any, Tuple, Dict, Callable, Type
 import numpy as np
+import math
 from datetime import timedelta
 
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
@@ -170,7 +171,7 @@ def cache_seq_feature_cache(
     seq_params: SequentialFeatureParam = SequentialFeatureParam(),
     calculation_batch_days: int = 30,
     warm_up_days: Optional[int] = None,
-    overwrite_cache: bool = False
+    overwrite_cache: bool = True
 ) -> bool:
     """
     Cache sequential features for a specific feature with given parameters.
@@ -190,13 +191,12 @@ def cache_seq_feature_cache(
         bool: True if caching was successful, False otherwise
     """
     try:
-        # Validate input
-        if not feature_label_param or 'label' not in feature_label_param:
-            logger.error("feature_label_param must contain 'label' key")
-            return False
-            
-        feature_label = feature_label_param['label']
-        params = feature_label_param.get('params')
+        # Parse feature_label and params
+        if isinstance(feature_label_param, str):
+            feature_label = feature_label_param
+            params = None
+        else:
+            feature_label, params = feature_label_param
         
         # Get feature module
         feature_module = get_feature_by_label(feature_label)
@@ -226,40 +226,43 @@ def cache_seq_feature_cache(
                 warm_up_days = 0
                 
         # Add sequence window warm-up days (assuming minute granularity)
-        seq_warm_up_days = (seq_params.sequence_window // (24 * 60)) + 1
+        seq_warm_up_days = math.ceil(seq_params.sequence_window / (24 * 60))
         warm_up_days = max(warm_up_days, seq_warm_up_days)
         
         # Split time range into daily chunks
-        daily_ranges = split_t_range(time_range, days=1)
+        t_from, t_to = time_range.to_datetime()
+        t_ranges = split_t_range(t_from, t_to)
         
-        for day_range in daily_ranges:
+        for i, t_range in enumerate(t_ranges):
             # Calculate extended range for warm-up
             extended_range = TimeRange(
-                t_from=day_range.t_from - timedelta(days=warm_up_days),
-                t_to=day_range.t_to
+                t_from=t_range[0] - timedelta(days=warm_up_days),
+                t_to=t_range[1]
             )
             
             # Try to read non-sequential feature cache
             try:
+                # Include feature label in cache path
+                cache_path = f"{FEATURE_CACHE_BASE_PATH}/features"
+                
                 df = read_from_cache_generic(
                     dataset_mode=dataset_mode,
                     export_mode=export_mode,
                     aggregation_mode=aggregation_mode,
-                    params=params,
                     time_range=extended_range,
                     label=feature_label,
-                    cache_base_path=FEATURE_CACHE_BASE_PATH,
+                    cache_base_path=cache_path,
                     params_dir=params_dir
                 )
                 
                 if df is None or df.empty:
-                    logger.warning(f"No feature cache found for {feature_label} on {day_range.t_from.date()}")
+                    logger.warning(f"No feature cache found for {feature_label} on {t_range[0].date()}")
                     continue
                     
                 # Create sequential features
                 seq_df = sequentialize_feature(df, seq_params)
                 if seq_df is None:
-                    logger.error(f"Failed to sequentialize {feature_label} for {day_range.t_from.date()}")
+                    logger.error(f"Failed to sequentialize {feature_label} for {t_range[0].date()}")
                     continue
                 
                 # Cache sequential features
@@ -269,19 +272,19 @@ def cache_seq_feature_cache(
                     dataset_mode=dataset_mode,
                     export_mode=export_mode,
                     aggregation_mode=aggregation_mode,
-                    params=params,
-                    time_range=day_range,
+                    t_from=t_range[0],
+                    t_to=t_range[1],
                     label=feature_label,
-                    cache_base_path=FEATURE_CACHE_BASE_PATH,
+                    cache_base_path=cache_path,
                     params_dir=seq_params_dir,
                     overwrite=overwrite_cache,
                     warm_up_period_days=warm_up_days,
                 )
-                
-                logger.info(f"Successfully cached sequential {feature_label} for {day_range.t_from.date()}")
+
+                logger.info(f"Successfully cached sequential {feature_label} for {t_range[0]}")
                 
             except Exception as e:
-                logger.error(f"Error processing {feature_label} for {day_range.t_from.date()}: {e}")
+                logger.error(f"Error processing {feature_label} for {t_range[0]}: {e}")
                 continue
                 
         return True

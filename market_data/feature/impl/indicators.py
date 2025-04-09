@@ -318,8 +318,7 @@ class IndicatorsParams:
         )
         
         # Convert to days (assuming periods are in minutes for 24/7 markets)
-        # Add 1 day as buffer for safety
-        days_needed = math.ceil(max_window / (24 * 60)) + 1
+        days_needed = math.ceil(max_window / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
 

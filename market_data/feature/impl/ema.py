@@ -124,8 +124,7 @@ class EMAParams:
         
         # For proper EMA convergence, we typically need 2-3 times the period length
         # Convert to days (assuming periods are in minutes for 24/7 markets)
-        # Add an extra day as buffer
-        days_needed = math.ceil(3 * max_period / (24 * 60)) + 1
+        days_needed = math.ceil(3 * max_period / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
 

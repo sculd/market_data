@@ -228,9 +228,8 @@ class MarketRegimeParams:
             int: Recommended number of warm-up days
         """
         # For market regime calculations, we need at least window size data points
-        # plus a little extra for stability
         max_window = max(self.volatility_windows) if self.volatility_windows else 240
-        return max(1, (max_window // (24 * 60)) + 1)  # Convert minutes to days
+        return max(1, (max_window // (24 * 60)))  # Convert minutes to days
 
 @register_feature(FEATURE_LABEL)
 class MarketRegimeFeature:
