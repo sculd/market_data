@@ -176,9 +176,8 @@ class EMAFeature:
             
             # Calculate EMA for each period using Numba
             for period in params.periods:
-                # Calculate EMA
+                # Calculate EMA, EMA itself is not a feature as it is not normalized
                 ema = _calculate_ema_numba(prices, period)
-                symbol_result[f'ema_{period}'] = ema
                 
                 # Calculate price relative to EMA if requested
                 if params.include_price_relatives:
