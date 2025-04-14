@@ -33,13 +33,15 @@ import market_data.util.time
 '''
 df = market_data.ingest.bq.cache.query_and_cache(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
-    date_str_from='2025-01-01', date_str_to='2025-01-03')
+    date_str_from='2025-03-01', date_str_to='2025-04-01')
 
 #df = ingest.bq.cache.query_and_cache(ingest.bq.util.DATASET_MODE.BITHUMB, ingest.bq.util.EXPORT_MODE.ORDERBOOK_LEVEL1, date_str_from='2024-03-21', date_str_to='2024-03-22')
 
 #df = fetch_minute_candle(t_id, date_str_from='2024-03-15', date_str_to='2024-03-16')
 print(df)
+#'''
 
+'''
 time_range = market_data.util.time.TimeRange(
     date_str_from='2025-01-01', date_str_to='2025-01-03',
     )
@@ -85,8 +87,32 @@ for label in sorted(registry.keys()):
 
 
 time_range = market_data.util.time.TimeRange(
-    date_str_from='2024-01-01', date_str_to='2024-01-03',
+    date_str_from='2024-01-01', date_str_to='2024-01-05',
     )
+
+'''
+featuers_df = market_data.feature.cache_reader.read_multi_feature_cache(
+    feature_labels_params=['returns'],
+    time_range=time_range,
+    dataset_mode=market_data.ingest.bq.common.DATASET_MODE.OKX, 
+    export_mode=market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE,
+    aggregation_mode=market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+)
+print(featuers_df.shape)
+#'''
+
+'''
+import market_data.feature.sequential_feature
+importlib.reload(market_data.feature.sequential_feature)
+
+t1 = time.time()
+df_feature_seq = market_data.feature.sequential_feature.sequentialize_feature(featuers_df)
+t2 = time.time()
+print(f'time: {t2 - t1}')
+print(df_feature_seq.shape)
+seq_s_df = df_feature_seq[df_feature_seq.index.get_level_values('symbol') == 'ZRX-USDT-SWAP']
+print(seq_s_df[["return_1"]].tail(1).values)
+#'''
 
 '''
 time_range = market_data.util.time.TimeRange(
@@ -94,7 +120,7 @@ time_range = market_data.util.time.TimeRange(
     )
 import market_data.feature.cache_writer
 for label in sorted(registry.keys()):
-    if label not in ["market_regime", "volatility"]:
+    if label not in ["ema"]:
         continue
     market_data.feature.cache_writer.cache_feature_cache(
         label,
@@ -104,8 +130,27 @@ for label in sorted(registry.keys()):
 #'''
 
 '''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2025-04-01',
+    )
+import market_data.feature.cache_writer
 for label in sorted(registry.keys()):
-    if label == "market_regime":
+    if label not in ["ema"]:
+        continue
+    market_data.feature.cache_writer.cache_seq_feature_cache(
+        label,
+        market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+        time_range=time_range,
+    )
+#'''
+
+'''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2025-04-01',
+    )
+import market_data.feature.cache_writer
+for label in sorted(registry.keys()):
+    if label not in ["ema"]:
         continue
     market_data.feature.cache_writer.cache_feature_cache(
         label,
@@ -113,6 +158,7 @@ for label in sorted(registry.keys()):
         time_range=time_range,
     )
 '''
+
 
 '''
 import market_data.feature.cache_feature
@@ -138,7 +184,7 @@ market_data.machine_learning.cache_resample.calculate_and_cache_resampled(
 )
 #'''
 
-'''
+#'''
 time_range = market_data.util.time.TimeRange(
     date_str_from='2024-01-01', date_str_to='2025-04-01',
     )
@@ -149,30 +195,6 @@ market_data.machine_learning.cache_ml_data.calculate_and_cache_ml_data(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
 )
-#'''
-
-
-
-'''
-time_range = market_data.util.time.TimeRange(
-    date_str_from='2024-01-01', date_str_to='2024-06-01',
-    )
-
-import market_data.machine_learning.validation_data
-data_sets = market_data.machine_learning.validation_data.create_train_validation_test_splits(
-    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
-    time_range=time_range,
-    fixed_window_size = datetime.timedelta(days=90),
-    step_size = datetime.timedelta(days=10),
-    purge_period = datetime.timedelta(days=0),
-    embargo_period = datetime.timedelta(days=1),
-    split_ratio = [0.7, 0.3, 0.0],
-)
-for i, d in enumerate(data_sets):
-    print(f'{i}')
-    print(f'train: {len(d[0])}\n{d[0].head(1).index}\n{d[0].tail(1).index}')
-    print(f'validation: {len(d[1])}\n{d[1].head(1).index}\n{d[1].tail(1).index}')
-    print(f'test: {len(d[2])}\n{d[2].head(1).index}\n{d[2].tail(1).index}')
 #'''
 
 

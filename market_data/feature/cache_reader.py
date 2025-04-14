@@ -17,7 +17,7 @@ from market_data.util.cache.dataframe import read_from_cache_generic
 import market_data.feature.impl # needed to register features
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
-from market_data.feature.util import _create_default_params
+from market_data.feature.util import _create_default_params, parse_feature_label_param
 
 logger = logging.getLogger(__name__)
 
@@ -62,39 +62,15 @@ def read_multi_feature_cache(
     """
     all_dfs = []
     
-    for feature_item in feature_labels_params:
-        # Handle both string labels and (label, params) tuples
-        if isinstance(feature_item, tuple) and len(feature_item) == 2:
-            label, params = feature_item
-        elif isinstance(feature_item, str):
-            label = feature_item
-            params = None
-        else:
-            logger.warning(f"Invalid feature item format: {feature_item}, must be string or (label, params) tuple")
-            continue
-        
-        logger.info(f"Reading cached feature: {label}")
+    for feature_label_param in feature_labels_params:
+        feature_label, params = parse_feature_label_param(feature_label_param)
+
+        logger.info(f"Reading cached feature: {feature_label}")
         
         # Get the feature module
-        feature_module = get_feature_by_label(label)
+        feature_module = get_feature_by_label(feature_label)
         if feature_module is None:
-            logger.warning(f"Feature module '{label}' not found, skipping cache read.")
-            continue
-        
-        # Use default params if none provided
-        if params is None:
-            # Use the _create_default_params function from cache_writer
-            params = _create_default_params(feature_module, label)
-            if params is None:
-                logger.warning(f"Failed to create default parameters for feature '{label}', skipping")
-                continue
-            logger.info(f"Using default parameters for feature '{label}': {params}")
-        
-        # Get params_dir directly from the params object
-        if hasattr(params, 'get_params_dir'):
-            params_dir = params.get_params_dir()
-        else:
-            logger.warning(f"Params object for '{label}' does not have get_params_dir method.")
+            logger.warning(f"Feature module '{feature_label}' not found, skipping cache read.")
             continue
         
         # Include feature label in cache path
@@ -103,8 +79,8 @@ def read_multi_feature_cache(
         # Read from cache
         try:
             df = read_from_cache_generic(
-                label=label,
-                params_dir=params_dir,
+                label=feature_label,
+                params_dir=params.get_params_dir(),
                 time_range=time_range,
                 columns=columns,
                 dataset_mode=dataset_mode,
@@ -115,12 +91,12 @@ def read_multi_feature_cache(
             
             if df is not None and not df.empty:
                 all_dfs.append(df)
-                logger.info(f"Successfully read {len(df)} rows for feature '{label}'")
+                logger.info(f"Successfully read {len(df)} rows for feature '{feature_label}'")
             else:
-                logger.warning(f"No data found in cache for feature '{label}'")
+                logger.warning(f"No data found in cache for feature '{feature_label}'")
         
         except Exception as e:
-            logger.error(f"Error reading cache for feature '{label}': {e}")
+            logger.error(f"Error reading cache for feature '{feature_label}': {e}")
     
     # Combine all feature DataFrames
     try:

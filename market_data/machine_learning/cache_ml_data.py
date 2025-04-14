@@ -1,6 +1,6 @@
 import pandas as pd
 import logging
-from typing import Optional, List
+from typing import Optional, List, Any, Tuple, Union
 import os
 import datetime
 from pathlib import Path
@@ -8,6 +8,7 @@ from dataclasses import asdict
 
 from market_data.target.target import TargetParams, DEFAULT_FORWARD_PERIODS, DEFAULT_TP_VALUES, DEFAULT_SL_VALUES
 from market_data.feature.feature import FeatureParams, DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
+from market_data.feature.util import parse_feature_label_params
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample import ResampleParams
@@ -29,51 +30,67 @@ logger = logging.getLogger(__name__)
 CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/ml_data')
 Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
-def _get_resample_params_dir(
-    resample_params: ResampleParams = None,
-    feature_params: FeatureParams = None,
-    target_params: TargetParams = None
+def _get_mldata_params_dir(
+    resample_params: ResampleParams,
+    feature_label_params: List[Tuple[str, Any]],
+    target_params: TargetParams
 ) -> str:
     """
-    Convert all ML data parameters to a directory name string.
+    Convert all ML data parameters to a directory path structure.
     
-    Uses the default values when None is passed to ensure consistent directory paths.
+    Creates a nested directory structure with one directory per feature parameter
+    to avoid hitting the 256-character filename limit in macOS.
+    
+    Args:
+        resample_params: Parameters for resampling
+        feature_label_params: List of feature label parameters
+        target_params: Parameters for target calculation
+        
+    Returns:
+        Path string with nested directories for parameters
     """
-    resample_params = resample_params or ResampleParams()
-    feature_params = feature_params or FeatureParams(
-        return_periods=DEFAULT_RETURN_PERIODS,
-        ema_periods=DEFAULT_EMA_PERIODS,
-        add_btc_features=True
-    )
-    target_params = target_params or TargetParams(
-        forward_periods=DEFAULT_FORWARD_PERIODS,
-        tp_values=DEFAULT_TP_VALUES,
-        sl_values=DEFAULT_SL_VALUES
-    )
+    # Start with base path for resample params
+    resample_dir = params_to_dir_name({
+        f'r_{key}': value for key, value in asdict(resample_params).items()
+    })
     
-    # Flatten all parameters into a single dictionary with prefixed keys
-    params_dict = {}
+    # Create a directory for target params
+    target_dir = params_to_dir_name({
+        f't_{key}': value for key, value in asdict(target_params).items()
+    })
     
-    # Add resample parameters with 'r_' prefix
-    for key, value in asdict(resample_params).items():
-        params_dict[f'r_{key}'] = value
-        
-    # Add feature parameters with 'f_' prefix
-    for key, value in asdict(feature_params).items():
-        params_dict[f'f_{key}'] = value
-        
-    # Add target parameters with 't_' prefix
-    for key, value in asdict(target_params).items():
-        params_dict[f't_{key}'] = value
-        
-    return params_to_dir_name(params_dict)
+    # Combine base directories
+    base_path = os.path.join(resample_dir, target_dir)
+    
+    # If no feature_label_params, return just the base path
+    if not feature_label_params:
+        return base_path
+    
+    # Process each feature and its parameters to create nested directories
+    feature_paths = []
+    for feature_label, param in feature_label_params:
+        # Get the params directory name from the instance's method
+        params_dir = param.get_params_dir()
+        feature_dir = f"{feature_label},{params_dir}"
+        feature_paths.append(feature_dir)
+    
+    # Sort feature paths for consistency
+    feature_paths.sort()
+    
+    # Create a nested path by joining all feature paths
+    nested_path = base_path
+    for feature_path in feature_paths:
+        nested_path = os.path.join(nested_path, feature_path)
+    
+    return nested_path
+
 
 def _calculate_daily_ml_data(
     date: datetime.datetime,
     dataset_mode: DATASET_MODE,
     export_mode: EXPORT_MODE,
     aggregation_mode: AGGREGATION_MODE,
-    feature_params: FeatureParams,
+    feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]],
     target_params: TargetParams,
     resample_params: ResampleParams,
     overwrite_cache: bool = True
@@ -102,7 +119,7 @@ def _calculate_daily_ml_data(
         export_mode=export_mode,
         aggregation_mode=aggregation_mode,
         time_range=time_range,
-        feature_params=feature_params,
+        feature_label_params=feature_label_params,
         target_params=target_params,
         resample_params=resample_params
     )
@@ -114,7 +131,7 @@ def _calculate_daily_ml_data(
     # Cache the data
     logger.info(f"Caching ML data for {date}")
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    params_dir = _get_resample_params_dir(resample_params, feature_params, target_params)
+    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params)
     
     cache_data_by_day(
         df=ml_data_df,
@@ -130,12 +147,13 @@ def _calculate_daily_ml_data(
     
     logger.info(f"Successfully cached ML data for {date} with {len(ml_data_df)} rows")
 
+
 def calculate_and_cache_ml_data(
     dataset_mode: DATASET_MODE,
     export_mode: EXPORT_MODE,
     aggregation_mode: AGGREGATION_MODE,
     time_range: TimeRange,
-    feature_params: FeatureParams = None,
+    feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
     target_params: TargetParams = None,
     resample_params: ResampleParams = None,
     overwrite_cache: bool = True
@@ -158,12 +176,7 @@ def calculate_and_cache_ml_data(
         resample_params: Resampling parameters. If None, uses default parameters.
         overwrite_cache: Whether to overwrite existing cache files
     """
-    # Use default parameters if none provided
-    feature_params = feature_params or FeatureParams(
-        return_periods=DEFAULT_RETURN_PERIODS,
-        ema_periods=DEFAULT_EMA_PERIODS,
-        add_btc_features=True
-    )
+    feature_label_params = parse_feature_label_params(feature_label_params)
     target_params = target_params or TargetParams(
         forward_periods=DEFAULT_FORWARD_PERIODS,
         tp_values=DEFAULT_TP_VALUES,
@@ -186,7 +199,7 @@ def calculate_and_cache_ml_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,
-            feature_params=feature_params,
+            feature_label_params=feature_label_params,
             target_params=target_params,
             resample_params=resample_params,
             overwrite_cache=overwrite_cache
@@ -200,7 +213,7 @@ def load_cached_ml_data(
     export_mode: EXPORT_MODE,
     aggregation_mode: AGGREGATION_MODE,
     time_range: TimeRange,
-    feature_params: FeatureParams = None,
+    feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
     target_params: TargetParams = None,
     resample_params: ResampleParams = None,
     columns: Optional[List[str]] = None
@@ -213,7 +226,7 @@ def load_cached_ml_data(
         export_mode: Export mode (OHLC, TICKS, etc.)
         aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
         time_range: TimeRange object specifying the time range
-        feature_params: Feature calculation parameters. If None, uses default parameters.
+        feature_label_params: List of feature labels and their parameters
         target_params: Target calculation parameters. If None, uses default parameters.
         resample_params: Resampling parameters. If None, uses default parameters.
         columns: Optional list of columns to load. If None, loads all columns.
@@ -222,7 +235,7 @@ def load_cached_ml_data(
         DataFrame with ML data, or empty DataFrame if no data is available
     """
     # Use default parameters if none provided
-    feature_params = feature_params or FeatureParams()
+    feature_label_params = parse_feature_label_params(feature_label_params)
     target_params = target_params or TargetParams()
     resample_params = resample_params or ResampleParams()
     
@@ -230,7 +243,7 @@ def load_cached_ml_data(
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
     
     # Get parameters directory name
-    params_dir = _get_resample_params_dir(resample_params, feature_params, target_params)
+    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params)
     
     # Read from cache
     return read_from_cache_generic(

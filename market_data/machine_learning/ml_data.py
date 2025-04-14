@@ -16,8 +16,7 @@ from market_data.machine_learning.cache_resample import load_cached_resampled_da
 from market_data.machine_learning.resample import ResampleParams
 from market_data.feature.registry import list_registered_features
 from market_data.feature.cache_reader import read_multi_feature_cache
-from market_data.feature.util import _create_default_params
-from market_data.feature.registry import get_feature_by_label
+from market_data.feature.util import _create_default_params, parse_feature_label_param, parse_feature_label_params
 
 logger = logging.getLogger(__name__)
 
@@ -26,8 +25,7 @@ def prepare_ml_data(
     export_mode: EXPORT_MODE,
     aggregation_mode: AGGREGATION_MODE,
     time_range: TimeRange,
-    feature_labels_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
-    feature_params: FeatureParams = None,
+    feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
     target_params: TargetParams = None,
     resample_params: ResampleParams = None,
     overwrite_cache: bool = False
@@ -51,7 +49,6 @@ def prepare_ml_data(
             - feature labels (str) - will use default parameters
             - (label, params) tuples - will use the provided parameters
             If None, uses all available features with default parameters
-        feature_params: Feature calculation parameters (used only when feature_labels_params is None)
         target_params: Target calculation parameters. If None, uses default parameters.
         resample_params: Resampling parameters. If None, uses default parameters.
         overwrite_cache: Whether to overwrite existing cache files
@@ -60,16 +57,9 @@ def prepare_ml_data(
         DataFrame with features and targets, resampled at significant price movements
     """
     # Use default parameters if none provided
-    feature_params = feature_params or FeatureParams()
+    feature_label_params = parse_feature_label_params(feature_label_params)
     target_params = target_params or TargetParams()
     resample_params = resample_params or ResampleParams()
-    
-    # If feature_labels_params is None, use all available feature labels with default parameters
-    if feature_labels_params is None:
-        logger.info("No specific features specified, using all available features with default parameters")
-        feature_labels = list_registered_features()
-        feature_labels_params = feature_labels
-        logger.info(f"Found {len(feature_labels)} registered features: {feature_labels}")
     
     t_from, t_to = time_range.to_datetime()
     # Ensure raw data is present
@@ -123,36 +113,14 @@ def prepare_ml_data(
     combined_df = resampled_df_cleaned.reset_index().set_index(["timestamp", "symbol"])
     
     # Load and join features with resampled data one by one
-    for feature_item in feature_labels_params:
-        # Handle both string labels and (label, params) tuples
-        if isinstance(feature_item, tuple) and len(feature_item) == 2:
-            label, params = feature_item
-        elif isinstance(feature_item, str):
-            label = feature_item
-            params = None
-        else:
-            logger.warning(f"Invalid feature item format: {feature_item}, must be string or (label, params) tuple")
-            continue
-        
-        logger.info(f"Processing feature: {label}")
-        
-        # Get the feature module
-        feature_module = get_feature_by_label(label)
-        if feature_module is None:
-            logger.warning(f"Feature module '{label}' not found, skipping.")
-            continue
-        
-        # Create default params if needed
-        if params is None:
-            params = _create_default_params(feature_module, label)
-            if params is None:
-                logger.warning(f"Failed to create default parameters for feature '{label}', skipping")
-                continue
-            logger.info(f"Using default parameters for feature '{label}': {params}")
+    for feature_label_param in feature_label_params:
+        feature_label, params = parse_feature_label_param(feature_label_param)
+
+        logger.info(f"Processing feature: {feature_label}")
         
         # Load the feature data
         feature_df = read_multi_feature_cache(
-            feature_labels_params=[(label, params)],
+            feature_labels_params=[(feature_label, params)],
             time_range=time_range,
             dataset_mode=dataset_mode,
             export_mode=export_mode,
@@ -160,14 +128,14 @@ def prepare_ml_data(
         )
         
         if feature_df is None or len(feature_df) == 0:
-            logger.warning(f"No data available for feature '{label}', skipping")
+            logger.warning(f"No data available for feature '{feature_label}', skipping")
             continue
         
         # Join this feature with the combined DataFrame
         feature_df_indexed = feature_df.reset_index().set_index(["timestamp", "symbol"])
         combined_df = combined_df.join(feature_df_indexed)
         
-        logger.info(f"Added feature '{label}' to combined data, now has {len(combined_df.columns)} columns")
+        logger.info(f"Added feature '{feature_label}' to combined data, now has {len(combined_df.columns)} columns")
     
     if len(combined_df.columns) == 0:
         logger.error("No feature data available after joining all features")

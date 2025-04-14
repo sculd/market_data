@@ -24,7 +24,7 @@ from market_data.util.cache.time import (
 from market_data.util.cache.dataframe import cache_data_by_day, read_from_cache_generic
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
-from market_data.feature.util import _create_default_params
+from market_data.feature.util import _create_default_params, parse_feature_label_param
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.sequential_feature import sequentialize_feature
 from market_data.util.cache.core import calculate_and_cache_data
@@ -87,36 +87,11 @@ def cache_feature_cache(
         )
         ```
     """
-    # Parse feature_label and params
-    if isinstance(feature_label_param, str):
-        feature_label = feature_label_param
-        params = None
-    else:
-        feature_label, params = feature_label_param
-    
+    feature_label, params = parse_feature_label_param(feature_label_param)
+
     # Validate inputs
     if time_range is None:
-        logger.error("TimeRange must be provided")
-        return False
-    
-    # Get feature module
-    feature_module = get_feature_by_label(feature_label)
-    if feature_module is None:
-        logger.error(f"Feature module '{feature_label}' not found in registry")
-        return False
-    
-    # Create default params if needed
-    if params is None:
-        params = _create_default_params(feature_module, feature_label)
-        if params is None:
-            logger.error(f"Failed to create default parameters for feature '{feature_label}'")
-            return False
-        logger.info(f"Created default parameters for feature '{feature_label}': {params}")
-    
-    # Verify params has required method
-    if not hasattr(params, 'get_params_dir'):
-        logger.error(f"Parameters object for feature '{feature_label}' must have get_params_dir method")
-        return False
+        raise ValueError("TimeRange must be provided")
     
     # Get params directory
     params_dir = params.get_params_dir()
@@ -132,6 +107,11 @@ def cache_feature_cache(
     
     # Define cache path
     cache_path = f"{FEATURE_CACHE_BASE_PATH}/features"
+    
+    # Get feature module
+    feature_module = get_feature_by_label(feature_label)
+    if feature_module is None:
+        raise ValueError(f"Feature module '{feature_label}' not found in registry")
     
     # Create calculation function
     def calculate_batch_fn(raw_df: pd.DataFrame, feature_params: Any) -> pd.DataFrame:
@@ -191,29 +171,12 @@ def cache_seq_feature_cache(
         bool: True if caching was successful, False otherwise
     """
     try:
-        # Parse feature_label and params
-        if isinstance(feature_label_param, str):
-            feature_label = feature_label_param
-            params = None
-        else:
-            feature_label, params = feature_label_param
-        
+        feature_label, params = parse_feature_label_param(feature_label_param)
+
         # Get feature module
         feature_module = get_feature_by_label(feature_label)
         if not feature_module:
             logger.error(f"Feature module not found for label: {feature_label}")
-            return False
-            
-        # Create default params if none provided
-        if params is None:
-            params = _create_default_params(feature_module, feature_label)
-            if params is None:
-                logger.warning(f"No default params found for {feature_label}")
-                return False
-                
-        # Get params directory name
-        if not hasattr(params, 'get_params_dir'):
-            logger.error(f"Params object for {feature_label} must have get_params_dir method")
             return False
             
         params_dir = params.get_params_dir()
