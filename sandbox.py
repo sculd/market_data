@@ -23,6 +23,7 @@ _PROJECT_ID = os.getenv('GOOGLE_CLOUD_PROJECT')
 if not _PROJECT_ID:
     logging.warning("GOOGLE_CLOUD_PROJECT environment variable not set. Please check your .env file.")
 
+from market_data.feature.impl.common import SequentialFeatureParam
 
 import market_data.ingest.bq.common
 import market_data.ingest.bq.cache
@@ -135,7 +136,7 @@ time_range = market_data.util.time.TimeRange(
     )
 import market_data.feature.cache_writer
 for label in sorted(registry.keys()):
-    if label not in ["ema"]:
+    if label in ["bollinger"]:
         continue
     market_data.feature.cache_writer.cache_seq_feature_cache(
         label,
@@ -158,6 +159,29 @@ for label in sorted(registry.keys()):
         time_range=time_range,
     )
 '''
+
+'''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-02', date_str_to='2024-01-04',
+    )
+import market_data.machine_learning.ml_data
+ml_data_df = market_data.machine_learning.ml_data.prepare_sequential_ml_data(
+    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    time_range=time_range,
+)
+print(ml_data_df)
+#'''
+
+'''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2025-04-01',
+    )
+import market_data.machine_learning.cache_ml_data
+market_data.machine_learning.cache_ml_data.calculate_and_cache_sequential_ml_data(
+    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    time_range=time_range,
+)
+#'''
 
 
 '''
@@ -184,7 +208,7 @@ market_data.machine_learning.cache_resample.calculate_and_cache_resampled(
 )
 #'''
 
-#'''
+'''
 time_range = market_data.util.time.TimeRange(
     date_str_from='2024-01-01', date_str_to='2025-04-01',
     )
@@ -194,6 +218,19 @@ import market_data.machine_learning.cache_ml_data
 market_data.machine_learning.cache_ml_data.calculate_and_cache_ml_data(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
+)
+#'''
+
+#'''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2024-04-01',
+    )
+
+import market_data.machine_learning.cache_ml_data
+market_data.machine_learning.cache_ml_data.calculate_and_cache_ml_data(
+    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    time_range=time_range,
+    seq_params = SequentialFeatureParam(),
 )
 #'''
 

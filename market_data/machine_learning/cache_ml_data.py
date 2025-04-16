@@ -3,16 +3,20 @@ import logging
 from typing import Optional, List, Any, Tuple, Union
 import os
 import datetime
+import math
 from pathlib import Path
 from dataclasses import asdict
 
-from market_data.target.target import TargetParams, DEFAULT_FORWARD_PERIODS, DEFAULT_TP_VALUES, DEFAULT_SL_VALUES
-from market_data.feature.feature import FeatureParams, DEFAULT_RETURN_PERIODS, DEFAULT_EMA_PERIODS
+import market_data.feature.cache_reader
+import market_data.target.cache_target
+from market_data.target.target import TargetParams
 from market_data.feature.util import parse_feature_label_params
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample import ResampleParams
-from market_data.machine_learning.ml_data import prepare_ml_data
+from market_data.machine_learning.ml_data import prepare_ml_data, prepare_sequential_ml_data
+from market_data.feature.impl.common import SequentialFeatureParam
+from market_data.feature.sequential_feature import sequentialize_feature
 from market_data.util.cache.time import (
     anchor_to_begin_of_day
 )
@@ -93,6 +97,7 @@ def _calculate_daily_ml_data(
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]],
     target_params: TargetParams,
     resample_params: ResampleParams,
+    seq_params: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
 ) -> None:
     """
@@ -114,15 +119,27 @@ def _calculate_daily_ml_data(
     time_range = TimeRange(t_from, t_to)
     
     # Prepare ML data for the day
-    ml_data_df = prepare_ml_data(
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-        time_range=time_range,
-        feature_label_params=feature_label_params,
-        target_params=target_params,
-        resample_params=resample_params
-    )
+    if seq_params is not None:
+        ml_data_df = prepare_sequential_ml_data(
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            time_range=time_range,
+            feature_label_params=feature_label_params,
+            target_params=target_params,
+            resample_params=resample_params,
+            seq_params=seq_params,
+        )
+    else:
+        ml_data_df = prepare_ml_data(
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            time_range=time_range,
+            feature_label_params=feature_label_params,
+            target_params=target_params,
+            resample_params=resample_params
+        )
     
     if ml_data_df is None or len(ml_data_df) == 0:
         logger.warning(f"No ML data available for {date}")
@@ -132,6 +149,9 @@ def _calculate_daily_ml_data(
     logger.info(f"Caching ML data for {date}")
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params)
+    
+    if seq_params is not None:
+        params_dir = os.path.join(seq_params.get_params_dir(), params_dir)
     
     cache_data_by_day(
         df=ml_data_df,
@@ -156,6 +176,7 @@ def calculate_and_cache_ml_data(
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
     target_params: TargetParams = None,
     resample_params: ResampleParams = None,
+    seq_params: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
 ) -> None:
     """
@@ -177,17 +198,9 @@ def calculate_and_cache_ml_data(
         overwrite_cache: Whether to overwrite existing cache files
     """
     feature_label_params = parse_feature_label_params(feature_label_params)
-    target_params = target_params or TargetParams(
-        forward_periods=DEFAULT_FORWARD_PERIODS,
-        tp_values=DEFAULT_TP_VALUES,
-        sl_values=DEFAULT_SL_VALUES
-    )
+    target_params = target_params or TargetParams()
     resample_params = resample_params or ResampleParams()
-    
-    # Get time range
     t_from, t_to = time_range.to_datetime()
-    
-    # Calculate number of days
     current_date = t_from
     
     # Process each day
@@ -202,6 +215,7 @@ def calculate_and_cache_ml_data(
             feature_label_params=feature_label_params,
             target_params=target_params,
             resample_params=resample_params,
+            seq_params=seq_params,
             overwrite_cache=overwrite_cache
         )
 
@@ -216,6 +230,7 @@ def load_cached_ml_data(
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
     target_params: TargetParams = None,
     resample_params: ResampleParams = None,
+    seq_params: Optional[SequentialFeatureParam] = None,
     columns: Optional[List[str]] = None
 ) -> pd.DataFrame:
     """
@@ -229,23 +244,22 @@ def load_cached_ml_data(
         feature_label_params: List of feature labels and their parameters
         target_params: Target calculation parameters. If None, uses default parameters.
         resample_params: Resampling parameters. If None, uses default parameters.
+        seq_params: Sequential feature parameters. If None, loads regular non-sequential data.
+                    If provided, loads sequential data cached with these parameters.
         columns: Optional list of columns to load. If None, loads all columns.
         
     Returns:
         DataFrame with ML data, or empty DataFrame if no data is available
     """
-    # Use default parameters if none provided
     feature_label_params = parse_feature_label_params(feature_label_params)
     target_params = target_params or TargetParams()
     resample_params = resample_params or ResampleParams()
-    
-    # Get dataset ID for cache path
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    
-    # Get parameters directory name
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params)
     
-    # Read from cache
+    if seq_params is not None:
+        params_dir = os.path.join(seq_params.get_params_dir(), params_dir)
+    
     return read_from_cache_generic(
         label="ml_data",
         params_dir=params_dir,
