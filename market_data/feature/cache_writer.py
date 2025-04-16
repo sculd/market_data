@@ -63,29 +63,6 @@ def cache_feature_cache(
         
     Returns:
         True if caching was successful, False otherwise
-    
-    Example:
-        ```
-        from market_data.feature.impl.returns import ReturnParams
-        
-        # Cache returns with specific parameters
-        success = cache_feature_cache(
-            feature_label_param=("returns", ReturnParams(periods=[1, 5, 10])),
-            dataset_mode=DATASET_MODE.OKX,
-            export_mode=EXPORT_MODE.BY_MINUTE,
-            aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
-            time_range=TimeRange(t_from="2023-01-01", t_to="2023-01-31")
-        )
-        
-        # Cache returns with default parameters
-        success = cache_feature_cache(
-            feature_label_param="returns",
-            dataset_mode=DATASET_MODE.OKX,
-            export_mode=EXPORT_MODE.BY_MINUTE,
-            aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
-            time_range=TimeRange(t_from="2023-01-01", t_to="2023-01-31")
-        )
-        ```
     """
     feature_label, params = parse_feature_label_param(feature_label_param)
 

@@ -17,12 +17,12 @@ from market_data.util.cache.dataframe import read_from_cache_generic
 import market_data.feature.impl # needed to register features
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
-from market_data.feature.util import _create_default_params, parse_feature_label_param
+from market_data.feature.util import _create_default_params, parse_feature_label_params
 
 logger = logging.getLogger(__name__)
 
 def read_multi_feature_cache(
-        feature_labels_params: List[Union[str, Tuple[str, Any]]],
+        feature_labels_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
         time_range: TimeRange = None,
         columns: typing.List[str] = None,
         dataset_mode: DATASET_MODE = None,
@@ -44,26 +44,12 @@ def read_multi_feature_cache(
         
     Returns:
         Combined DataFrame with all requested features
-    
-    Example:
-        ```
-        features = read_multi_feature_cache(
-            feature_labels_params=[
-                ("returns", ReturnParams(periods=[1, 5, 10])),
-                "volatility",  # Will use default VolatilityParams
-                ("market_regime", MarketRegimeParams(volatility_windows=[240, 1440]))
-            ],
-            time_range=TimeRange(t_from="2023-01-01", t_to="2023-01-31"),
-            dataset_mode=DATASET_MODE.OKX,
-            export_mode=EXPORT_MODE.BY_MINUTE,
-            aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST
-        )
-        ```
     """
     all_dfs = []
     
+    feature_labels_params = parse_feature_label_params(feature_labels_params)
     for feature_label_param in feature_labels_params:
-        feature_label, params = parse_feature_label_param(feature_label_param)
+        feature_label, params = feature_label_param
 
         logger.info(f"Reading cached feature: {feature_label}")
         

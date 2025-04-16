@@ -45,16 +45,6 @@ This script loads environment variables from the `.env` file and configures Goog
 
 The project includes a comprehensive feature engineering module for market data analysis on minute-level data, providing various technical indicators:
 
-```python
-from feature import create_features
-
-# Load your OHLCV dataframe with timestamp index (minute-level data)
-df = load_data()  
-
-# Generate all features
-features_df = create_features(df)
-```
-
 #### Available Features
 
 The feature engineering module calculates the following indicators:
@@ -101,9 +91,6 @@ The feature engineering module calculates the following indicators:
   - Ensure your DataFrame includes the appropriate Bitcoin symbol for your exchange
   - The feature engineering will automatically find the Bitcoin data to calculate correlation features
 
-**Feature Naming Convention:**
-Features are named based on their calculation method and time horizon. For example, `return_30m` represents the 30-minute price return, and `ema_60m` represents the 60-minute exponential moving average.
-
 ### Documentation
 
 The project uses Sphinx for generating API documentation. To generate the documentation:
@@ -145,13 +132,6 @@ Note: The documentation build directory (`docs/build/`) is ignored by Git. Each 
 ### Target Engineering
 
 The project now includes a target engineering module for machine learning purposes, creating prediction targets based on future price movements:
-
-```python
-from feature import create_targets
-
-# Generate target variables for ML
-targets_df = create_targets(df)
-```
 
 #### Available Targets
 
