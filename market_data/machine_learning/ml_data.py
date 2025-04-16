@@ -73,21 +73,7 @@ def prepare_ml_data(
     
     if resampled_df is None:
         logger.info("Calculating and caching resampled data")
-        calculate_and_cache_resampled(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            time_range=time_range,
-            params=resample_params,
-            overwrite_cache=overwrite_cache
-        )
-        resampled_df = load_cached_resampled_data(
-            params=resample_params,
-            time_range=time_range,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode
-        )
+        return pd.DataFrame()
     
     if resampled_df is None or len(resampled_df) == 0:
         logger.error("No resampled data available")
