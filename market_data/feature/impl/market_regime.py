@@ -15,6 +15,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from market_data.feature.registry import register_feature
 from market_data.feature.impl.returns import _calculate_simple_returns_numba
 from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
+from market_data.feature.impl.indicators import _calculate_zscore_numba
 
 logger = logging.getLogger(__name__)
 
@@ -158,28 +159,6 @@ def _calculate_volatility_regime_numba(volatility, window):
             regime[i] = -1  # Low volatility
     
     return regime
-
-@nb.njit(cache=True)
-def _calculate_zscore_numba(values, mean, std):
-    """
-    Calculate z-score using Numba.
-    
-    Args:
-        values: Array of input values
-        mean: Array of mean values
-        std: Array of standard deviation values
-        
-    Returns:
-        Array of z-score values
-    """
-    n = len(values)
-    result = np.full(n, np.nan)
-    
-    for i in range(n):
-        if not (np.isnan(values[i]) or np.isnan(mean[i]) or np.isnan(std[i])) and std[i] > 0:
-            result[i] = (values[i] - mean[i]) / std[i]
-    
-    return result
 
 @dataclass
 class MarketRegimeParams:

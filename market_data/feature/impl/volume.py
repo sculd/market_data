@@ -14,6 +14,7 @@ from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
 from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
+from market_data.feature.impl.indicators import _calculate_zscore_numba
 
 logger = logging.getLogger(__name__)
 
@@ -63,28 +64,6 @@ def _calculate_obv_numba(prices, volumes):
     return obv
 
 @nb.njit(cache=True)
-def _calculate_zscore_numba(values, mean, std):
-    """
-    Calculate z-score using Numba.
-    
-    Args:
-        values: Array of input values
-        mean: Array of mean values
-        std: Array of standard deviation values
-        
-    Returns:
-        Array of z-score values
-    """
-    n = len(values)
-    zscore = np.full(n, np.nan)
-    
-    for i in range(n):
-        if not (np.isnan(values[i]) or np.isnan(mean[i]) or np.isnan(std[i])) and std[i] > 0:
-            zscore[i] = (values[i] - mean[i]) / std[i]
-    
-    return zscore
-
-@nb.njit(cache=True)
 def _calculate_ratio_numba(values, mean):
     """
     Calculate ratio of values to mean using Numba.
@@ -104,6 +83,26 @@ def _calculate_ratio_numba(values, mean):
             ratio[i] = values[i] / mean[i]
     
     return ratio
+
+@nb.njit(cache=True)
+def _calculate_pct_change_numba(values):
+    """
+    Calculate percentage change using Numba.
+    
+    Args:
+        values: Array of input values
+        
+    Returns:
+        Array of percentage change values
+    """
+    n = len(values)
+    pct_change = np.full(n, np.nan)
+    
+    for i in range(1, n):
+        if not (np.isnan(values[i]) or np.isnan(values[i-1])) and values[i-1] != 0:
+            pct_change[i] = (values[i] - values[i-1]) / abs(values[i-1])
+    
+    return pct_change
 
 @dataclass
 class VolumeParams:
@@ -203,9 +202,12 @@ class VolumeFeature:
             prices = group_df[params.price_col].values
             volumes = group_df[params.volume_col].values
             
-            # Calculate On-Balance Volume using Numba
+            # Calculate On-Balance Volume using Numba (used for derived metrics, not stored directly)
             obv = _calculate_obv_numba(prices, volumes)
-            symbol_result['obv'] = obv
+            
+            # Calculate OBV percentage change
+            obv_pct_change = _calculate_pct_change_numba(obv)
+            symbol_result['obv_pct_change'] = obv_pct_change
             
             # Calculate OBV Z-score
             obv_mean = _calculate_rolling_mean_numba(obv, params.obv_zscore_window)

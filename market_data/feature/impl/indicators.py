@@ -72,33 +72,6 @@ def _calculate_rsi_numba(prices, period):
     return rsi
 
 @nb.njit(cache=True)
-def _calculate_true_range_numba(high, low, close):
-    """
-    Calculate True Range using Numba for performance.
-    
-    Args:
-        high: Array of high prices
-        low: Array of low prices
-        close: Array of close prices
-        
-    Returns:
-        Array of true range values
-    """
-    n = len(high)
-    tr = np.full(n, np.nan)
-    
-    tr[0] = high[0] - low[0]  # First value is just the high-low range
-    
-    for i in range(1, n):
-        hl = high[i] - low[i]
-        hc = abs(high[i] - close[i-1])
-        lc = abs(low[i] - close[i-1])
-        
-        tr[i] = max(hl, hc, lc)
-    
-    return tr
-
-@nb.njit(cache=True)
 def _calculate_open_close_ratio_numba(open_prices, close_prices):
     """
     Calculate open/close ratio using Numba.
@@ -259,14 +232,26 @@ def _calculate_zscore_numba(values, mean, std):
         std: Array of standard deviation values
         
     Returns:
-        Array of z-score values
+        Array of z-score values capped to the range [-10, 10]
     """
     n = len(values)
     result = np.full(n, np.nan)
     
+    # Add a minimum threshold for standard deviation to avoid division by near-zero
+    min_std = 1e-8
+    
     for i in range(n):
-        if not (np.isnan(values[i]) or np.isnan(mean[i]) or np.isnan(std[i])) and std[i] > 0:
-            result[i] = (values[i] - mean[i]) / std[i]
+        if not (np.isnan(values[i]) or np.isnan(mean[i]) or np.isnan(std[i])):
+            # Use max(std[i], min_std) to avoid division by very small numbers
+            effective_std = max(std[i], min_std)
+            # Calculate z-score
+            zscore = (values[i] - mean[i]) / effective_std
+            # Cap z-score to the range [-10, 10]
+            if zscore > 10:
+                zscore = 10
+            elif zscore < -10:
+                zscore = -10
+            result[i] = zscore
     
     return result
 
@@ -380,10 +365,6 @@ class IndicatorsFeature:
             # Calculate RSI
             rsi = _calculate_rsi_numba(close, params.rsi_period)
             symbol_result['rsi'] = rsi
-            
-            # Calculate true range
-            tr = _calculate_true_range_numba(high, low, close)
-            symbol_result['true_range'] = tr
             
             # Calculate open/close ratio
             oc_ratio = _calculate_open_close_ratio_numba(open_prices, close)

@@ -281,10 +281,13 @@ def _calculate_rolling_zscore(volatility: np.ndarray, window: int = 1440) -> np.
         window: Rolling window size in minutes (default: 1440 = 1 day)
     
     Returns:
-        Array of z-scores
+        Array of z-scores capped to the range [-10, 10]
     """
     n = len(volatility)
     zscore = np.zeros(n)
+    
+    # Add a minimum threshold for standard deviation to avoid division by near-zero
+    min_std = 1e-8
     
     for i in range(window, n):
         # Get the window of volatility values
@@ -294,9 +297,19 @@ def _calculate_rolling_zscore(volatility: np.ndarray, window: int = 1440) -> np.
         mean = np.mean(window_vol)
         std = np.std(window_vol)
         
-        # Calculate z-score
+        # Calculate z-score with minimum std threshold
         if std > 0:
-            zscore[i] = (volatility[i] - mean) / std
+            # Use max(std, min_std) to avoid division by very small numbers
+            effective_std = max(std, min_std)
+            z = (volatility[i] - mean) / effective_std
+            
+            # Cap z-score to the range [-10, 10]
+            if z > 10:
+                z = 10
+            elif z < -10:
+                z = -10
+                
+            zscore[i] = z
         else:
             zscore[i] = 0
     
@@ -403,7 +416,8 @@ class FeatureEngineer:
             feature_data['bb_width'] = (upper - lower) / middle
             
             # Other price indicators
-            feature_data['true_range'] = self.calculate_true_range(group)
+            # Note: true_range feature will be reimplemented later
+            # feature_data['true_range'] = self.calculate_true_range(group)
             feature_data['open_close_ratio'] = self.calculate_open_close_ratio(group)
             feature_data['rsi'] = self.calculate_rsi(group, 14)
             feature_data['autocorr_lag1'] = self.calculate_autocorrelation(group, 1)
@@ -520,16 +534,8 @@ class FeatureEngineer:
         upper, middle, lower = _calculate_bollinger_bands_numba(closes, period, std_dev)
         return pd.Series(upper, index=df.index), pd.Series(middle, index=df.index), pd.Series(lower, index=df.index)
     
-    @staticmethod
-    def calculate_true_range(df: pd.DataFrame) -> pd.Series:
-        """Calculate True Range."""
-        high_low = df['high'] - df['low']
-        high_close_prev = abs(df['high'] - df['close'].shift(1))
-        low_close_prev = abs(df['low'] - df['close'].shift(1))
-        
-        ranges = pd.concat([high_low, high_close_prev, low_close_prev], axis=1)
-        true_range = ranges.max(axis=1)
-        return true_range
+    # Note: true_range calculation will be reimplemented later with a focus on
+    # calculating the range of values relative to the latest value for a fixed time window
     
     @staticmethod
     def calculate_open_close_ratio(df: pd.DataFrame) -> pd.Series:
@@ -565,8 +571,16 @@ class FeatureEngineer:
         mean = series.rolling(window=window).mean()
         std = series.rolling(window=window).std()
         
-        # Let division by zero result in NaN
-        return (series - mean) / std
+        # Calculate z-scores with protection against small standard deviations
+        # Use a minimum threshold for standard deviation
+        min_std = 1e-8
+        effective_std = std.clip(lower=min_std)
+        
+        # Calculate z-score
+        zscore = (series - mean) / effective_std
+        
+        # Cap z-scores to range [-10, 10]
+        return zscore.clip(lower=-10, upper=10)
     
     @staticmethod
     def calculate_minmax_scale(series: pd.Series, window: int = 20) -> pd.Series:

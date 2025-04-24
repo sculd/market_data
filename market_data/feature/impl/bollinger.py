@@ -20,26 +20,26 @@ FEATURE_LABEL = "bollinger"
 
 # Numba-accelerated Bollinger Bands calculation
 @nb.njit(cache=True)
-def _calculate_bollinger_bands_numba(prices, period, std_dev):
+def _calculate_bollinger_bands_numba(values, period, std_dev):
     """
     Calculate Bollinger Bands using Numba for performance.
     
     Args:
-        prices: Array of price values
+        values: Array of price values
         period: Period for moving average
         std_dev: Number of standard deviations for upper/lower bands
         
     Returns:
         Tuple of (upper_band, middle_band, lower_band)
     """
-    n = len(prices)
+    n = len(values)
     upper_band = np.full(n, np.nan)
     middle_band = np.full(n, np.nan)
     lower_band = np.full(n, np.nan)
     
     for i in range(period, n):
-        # Get window of valid prices
-        window = prices[i-period:i]
+        # Get window of valid values
+        window = values[i-period:i]
         valid_window = window[~np.isnan(window)]
         
         if len(valid_window) >= period // 2:  # Require at least half of the window to be valid
@@ -63,7 +63,7 @@ def _calculate_bb_position_numba(prices, lower_band, upper_band):
         upper_band: Upper Bollinger Band values
         
     Returns:
-        Array of position values (0-1 range)
+        Array of position values (0-1 range, capped)
     """
     n = len(prices)
     position = np.full(n, np.nan)
@@ -72,7 +72,10 @@ def _calculate_bb_position_numba(prices, lower_band, upper_band):
         if not (np.isnan(lower_band[i]) or np.isnan(upper_band[i])):
             band_width = upper_band[i] - lower_band[i]
             if band_width > 0:
-                position[i] = (prices[i] - lower_band[i]) / band_width
+                # Calculate raw position
+                raw_position = (prices[i] - lower_band[i]) / band_width
+                # Cap between 0 and 1
+                position[i] = max(0.0, min(1.0, raw_position))
     
     return position
 
@@ -179,12 +182,16 @@ class BollingerFeature:
             # Add symbol column
             symbol_result['symbol'] = symbol
             
-            # Extract prices as numpy array for Numba functions
-            prices = group_df[params.price_col].values
+            # Calculate cumulative percentage changes instead of using raw prices
+            # First get the percentage changes and fill NaN values (first row)
+            pct_changes = group_df[params.price_col].pct_change().fillna(0)
             
-            # Calculate Bollinger Bands using Numba
+            # Then calculate the cumulative sum
+            cum_pct_changes = pct_changes.cumsum().values
+            
+            # Calculate Bollinger Bands using Numba on the cumulative percentage changes
             upper, middle, lower = _calculate_bollinger_bands_numba(
-                prices, params.period, params.std_dev
+                cum_pct_changes, params.period, params.std_dev
             )
             
             # Add bands to result
@@ -192,8 +199,8 @@ class BollingerFeature:
             symbol_result['bb_middle'] = middle
             symbol_result['bb_lower'] = lower
             
-            # Calculate position within bands (normalized to 0-1 range)
-            symbol_result['bb_position'] = _calculate_bb_position_numba(prices, lower, upper)
+            # Calculate position within bands (capped between 0-1)
+            symbol_result['bb_position'] = _calculate_bb_position_numba(cum_pct_changes, lower, upper)
                 
             # Calculate bandwidth (normalized)
             symbol_result['bb_width'] = _calculate_bb_width_numba(upper, middle, lower)
