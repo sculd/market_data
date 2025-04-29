@@ -160,6 +160,136 @@ def _calculate_volatility_regime_numba(volatility, window):
     
     return regime
 
+@nb.njit(cache=True)
+def _calculate_rolling_variance_numba(values, window, mean=None):
+    """
+    Calculate rolling variance using Numba for performance.
+    
+    Args:
+        values: Array of values
+        window: Window size for calculation
+        mean: Optional pre-calculated mean array
+        
+    Returns:
+        Array of variance values
+    """
+    n = len(values)
+    variance = np.full(n, np.nan)
+    
+    for i in range(window, n):
+        # Get window of values
+        window_values = values[i-window:i]
+        valid_values = window_values[~np.isnan(window_values)]
+        
+        if len(valid_values) < window // 4:  # Require at least 25% of window to be valid
+            continue
+            
+        # Calculate mean if not provided
+        if mean is None:
+            window_mean = np.mean(valid_values)
+        else:
+            window_mean = mean[i]
+            
+        # Calculate variance
+        squared_diff = np.sum((valid_values - window_mean) ** 2)
+        variance[i] = squared_diff / len(valid_values)
+    
+    return variance
+
+@nb.njit(cache=True)
+def _calculate_rolling_skew_numba(values, window, mean=None, variance=None):
+    """
+    Calculate rolling skewness using Numba for performance.
+    
+    Args:
+        values: Array of values
+        window: Window size for calculation
+        mean: Optional pre-calculated mean array
+        variance: Optional pre-calculated variance array
+        
+    Returns:
+        Array of skewness values
+    """
+    n = len(values)
+    skewness = np.full(n, np.nan)
+    
+    for i in range(window, n):
+        # Get window of values
+        window_values = values[i-window:i]
+        valid_values = window_values[~np.isnan(window_values)]
+        
+        if len(valid_values) < window // 4:  # Require at least 25% of window to be valid
+            continue
+            
+        # Calculate mean if not provided
+        if mean is None:
+            window_mean = np.mean(valid_values)
+        else:
+            window_mean = mean[i]
+            
+        # Calculate variance if not provided
+        if variance is None:
+            window_variance = np.var(valid_values)
+        else:
+            window_variance = variance[i]
+            
+        if window_variance == 0:
+            continue
+            
+        # Calculate skewness
+        cubed_diff = np.sum((valid_values - window_mean) ** 3)
+        n_valid = len(valid_values)
+        skewness[i] = (cubed_diff / n_valid) / (window_variance ** 1.5)
+    
+    return skewness
+
+@nb.njit(cache=True)
+def _calculate_rolling_kurtosis_numba(values, window, mean=None, variance=None):
+    """
+    Calculate rolling kurtosis using Numba for performance.
+    
+    Args:
+        values: Array of values
+        window: Window size for calculation
+        mean: Optional pre-calculated mean array
+        variance: Optional pre-calculated variance array
+        
+    Returns:
+        Array of excess kurtosis values (kurtosis - 3)
+    """
+    n = len(values)
+    kurtosis = np.full(n, np.nan)
+    
+    for i in range(window, n):
+        # Get window of values
+        window_values = values[i-window:i]
+        valid_values = window_values[~np.isnan(window_values)]
+        
+        if len(valid_values) < window // 4:  # Require at least 25% of window to be valid
+            continue
+            
+        # Calculate mean if not provided
+        if mean is None:
+            window_mean = np.mean(valid_values)
+        else:
+            window_mean = mean[i]
+            
+        # Calculate variance if not provided
+        if variance is None:
+            window_variance = np.var(valid_values)
+        else:
+            window_variance = variance[i]
+            
+        if window_variance == 0:
+            continue
+            
+        # Calculate kurtosis
+        fourth_diff = np.sum((valid_values - window_mean) ** 4)
+        n_valid = len(valid_values)
+        kurtosis[i] = (fourth_diff / n_valid) / (window_variance ** 2) - 3  # Return excess kurtosis
+    
+    return kurtosis
+
 @dataclass
 class MarketRegimeParams:
     """Parameters for market regime calculations."""
