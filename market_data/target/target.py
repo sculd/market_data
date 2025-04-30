@@ -21,6 +21,20 @@ FULL_SL_VALUES = [0.005, 0.01, 0.02, 0.03, 0.05]
 
 @dataclass
 class TargetParams:
+    forward_period: int = 30
+    tp_value: float = 0.03
+    sl_value: float = 0.03
+    
+    def __repr__(self) -> str:
+        """String representation of the parameters."""
+        return (
+            f"TargetParams(forward_period={self.forward_period}, "
+            f"tp_value={self.tp_value}, "
+            f"sl_value={self.sl_value})"
+        )
+
+@dataclass
+class TargetParamsBatch:
     """
     Encapsulates parameters for target engineering.
     
@@ -39,7 +53,7 @@ class TargetParams:
     def __repr__(self) -> str:
         """String representation of the parameters."""
         return (
-            f"TargetParams(forward_periods={self.forward_periods}, "
+            f"TargetParamsBatch(forward_periods={self.forward_periods}, "
             f"tp_values={self.tp_values}, "
             f"sl_values={self.sl_values})"
         )
@@ -109,7 +123,7 @@ class TargetEngineer:
     - Columns: 'symbol', 'open', 'high', 'low', 'close', 'volume'
     """
     
-    def __init__(self, df: pd.DataFrame, params: TargetParams = None):
+    def __init__(self, df: pd.DataFrame, params: TargetParamsBatch = None):
         """
         Initialize with a DataFrame of market data.
         
@@ -119,7 +133,7 @@ class TargetEngineer:
         """
         self.validate_dataframe(df)
         self.df = df.copy()
-        self.params = params or TargetParams()
+        self.params = params or TargetParamsBatch()
     
     def validate_dataframe(self, df: pd.DataFrame) -> None:
         """Validate that the DataFrame has the required structure."""
@@ -261,7 +275,7 @@ class TargetEngineer:
 
 
 # Convenience functions
-def create_targets(df: pd.DataFrame, params: TargetParams = None) -> pd.DataFrame:
+def create_targets(df: pd.DataFrame, params: TargetParamsBatch = None) -> pd.DataFrame:
     """
     Convenience function to create ML target features from market data.
     Includes forward returns and classification labels.
@@ -282,7 +296,7 @@ def create_targets(df: pd.DataFrame, params: TargetParams = None) -> pd.DataFram
     return engineer.add_target_features().copy()
 
 
-def get_target_columns(params: TargetParams = None) -> List[str]:
+def get_target_columns(params: TargetParamsBatch = None) -> List[str]:
     """
     Get the names of all target columns that would be created by create_targets.
     
@@ -303,8 +317,8 @@ def get_target_columns(params: TargetParams = None) -> List[str]:
 
 
 # Predefined target column lists for common configurations
-TARGET_COLUMNS_DEFAULT = get_target_columns(TargetParams())
-TARGET_COLUMNS_FULL = get_target_columns(TargetParams(
+TARGET_COLUMNS_DEFAULT = get_target_columns(TargetParamsBatch())
+TARGET_COLUMNS_FULL = get_target_columns(TargetParamsBatch(
     forward_periods=FULL_FORWARD_PERIODS,
     tp_values=FULL_TP_VALUES,
     sl_values=FULL_SL_VALUES

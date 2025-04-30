@@ -6,20 +6,15 @@ from typing import List, Dict, Tuple, Optional, Union, Any
 import logging
 from pathlib import Path
 
-from market_data.target.target import TargetParams
-from market_data.feature.feature import FeatureParams
-from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
+from market_data.target.target import TargetParamsBatch
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
-from market_data.feature.cache_feature import load_cached_features, calculate_and_cache_features
-from market_data.target.cache_target import load_cached_targets, calculate_and_cache_targets
+from market_data.target.cache_target import load_cached_targets
 from market_data.machine_learning.cache_resample import load_cached_resampled_data, calculate_and_cache_resampled
 from market_data.machine_learning.resample import ResampleParams
-from market_data.feature.registry import list_registered_features
 from market_data.feature.cache_reader import read_multi_feature_cache
 from market_data.feature.util import _create_default_params, parse_feature_label_param, parse_feature_label_params
 from market_data.feature.impl.common import SequentialFeatureParam
-from market_data.feature.sequential_feature import create_sequences_numba
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +24,7 @@ def prepare_ml_data(
     aggregation_mode: AGGREGATION_MODE,
     time_range: TimeRange,
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
-    target_params: TargetParams = None,
+    target_params_batch: TargetParamsBatch = None,
     resample_params: ResampleParams = None,
 ) -> pd.DataFrame:
     """
@@ -59,7 +54,7 @@ def prepare_ml_data(
     """
     # Use default parameters if none provided
     feature_label_params = parse_feature_label_params(feature_label_params)
-    target_params = target_params or TargetParams()
+    target_params_batch = target_params_batch or TargetParamsBatch()
     resample_params = resample_params or ResampleParams()
     
     # Ensure resampled data is present
@@ -116,7 +111,7 @@ def prepare_ml_data(
     
     # Ensure target data is present
     targets_df = load_cached_targets(
-        params=target_params,
+        params=target_params_batch,
         time_range=time_range,
         dataset_mode=dataset_mode,
         export_mode=export_mode,
@@ -145,7 +140,7 @@ def prepare_sequential_ml_data(
     aggregation_mode: AGGREGATION_MODE,
     time_range: TimeRange,
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
-    target_params: TargetParams = None,
+    target_params_batch: TargetParamsBatch = None,
     resample_params: ResampleParams = None,
     seq_params: Optional[SequentialFeatureParam] = None,
 ) -> pd.DataFrame:
@@ -166,7 +161,7 @@ def prepare_sequential_ml_data(
         aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
         time_range: TimeRange object specifying the time range
         feature_label_params: List of feature labels and parameters
-        target_params: Target calculation parameters. If None, uses default parameters.
+        target_params_batch: Target calculation parameters. If None, uses default parameters.
         resample_params: Resampling parameters. If None, uses default parameters.
         seq_params: Sequential feature parameters. If None, uses default parameters.
         
@@ -175,7 +170,7 @@ def prepare_sequential_ml_data(
     """
     # Use default parameters if none provided
     feature_label_params = parse_feature_label_params(feature_label_params)
-    target_params = target_params or TargetParams()
+    target_params_batch = target_params_batch or TargetParamsBatch()
     resample_params = resample_params or ResampleParams()
     seq_params = seq_params or SequentialFeatureParam()
     
@@ -316,7 +311,7 @@ def prepare_sequential_ml_data(
     # Load targets
     logger.info("Loading target data")
     targets_df = load_cached_targets(
-        params=target_params,
+        params=target_params_batch,
         time_range=time_range,
         dataset_mode=dataset_mode,
         export_mode=export_mode,

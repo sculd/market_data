@@ -9,7 +9,7 @@ from dataclasses import asdict
 
 import market_data.feature.cache_reader
 import market_data.target.cache_target
-from market_data.target.target import TargetParams
+from market_data.target.target import TargetParamsBatch
 from market_data.feature.util import parse_feature_label_params
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
@@ -37,7 +37,7 @@ Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 def _get_mldata_params_dir(
     resample_params: ResampleParams,
     feature_label_params: List[Tuple[str, Any]],
-    target_params: TargetParams
+    target_params_batch: TargetParamsBatch
 ) -> str:
     """
     Convert all ML data parameters to a directory path structure.
@@ -60,7 +60,7 @@ def _get_mldata_params_dir(
     
     # Create a directory for target params
     target_dir = params_to_dir_name({
-        f't_{key}': value for key, value in asdict(target_params).items()
+        f't_{key}': value for key, value in asdict(target_params_batch).items()
     })
     
     # Combine base directories
@@ -95,7 +95,7 @@ def _calculate_daily_ml_data(
     export_mode: EXPORT_MODE,
     aggregation_mode: AGGREGATION_MODE,
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]],
-    target_params: TargetParams,
+    target_params_batch: TargetParamsBatch,
     resample_params: ResampleParams,
     seq_params: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
@@ -126,7 +126,7 @@ def _calculate_daily_ml_data(
             aggregation_mode=aggregation_mode,
             time_range=time_range,
             feature_label_params=feature_label_params,
-            target_params=target_params,
+            target_params=target_params_batch,
             resample_params=resample_params,
             seq_params=seq_params,
         )
@@ -137,7 +137,7 @@ def _calculate_daily_ml_data(
             aggregation_mode=aggregation_mode,
             time_range=time_range,
             feature_label_params=feature_label_params,
-            target_params=target_params,
+            target_params=target_params_batch,
             resample_params=resample_params
         )
     
@@ -148,7 +148,7 @@ def _calculate_daily_ml_data(
     # Cache the data
     logger.info(f"Caching ML data for {date}")
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params)
+    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch)
     
     if seq_params is not None:
         params_dir = os.path.join(seq_params.get_params_dir(), params_dir)
@@ -174,7 +174,7 @@ def calculate_and_cache_ml_data(
     aggregation_mode: AGGREGATION_MODE,
     time_range: TimeRange,
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
-    target_params: TargetParams = None,
+    target_params_batch: TargetParamsBatch = None,
     resample_params: ResampleParams = None,
     seq_params: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
@@ -198,7 +198,7 @@ def calculate_and_cache_ml_data(
         overwrite_cache: Whether to overwrite existing cache files
     """
     feature_label_params = parse_feature_label_params(feature_label_params)
-    target_params = target_params or TargetParams()
+    target_params_batch = target_params_batch or TargetParamsBatch()
     resample_params = resample_params or ResampleParams()
     t_from, t_to = time_range.to_datetime()
     current_date = t_from
@@ -213,7 +213,7 @@ def calculate_and_cache_ml_data(
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,
             feature_label_params=feature_label_params,
-            target_params=target_params,
+            target_params_batch=target_params_batch,
             resample_params=resample_params,
             seq_params=seq_params,
             overwrite_cache=overwrite_cache
@@ -228,7 +228,7 @@ def load_cached_ml_data(
     aggregation_mode: AGGREGATION_MODE,
     time_range: TimeRange,
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
-    target_params: TargetParams = None,
+    target_params_batch: TargetParamsBatch = None,
     resample_params: ResampleParams = None,
     seq_params: Optional[SequentialFeatureParam] = None,
     columns: Optional[List[str]] = None
@@ -252,10 +252,10 @@ def load_cached_ml_data(
         DataFrame with ML data, or empty DataFrame if no data is available
     """
     feature_label_params = parse_feature_label_params(feature_label_params)
-    target_params = target_params or TargetParams()
+    target_params_batch = target_params_batch or TargetParamsBatch()
     resample_params = resample_params or ResampleParams()
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params)
+    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch)
     
     if seq_params is not None:
         params_dir = os.path.join(seq_params.get_params_dir(), params_dir)

@@ -14,7 +14,7 @@ from typing import Optional, List, Union, Tuple
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
-from market_data.target.target import create_targets, TargetParams
+from market_data.target.target import create_targets, TargetParamsBatch
 from market_data.util.cache.time import (
     split_t_range,
 )
@@ -35,9 +35,9 @@ Path(TARGET_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 
-def _get_target_params_dir(params: TargetParams = None) -> str:
+def _get_target_params_dir(params: TargetParamsBatch = None) -> str:
     """Convert target parameters to a directory name string"""
-    params = params or TargetParams()
+    params = params or TargetParamsBatch()
     params_dict = {
         'fp': params.forward_periods,
         'tp': params.tp_values,
@@ -45,7 +45,7 @@ def _get_target_params_dir(params: TargetParams = None) -> str:
     }
     return params_to_dir_name(params_dict)
 
-def _get_recommended_warm_up_days(params: TargetParams) -> int:
+def _get_recommended_warm_up_days(params: TargetParamsBatch) -> int:
     """
     Calculate the recommended warm-up period based on target parameters.
     
@@ -70,7 +70,7 @@ def calculate_and_cache_targets(
         dataset_mode: DATASET_MODE,
         export_mode: EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
-        params: TargetParams = None,
+        params: TargetParamsBatch = None,
         time_range: TimeRange = None,
         calculation_batch_days: int = 1,
         warm_up_days: Optional[int] = None,
@@ -87,7 +87,7 @@ def calculate_and_cache_targets(
         Export mode (OHLC, TICKS, etc.)
     aggregation_mode : AGGREGATION_MODE
         Aggregation mode (MIN_1, MIN_5, etc.)
-    params : TargetParams, optional
+    params : TargetParamsBatch, optional
         Target calculation parameters. If None, uses default parameters.
     time_range : TimeRange, optional
         Time range for calculation. If None, must provide individual time parameters.
@@ -99,7 +99,7 @@ def calculate_and_cache_targets(
         If True, overwrite existing cache files, default True
     """
     # Create default params if None
-    params = params or TargetParams()
+    params = params or TargetParamsBatch()
     
     # Calculate warm-up days if not provided
     if warm_up_days is None:
@@ -126,7 +126,7 @@ def calculate_and_cache_targets(
     )
 
 def load_cached_targets(
-        params: TargetParams = None,
+        params: TargetParamsBatch = None,
         time_range: TimeRange = None,
         columns: List[str] = None,
         dataset_mode: DATASET_MODE = None,
@@ -138,7 +138,7 @@ def load_cached_targets(
 
     Parameters:
     -----------
-    params : TargetParams, optional
+    params : TargetParamsBatch, optional
         Target calculation parameters. If None, uses default parameters.
     time_range : TimeRange, optional
         Time range for target calculation. If None, must provide individual time parameters.
