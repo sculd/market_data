@@ -115,3 +115,23 @@ def parse_feature_label_params(
             ret.append((feature_label, params))
 
     return ret
+
+
+def get_warmup_days(
+        feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
+    ) -> int:
+    """
+    Get the maximum warm-up days required for a list of feature labels and parameters.
+    
+    Args:
+        feature_label_params: Optional list of feature labels and parameters.
+                             If None, all registered features with default parameters will be used.
+    Returns:
+        The maximum warm-up days required for the list of feature labels and parameters.
+    """
+    feature_label_params = parse_feature_label_params(feature_label_params)
+    warmup_days = 0
+    for _, params in feature_label_params:
+        if hasattr(params, 'get_warm_up_days'):
+            warmup_days = max(warmup_days, params.get_warm_up_days())
+    return warmup_days
