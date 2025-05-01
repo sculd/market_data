@@ -8,6 +8,7 @@ such as BTC returns for cross-referencing with other assets.
 import pandas as pd
 import numpy as np
 import logging
+import datetime
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
@@ -42,6 +43,9 @@ class BTCParams:
         }
         return params_to_dir_name(params_dict)
         
+    def get_warm_up_period(self) -> datetime.timedelta:
+        return datetime.timedelta(minutes=max(self.return_periods))
+
     def get_warm_up_days(self) -> int:
         """
         Calculate the recommended warm-up period based on the maximum return period.

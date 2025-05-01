@@ -7,6 +7,7 @@ This module provides functions for calculating GARCH volatility.
 import pandas as pd
 import numpy as np
 import logging
+import datetime
 import numba as nb
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple

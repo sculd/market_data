@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import logging
 import numba as nb
+import datetime
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
 
@@ -125,9 +126,14 @@ class BollingerParams:
         }
         return params_to_dir_name(params_dict)
         
+    def get_warm_up_period(self) -> datetime.timedelta:
+        return datetime.timedelta(minutes=self.period)
+
     def get_warm_up_days(self) -> int:
         """
         Calculate the recommended warm-up period based on the Bollinger Bands period.
+
+        It assumes that the period is in minutes and the data is 24/7.
         
         Returns:
             int: Recommended number of warm-up days

@@ -1,6 +1,7 @@
 import logging
 import inspect
 import importlib
+import datetime
 from typing import Optional, Any, Union, Tuple, List
 from market_data.feature.registry import get_feature_by_label, list_registered_features
 
@@ -117,21 +118,15 @@ def parse_feature_label_params(
     return ret
 
 
-def get_warmup_days(
+def get_warmup_period(
         feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
-    ) -> int:
+    ) -> datetime.timedelta:
     """
-    Get the maximum warm-up days required for a list of feature labels and parameters.
-    
-    Args:
-        feature_label_params: Optional list of feature labels and parameters.
-                             If None, all registered features with default parameters will be used.
-    Returns:
-        The maximum warm-up days required for the list of feature labels and parameters.
+    Get the maximum warm-up period required for a list of feature labels and parameters.
     """
     feature_label_params = parse_feature_label_params(feature_label_params)
-    warmup_days = 0
+    warmup_period = datetime.timedelta(minutes=1)
     for _, params in feature_label_params:
-        if hasattr(params, 'get_warm_up_days'):
-            warmup_days = max(warmup_days, params.get_warm_up_days())
-    return warmup_days
+        if hasattr(params, 'get_warm_up_period'):
+            warmup_period = max(warmup_period, params.get_warm_up_period())
+    return warmup_period

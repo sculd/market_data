@@ -8,6 +8,7 @@ true range, and autocorrelation.
 import pandas as pd
 import numpy as np
 import logging
+import datetime
 import numba as nb
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
@@ -284,6 +285,15 @@ class IndicatorsParams:
         }
         return params_to_dir_name(params_dict)
         
+    def get_warm_up_period(self) -> datetime.timedelta:
+        max_window = max(
+            self.rsi_period,
+            self.autocorr_window,
+            self.zscore_window,
+            self.minmax_window
+        )
+        return datetime.timedelta(minutes=max_window)
+
     def get_warm_up_days(self) -> int:
         """
         Calculate the recommended warm-up period based on the maximum window

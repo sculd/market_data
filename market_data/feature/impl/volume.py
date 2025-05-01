@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 import logging
 import numba as nb
+import datetime
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
@@ -131,6 +132,15 @@ class VolumeParams:
         }
         return params_to_dir_name(params_dict)
         
+    def get_warm_up_period(self) -> datetime.timedelta:
+        max_window = self.obv_zscore_window
+        
+        if self.ratio_periods:
+            max_period = max(self.ratio_periods)
+            max_window = max(max_window, max_period)
+        
+        return datetime.timedelta(minutes=max_window)
+
     def get_warm_up_days(self) -> int:
         """
         Calculate the recommended warm-up period based on the maximum volume ratio period

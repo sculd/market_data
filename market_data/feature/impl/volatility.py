@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import logging
 import numba as nb
+import datetime
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
@@ -69,6 +70,10 @@ class VolatilityParams:
         }
         return params_to_dir_name(params_dict)
     
+    def get_warm_up_period(self) -> datetime.timedelta:
+        max_period = 1 if not self.windows else max(self.windows)
+        return datetime.timedelta(minutes=max_period)
+
     def get_warm_up_days(self) -> int:
         """
         Calculate the recommended warm-up period based on the maximum volatility window.

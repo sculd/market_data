@@ -8,6 +8,7 @@ based on volatility patterns.
 import pandas as pd
 import numpy as np
 import logging
+import datetime
 import numba as nb
 from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
@@ -328,7 +329,11 @@ class MarketRegimeParams:
             'stats': stats_str
         }
         return params_to_dir_name(params_dict)
-    
+      
+    def get_warm_up_period(self) -> datetime.timedelta:
+        max_window = max(self.volatility_windows) if self.volatility_windows else 240
+        return datetime.timedelta(minutes=max_window)
+
     def get_warm_up_days(self) -> int:
         """
         Calculate the recommended warm-up period for market regime calculation.
