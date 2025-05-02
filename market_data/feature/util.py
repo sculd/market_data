@@ -9,18 +9,23 @@ from market_data.feature.registry import get_feature_by_label, list_registered_f
 import logging
 logger = logging.getLogger(__name__)
 
-def _create_default_params(feature_module, feature_label: str) -> Optional[Any]:
+def _create_default_params(feature_label: str) -> Optional[Any]:
     """
-    Create a default instance of the parameter class for a feature module.
+    Create a default instance of the parameter class for a feature.
     
     Args:
-        feature_module: The feature module instance
         feature_label: The feature label
         
     Returns:
         An instance of the parameter class, or None if not found
     """
     try:
+        # Get feature module
+        feature_module = get_feature_by_label(feature_label)
+        if feature_module is None:
+            logger.warning(f"Feature module '{feature_label}' not found in registry")
+            return None
+            
         # Try different naming patterns to find the params class
         # Common patterns include: ReturnParams, VolatilityParams, etc.
         
@@ -73,12 +78,7 @@ def parse_feature_label_param(feature_label_param: Union[str, Tuple[str, Any]]) 
     
     # Create default params if needed
     if params is None:
-        # Get feature module
-        feature_module = get_feature_by_label(feature_label)
-        if feature_module is None:
-            raise ValueError(f"Feature module '{feature_label}' not found in registry")
-        
-        params = _create_default_params(feature_module, feature_label)
+        params = _create_default_params(feature_label)
         if params is None:
             raise ValueError(f"Failed to create default parameters for feature '{feature_label}'")
     
