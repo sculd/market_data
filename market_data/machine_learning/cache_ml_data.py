@@ -137,7 +137,7 @@ def _calculate_daily_ml_data(
             aggregation_mode=aggregation_mode,
             time_range=time_range,
             feature_label_params=feature_label_params,
-            target_params=target_params_batch,
+            target_params_batch=target_params_batch,
             resample_params=resample_params
         )
     
