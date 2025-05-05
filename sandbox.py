@@ -27,6 +27,7 @@ from market_data.feature.impl.common import SequentialFeatureParam
 
 import market_data.ingest.bq.common
 import market_data.ingest.bq.cache
+import market_data.machine_learning.resample
 
 import market_data.util
 import market_data.util.time
@@ -151,14 +152,14 @@ time_range = market_data.util.time.TimeRange(
     )
 import market_data.feature.cache_writer
 for label in sorted(registry.keys()):
-    if label not in ["ema"]:
+    if label not in ["bollinger"]:
         continue
     market_data.feature.cache_writer.cache_feature_cache(
         label,
         market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
         time_range=time_range,
     )
-'''
+#'''
 
 '''
 time_range = market_data.util.time.TimeRange(
@@ -193,6 +194,10 @@ market_data.feature.cache_feature.calculate_and_cache_features(
 #'''
 
 '''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2025-04-01',
+    )
+
 import market_data.target.cache_target
 market_data.target.cache_target.calculate_and_cache_targets(
       market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
@@ -201,29 +206,34 @@ market_data.target.cache_target.calculate_and_cache_targets(
 #'''
 
 '''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2025-04-01',
+    )
+
 import market_data.machine_learning.cache_resample
 market_data.machine_learning.cache_resample.calculate_and_cache_resampled(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
+    params=market_data.machine_learning.resample.ResampleParams(price_col = 'close', threshold = 0.03,),
+)
+#'''
+
+#'''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2025-04-01',
+    )
+
+import market_data.machine_learning.cache_ml_data
+market_data.machine_learning.cache_ml_data.calculate_and_cache_ml_data(
+    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    time_range=time_range,
+    resample_params=market_data.machine_learning.resample.ResampleParams(price_col = 'close', threshold = 0.03,),
 )
 #'''
 
 '''
 time_range = market_data.util.time.TimeRange(
     date_str_from='2024-01-01', date_str_to='2025-04-01',
-    )
-
-
-import market_data.machine_learning.cache_ml_data
-market_data.machine_learning.cache_ml_data.calculate_and_cache_ml_data(
-    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
-    time_range=time_range,
-)
-#'''
-
-#'''
-time_range = market_data.util.time.TimeRange(
-    date_str_from='2024-01-01', date_str_to='2024-04-01',
     )
 
 import market_data.machine_learning.cache_ml_data
