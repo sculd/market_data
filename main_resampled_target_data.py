@@ -165,6 +165,10 @@ def main():
     
     args = parser.parse_args()
     
+    # Validate that --resample_params is not used with --target
+    if args.target and args.resample_params is not None:
+        parser.error("--resample_params cannot be used with --target (it's only relevant for --resample)")
+    
     # Get enum values by name
     dataset_mode = getattr(DATASET_MODE, args.dataset_mode)
     export_mode = getattr(EXPORT_MODE, args.export_mode)
