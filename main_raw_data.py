@@ -1,0 +1,190 @@
+import argparse
+import datetime
+import pandas as pd
+import os
+from pathlib import Path
+
+import setup_env # needed for env variables
+
+from market_data.ingest.bq.cache import query_and_cache, to_filename, _cache_base_path
+from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
+from market_data.util.time import TimeRange
+from market_data.util.cache.time import split_t_range
+
+def _check_missing_data(
+        dataset_mode: DATASET_MODE,
+        export_mode: EXPORT_MODE,
+        aggregation_mode: AGGREGATION_MODE,
+        time_range: TimeRange
+) -> list:
+    """
+    Check which date ranges are missing from the cache.
+    
+    Returns a list of (start_date, end_date) tuples for missing days.
+    """
+    t_from, t_to = time_range.to_datetime()
+    t_id = get_full_table_id(dataset_mode, export_mode)
+    
+    # Split the range into daily intervals
+    daily_ranges = split_t_range(t_from, t_to)
+    
+    missing_ranges = []
+    for d_range in daily_ranges:
+        d_from, d_to = d_range
+        
+        # Check if file exists in cache
+        filename = to_filename(_cache_base_path, "market_data", t_id, aggregation_mode, d_from, d_to)
+        if not os.path.exists(filename):
+            missing_ranges.append(d_range)
+    
+    return missing_ranges
+
+def _group_consecutive_dates(date_ranges):
+    """
+    Group consecutive date ranges into larger ranges.
+    
+    Args:
+        date_ranges: List of (start_date, end_date) tuples
+        
+    Returns:
+        List of (start_date, end_date) tuples with consecutive dates grouped
+    """
+    if not date_ranges:
+        return []
+    
+    # Sort by start date
+    sorted_ranges = sorted(date_ranges, key=lambda x: x[0])
+    
+    grouped_ranges = []
+    current_start, current_end = sorted_ranges[0]
+    
+    for i in range(1, len(sorted_ranges)):
+        next_start, next_end = sorted_ranges[i]
+        
+        # If next range starts on the same day as current range ends,
+        # they are consecutive
+        if next_start.date() == current_end.date():
+            current_end = next_end
+        else:
+            grouped_ranges.append((current_start, current_end))
+            current_start, current_end = next_start, next_end
+    
+    # Don't forget to add the last range
+    grouped_ranges.append((current_start, current_end))
+    
+    return grouped_ranges
+
+def main():
+    parser = argparse.ArgumentParser(
+        description='Query and cache raw market data',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # Action argument
+    parser.add_argument('--action', type=str, default='cache',
+                        choices=['check', 'cache'],
+                        help='Action to perform: check missing data or cache data')
+    
+    # Arguments with defaults
+    parser.add_argument('--dataset_mode', type=str, default='OKX', 
+                        choices=[mode.name for mode in DATASET_MODE],
+                        help='Dataset mode')
+    
+    parser.add_argument('--export_mode', type=str, default='BY_MINUTE',
+                        choices=[mode.name for mode in EXPORT_MODE],
+                        help='Export mode')
+    
+    parser.add_argument('--aggregation_mode', type=str, default='TAKE_LASTEST',
+                        choices=[mode.name for mode in AGGREGATION_MODE],
+                        help='Aggregation mode')
+    
+    # Time range arguments - can be specified as date strings
+    parser.add_argument('--from', dest='date_from', type=str, required=True,
+                        help='Start date in YYYY-MM-DD format')
+    
+    parser.add_argument('--to', dest='date_to', type=str, required=True,
+                        help='End date in YYYY-MM-DD format')
+    
+    # Optional arguments
+    parser.add_argument('--overwrite_cache', action='store_true',
+                        help='Overwrite existing cache files')
+    
+    parser.add_argument('--skip_first_day', action='store_true',
+                        help='Skip the first day in the range')
+    
+    args = parser.parse_args()
+    
+    # Get enum values by name
+    dataset_mode = getattr(DATASET_MODE, args.dataset_mode)
+    export_mode = getattr(EXPORT_MODE, args.export_mode)
+    aggregation_mode = getattr(AGGREGATION_MODE, args.aggregation_mode)
+    
+    # Create TimeRange object
+    time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
+    
+    print(f"Processing with parameters:")
+    print(f"  Action: {args.action}")
+    print(f"  Dataset Mode: {dataset_mode}")
+    print(f"  Export Mode: {export_mode}")
+    print(f"  Aggregation Mode: {aggregation_mode}")
+    print(f"  Time Range: {args.date_from} to {args.date_to}")
+    
+    if args.action == 'check':
+        # Check which date ranges are missing from the cache
+        missing_ranges = _check_missing_data(
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            time_range=time_range
+        )
+        
+        if not missing_ranges:
+            print("\nAll data for the specified range is present in the cache.")
+        else:
+            # Group consecutive dates
+            grouped_ranges = _group_consecutive_dates(missing_ranges)
+            
+            total_missing_days = len(missing_ranges)
+            print(f"\nMissing data for {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
+            
+            for i, (d_from, d_to) in enumerate(grouped_ranges):
+                if d_from.date() == d_to.date() - datetime.timedelta(days=1):
+                    # Single day range (common when using daily intervals)
+                    print(f"  {i+1}. {d_from.date()}")
+                else:
+                    # Multi-day range
+                    print(f"  {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
+                
+            # Suggest command to cache the missing data
+            suggest_cmd = f"python main_raw_data.py --action cache --dataset_mode {args.dataset_mode} --export_mode {args.export_mode} --aggregation_mode {args.aggregation_mode} --from {args.date_from} --to {args.date_to}"
+            print(f"\nTo cache the missing data, run:")
+            print(f"  {suggest_cmd}")
+    
+    else:  # args.action == 'cache'
+        print(f"  Overwrite Cache: {args.overwrite_cache}")
+        print(f"  Skip First Day: {args.skip_first_day}")
+        
+        # Query and cache data
+        result_df = query_and_cache(
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            t_from=None,
+            t_to=None,
+            date_str_from=args.date_from,
+            date_str_to=args.date_to,
+            overwirte_cache=args.overwrite_cache,
+            skip_first_day=args.skip_first_day
+        )
+        
+        # Print summary of results
+        if result_df is not None and not result_df.empty:
+            print(f"\nSuccessfully cached {len(result_df)} rows of data")
+            print(f"Data spans from {result_df.index.min()} to {result_df.index.max()}")
+            print(f"Columns: {result_df.columns.tolist()}")
+            print(f"Number of unique symbols: {result_df['symbol'].nunique()}")
+        else:
+            print("\nNo data was returned or cached.")
+
+if __name__ == "__main__":
+    main()
