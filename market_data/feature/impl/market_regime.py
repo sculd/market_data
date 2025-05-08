@@ -345,7 +345,8 @@ class MarketRegimeParams:
         max_window = max(self.volatility_windows) if self.volatility_windows else 240
         return max(1, (max_window // (24 * 60)))  # Convert minutes to days
 
-@register_feature(FEATURE_LABEL)
+# disable for now
+#@register_feature(FEATURE_LABEL)
 class MarketRegimeFeature:
     """Market regime feature implementation."""
     
