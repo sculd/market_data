@@ -145,6 +145,20 @@ The project now includes a target engineering module for machine learning purpos
 
 All target columns have the `label_` prefix to easily identify them as machine learning targets.
 
+### Command-line Tools
+
+The project provides several command-line tools for managing different aspects of the market data pipeline:
+
+- `main_raw_data.py`: Handles raw market data operations including checking for missing data and caching from BigQuery. Supports dataset mode selection and date range parameters.
+
+- `main_feature_data.py`: Manages feature calculation and caching. Allows checking and caching specific features across defined date ranges.
+
+- `main_resampled_target_data.py`: Dedicated tool for processing and caching target labels and resampled data. Supports configurable resampling parameters for event-based analysis.
+
+- `main_ml_data.py`: Prepares machine learning datasets by combining features and targets. Supports sequential feature generation and customizable data preparation parameters.
+
+All tools follow a consistent pattern with action-based commands, parameter validation, and helpful output messages including suggested commands for missing data.
+
 ## Project Structure
 
 - `ingest/`: Data ingestion modules
