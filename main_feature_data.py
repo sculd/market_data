@@ -13,54 +13,9 @@ from market_data.util.cache.time import split_t_range
 from market_data.feature.registry import list_registered_features
 from market_data.feature.cache_writer import cache_feature_cache
 from market_data.feature.util import parse_feature_label_param
+import market_data.util.cache.missing_data_finder
 
 import market_data.feature.impl  # Import to ensure all features are registered
-
-def _check_missing_feature_data(
-        feature_label: str,
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
-        time_range: TimeRange
-) -> list:
-    """
-    Check which date ranges are missing from the feature cache.
-    
-    Returns a list of (start_date, end_date) tuples for missing days.
-    """
-    from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
-    from market_data.util.cache.path import to_filename
-    
-    # Parse feature_label to get params
-    feature_label, params = parse_feature_label_param(feature_label)
-    params_dir = params.get_params_dir()
-    
-    t_from, t_to = time_range.to_datetime()
-    
-    # Split the range into daily intervals
-    daily_ranges = split_t_range(t_from, t_to)
-    
-    missing_ranges = []
-    for d_range in daily_ranges:
-        d_from, d_to = d_range
-        
-        # Check if file exists in cache
-        cache_path = f"{FEATURE_CACHE_BASE_PATH}/features"
-        filename = to_filename(
-            cache_path, 
-            feature_label, 
-            d_from, 
-            d_to, 
-            params_dir=params_dir,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode
-        )
-        
-        if not os.path.exists(filename):
-            missing_ranges.append(d_range)
-    
-    return missing_ranges
 
 def main():
     parser = argparse.ArgumentParser(
@@ -145,7 +100,7 @@ def main():
         # Process each feature
         for feature_label in features_to_process:
             print(f"\nChecking feature: {feature_label}")
-            missing_ranges = _check_missing_feature_data(
+            missing_ranges = market_data.util.cache.missing_data_finder.check_missing_feature_data(
                 feature_label=feature_label,
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,

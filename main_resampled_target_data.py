@@ -14,101 +14,7 @@ from market_data.target.target import TargetParamsBatch
 from market_data.target.cache_target import calculate_and_cache_targets
 from market_data.machine_learning.resample import ResampleParams
 from market_data.machine_learning.cache_resample import calculate_and_cache_resampled
-
-def _check_missing_target_data(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
-        time_range: TimeRange,
-        target_params: TargetParamsBatch = None
-) -> list:
-    """
-    Check which date ranges are missing from the target cache.
-    
-    Returns a list of (start_date, end_date) tuples for missing days.
-    """
-    from market_data.target.cache_target import TARGET_CACHE_BASE_PATH, _get_target_params_dir
-    from market_data.util.cache.path import to_filename
-    from market_data.ingest.bq.common import get_full_table_id
-    
-    target_params = target_params or TargetParamsBatch()
-    params_dir = _get_target_params_dir(target_params)
-    
-    t_from, t_to = time_range.to_datetime()
-    
-    # Split the range into daily intervals
-    daily_ranges = split_t_range(t_from, t_to)
-    
-    missing_ranges = []
-    for d_range in daily_ranges:
-        d_from, d_to = d_range
-        
-        # Check if file exists in cache
-        cache_path = f"{TARGET_CACHE_BASE_PATH}"
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-        
-        # The target filename pattern
-        filename = to_filename(
-            cache_path, 
-            "targets", 
-            d_from, 
-            d_to, 
-            params_dir=params_dir,
-            dataset_id=dataset_id
-        )
-        
-        if not os.path.exists(filename):
-            missing_ranges.append(d_range)
-    
-    return missing_ranges
-
-def _check_missing_resampled_data(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
-        time_range: TimeRange,
-        resample_params: ResampleParams = None
-) -> list:
-    """
-    Check which date ranges are missing from the resampled data cache.
-    
-    Returns a list of (start_date, end_date) tuples for missing days.
-    """
-    from market_data.machine_learning.cache_resample import RESAMPLE_CACHE_BASE_PATH
-    from market_data.util.cache.path import to_filename, params_to_dir_name
-    from market_data.ingest.bq.common import get_full_table_id
-    from dataclasses import asdict
-    
-    resample_params = resample_params or ResampleParams()
-    params_dir = params_to_dir_name(asdict(resample_params))
-    
-    t_from, t_to = time_range.to_datetime()
-    
-    # Split the range into daily intervals
-    daily_ranges = split_t_range(t_from, t_to)
-    
-    missing_ranges = []
-    for d_range in daily_ranges:
-        d_from, d_to = d_range
-        
-        # Check if file exists in cache
-        cache_path = f"{RESAMPLE_CACHE_BASE_PATH}"
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-        
-        # The resampled data filename pattern
-        filename = to_filename(
-            cache_path, 
-            "resampled", 
-            d_from, 
-            d_to, 
-            params_dir=params_dir,
-            dataset_id=dataset_id
-        )
-        
-        if not os.path.exists(filename):
-            missing_ranges.append(d_range)
-    
-    return missing_ranges
+import market_data.util.cache.missing_data_finder
 
 def main():
     parser = argparse.ArgumentParser(
@@ -200,7 +106,7 @@ def main():
     if args.target:
         if args.action == 'check':
             print("\nChecking target data")
-            missing_ranges = _check_missing_target_data(
+            missing_ranges = market_data.util.cache.missing_data_finder.check_missing_target_data(
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,
@@ -248,7 +154,7 @@ def main():
     elif args.resample:
         if args.action == 'check':
             print("\nChecking resampled data")
-            missing_ranges = _check_missing_resampled_data(
+            missing_ranges = market_data.util.cache.missing_data_finder.check_missing_resampled_data(
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,

@@ -11,34 +11,7 @@ from market_data.ingest.bq.cache import query_and_cache, to_filename, _cache_bas
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
-
-def _check_missing_data(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
-        time_range: TimeRange
-) -> list:
-    """
-    Check which date ranges are missing from the cache.
-    
-    Returns a list of (start_date, end_date) tuples for missing days.
-    """
-    t_from, t_to = time_range.to_datetime()
-    t_id = get_full_table_id(dataset_mode, export_mode)
-    
-    # Split the range into daily intervals
-    daily_ranges = split_t_range(t_from, t_to)
-    
-    missing_ranges = []
-    for d_range in daily_ranges:
-        d_from, d_to = d_range
-        
-        # Check if file exists in cache
-        filename = to_filename(_cache_base_path, "market_data", t_id, aggregation_mode, d_from, d_to)
-        if not os.path.exists(filename):
-            missing_ranges.append(d_range)
-    
-    return missing_ranges
+import market_data.util.cache.missing_data_finder
 
 def main():
     parser = argparse.ArgumentParser(
@@ -97,7 +70,7 @@ def main():
     
     if args.action == 'check':
         # Check which date ranges are missing from the cache
-        missing_ranges = _check_missing_data(
+        missing_ranges = market_data.util.cache.missing_data_finder.check_missing_raw_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,
