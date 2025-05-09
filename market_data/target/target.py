@@ -10,14 +10,9 @@ from dataclasses import dataclass, field
 logger = logging.getLogger(__name__)
 
 # Default values for target parameters
-DEFAULT_FORWARD_PERIODS = [2, 10]
-DEFAULT_TP_VALUES = [0.03]
-DEFAULT_SL_VALUES = [0.03]
-
-# Default values for complete target parameters (used in add_target_features)
-FULL_FORWARD_PERIODS = [1, 5, 15, 30, 60, 120, 240, 480]
-FULL_TP_VALUES = [0.005, 0.01, 0.02, 0.03, 0.05]
-FULL_SL_VALUES = [0.005, 0.01, 0.02, 0.03, 0.05]
+DEFAULT_FORWARD_PERIODS = [5, 10, 30]
+DEFAULT_TP_VALUES = [0.015, 0.03, 0.05]
+DEFAULT_SL_VALUES = [0.015, 0.03, 0.05]
 
 @dataclass
 class TargetParams:
@@ -318,8 +313,3 @@ def get_target_columns(params: TargetParamsBatch = None) -> List[str]:
 
 # Predefined target column lists for common configurations
 TARGET_COLUMNS_DEFAULT = get_target_columns(TargetParamsBatch())
-TARGET_COLUMNS_FULL = get_target_columns(TargetParamsBatch(
-    forward_periods=FULL_FORWARD_PERIODS,
-    tp_values=FULL_TP_VALUES,
-    sl_values=FULL_SL_VALUES
-)) 
