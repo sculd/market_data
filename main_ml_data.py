@@ -23,60 +23,6 @@ from market_data.machine_learning.cache_ml_data import (
 import market_data.util.cache.missing_data_finder
 from market_data.machine_learning.ml_data import prepare_ml_data, prepare_sequential_ml_data
 
-def _check_missing_ml_data(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
-        time_range: TimeRange,
-        feature_label_params=None,
-        target_params_batch=None,
-        resample_params=None,
-        seq_params=None
-) -> list:
-    """
-    Check which date ranges are missing from the ML data cache.
-    
-    Returns a list of (start_date, end_date) tuples for missing days.
-    """
-    from market_data.util.cache.path import to_filename
-    from market_data.machine_learning.cache_ml_data import _get_mldata_params_dir
-    from market_data.ingest.bq.common import get_full_table_id
-    
-    # Normalize parameters
-    feature_label_params = parse_feature_label_params(feature_label_params)
-    target_params_batch = target_params_batch or TargetParamsBatch()
-    resample_params = resample_params or ResampleParams()
-    
-    # Get parameter directory
-    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch)
-    if seq_params is not None:
-        params_dir = os.path.join(seq_params.get_params_dir(), params_dir)
-    
-    t_from, t_to = time_range.to_datetime()
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
-    
-    # Split the range into daily intervals
-    daily_ranges = split_t_range(t_from, t_to)
-    
-    missing_ranges = []
-    for d_range in daily_ranges:
-        d_from, d_to = d_range
-        
-        # Check if file exists in cache
-        filename = to_filename(
-            CACHE_BASE_PATH,
-            "ml_data",
-            d_from, 
-            d_to, 
-            params_dir=params_dir,
-            dataset_id=dataset_id
-        )
-        
-        if not os.path.exists(filename):
-            missing_ranges.append(d_range)
-    
-    return missing_ranges
-
 def main():
     parser = argparse.ArgumentParser(
         description='ML data management tool',
@@ -161,7 +107,7 @@ def main():
     
     if args.action == 'check':
         # Check which date ranges are missing from the ML data cache
-        missing_ranges = _check_missing_ml_data(
+        missing_ranges = market_data.util.cache.missing_data_finder.check_missing_ml_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,
@@ -250,7 +196,7 @@ def main():
         except Exception as e:
             print(f"\nError caching ML data: {e}")
 
-if __name__ == "__main__":
+if __name__ == "__main__":     
     main()
 
 
