@@ -81,7 +81,7 @@ def main():
             print("\nAll data for the specified range is present in the cache.")
         else:
             # Group consecutive dates
-            grouped_ranges = main_util.group_consecutive_dates(missing_ranges)
+            grouped_ranges = market_data.util.cache.missing_data_finder.group_consecutive_dates(missing_ranges)
             
             total_missing_days = len(missing_ranges)
             print(f"\nMissing data for {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")

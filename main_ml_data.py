@@ -20,6 +20,7 @@ from market_data.machine_learning.cache_ml_data import (
     load_cached_ml_data,
     CACHE_BASE_PATH
 )
+import market_data.util.cache.missing_data_finder
 from market_data.machine_learning.ml_data import prepare_ml_data, prepare_sequential_ml_data
 
 def _check_missing_ml_data(
@@ -175,7 +176,7 @@ def main():
             print("\nAll ML data for the specified range is present in the cache.")
         else:
             # Group consecutive dates
-            grouped_ranges = main_util.group_consecutive_dates(missing_ranges)
+            grouped_ranges = market_data.util.cache.missing_data_finder.group_consecutive_dates(missing_ranges)
             
             total_missing_days = len(missing_ranges)
             print(f"\nMissing ML data: {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")

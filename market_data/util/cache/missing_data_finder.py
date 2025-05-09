@@ -19,6 +19,41 @@ from market_data.machine_learning.cache_ml_data import (
 
 import market_data.feature.impl  # Import to ensure all features are registered
 
+def group_consecutive_dates(date_ranges):
+    """
+    Group consecutive date ranges into larger ranges.
+    
+    Args:
+        date_ranges: List of (start_date, end_date) tuples
+        
+    Returns:
+        List of (start_date, end_date) tuples with consecutive dates grouped
+    """
+    if not date_ranges:
+        return []
+    
+    # Sort by start date
+    sorted_ranges = sorted(date_ranges, key=lambda x: x[0])
+    
+    grouped_ranges = []
+    current_start, current_end = sorted_ranges[0]
+    
+    for i in range(1, len(sorted_ranges)):
+        next_start, next_end = sorted_ranges[i]
+        
+        # If next range starts on the same day as current range ends,
+        # they are consecutive
+        if next_start.date() == current_end.date():
+            current_end = next_end
+        else:
+            grouped_ranges.append((current_start, current_end))
+            current_start, current_end = next_start, next_end
+    
+    # Don't forget to add the last range
+    grouped_ranges.append((current_start, current_end))
+    
+    return grouped_ranges
+
 
 def check_missing_raw_data(
         dataset_mode: DATASET_MODE,
