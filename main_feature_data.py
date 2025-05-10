@@ -30,7 +30,7 @@ def main():
     
     # Feature to process
     parser.add_argument('--feature', type=str, default=None,
-                        help='Specific feature label to process (required for check and cache actions)')
+                        help='Specific feature label to process (required for check and cache actions). Use "all" to process all available features.')
     
     # Arguments with defaults
     parser.add_argument('--dataset_mode', type=str, default='OKX', 
@@ -93,8 +93,13 @@ def main():
     print(f"  Aggregation Mode: {aggregation_mode}")
     print(f"  Time Range: {args.date_from} to {args.date_to}")
     
-    # For non-list actions, we now know the feature is specified
-    features_to_process = [args.feature]
+    # Determine features to process
+    features_to_process = []
+    if args.feature == "all":
+        features_to_process = list_registered_features()
+        print(f"\nProcessing all {len(features_to_process)} registered features")
+    else:
+        features_to_process = [args.feature]
     
     if args.action == 'check':
         # Process each feature

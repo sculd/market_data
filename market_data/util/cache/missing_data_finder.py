@@ -132,6 +132,68 @@ def check_missing_feature_data(
     return missing_ranges
 
 
+def check_missing_target_data(
+        dataset_mode: DATASET_MODE,
+        export_mode: EXPORT_MODE,
+        aggregation_mode: AGGREGATION_MODE,
+        time_range: TimeRange,
+        target_params: TargetParamsBatch = None
+) -> list:
+    """
+    Check which date ranges are missing from the target data cache.
+    
+    Args:
+        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
+        export_mode: Export mode (OHLC, TICKS, etc.)
+        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        time_range: TimeRange object specifying the time range to check
+        target_params: Target parameters. If None, uses default parameters
+        
+    Returns:
+        A list of (start_date, end_date) tuples for missing days
+    """
+    from market_data.target.cache_target import TARGET_CACHE_BASE_PATH
+    from market_data.util.cache.path import to_filename, params_to_dir_name
+    from dataclasses import asdict
+    
+    # Create default params if None
+    target_params = target_params or TargetParamsBatch()
+    
+    # Convert params to directory name
+    params_dict = {
+        'fp': target_params.forward_periods,
+        'tp': target_params.tp_values,
+        'sl': target_params.sl_values
+    }
+    params_dir = params_to_dir_name(params_dict)
+    
+    t_from, t_to = time_range.to_datetime()
+    
+    # Split the range into daily intervals
+    daily_ranges = split_t_range(t_from, t_to)
+    
+    missing_ranges = []
+    for d_range in daily_ranges:
+        d_from, d_to = d_range
+        
+        # Check if file exists in cache
+        filename = to_filename(
+            TARGET_CACHE_BASE_PATH, 
+            "targets", 
+            d_from, 
+            d_to, 
+            params_dir=params_dir,
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode
+        )
+        
+        if not os.path.exists(filename):
+            missing_ranges.append(d_range)
+    
+    return missing_ranges
+
+
 def check_missing_resampled_data(
         dataset_mode: DATASET_MODE,
         export_mode: EXPORT_MODE,
