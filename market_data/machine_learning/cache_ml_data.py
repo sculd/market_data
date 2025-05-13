@@ -260,7 +260,7 @@ def load_cached_ml_data(
     if seq_params is not None:
         params_dir = os.path.join(seq_params.get_params_dir(), params_dir)
     
-    return read_from_cache_generic(
+    ml_data_df = read_from_cache_generic(
         label="ml_data",
         params_dir=params_dir,
         time_range=time_range,
@@ -271,3 +271,5 @@ def load_cached_ml_data(
         aggregation_mode=aggregation_mode,
         cache_base_path=CACHE_BASE_PATH
     )
+
+    return ml_data_df.sort_values(["timestamp", "symbol"])
