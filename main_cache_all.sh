@@ -33,6 +33,8 @@ python main_resampled_target_data.py --action check --target --from "$FROM_DATE"
 python main_resampled_target_data.py --action check --resample  --resample_params close,0.05 --from "$FROM_DATE" --to "$TO_DATE"
 python main_resampled_target_data.py --action check --resample  --resample_params close,0.03 --from "$FROM_DATE" --to "$TO_DATE"
 python main_resampled_target_data.py --action check --resample  --resample_params close,0.07 --from "$FROM_DATE" --to "$TO_DATE"
+python main_ml_data.py --action check --resample_params close,0.03 --from "$FROM_DATE" --to "$TO_DATE"
+python main_ml_data.py --action check --resample_params close,0.05 --from "$FROM_DATE" --to "$TO_DATE"
 python main_ml_data.py --action check --resample_params close,0.07 --from "$FROM_DATE" --to "$TO_DATE"
 
 # Ask for confirmation before proceeding
@@ -50,6 +52,8 @@ python main_resampled_target_data.py --action cache --target --from "$FROM_DATE"
 python main_resampled_target_data.py --action cache --resample  --resample_params close,0.05 --from "$FROM_DATE" --to "$TO_DATE"
 python main_resampled_target_data.py --action cache --resample  --resample_params close,0.03 --from "$FROM_DATE" --to "$TO_DATE"
 python main_resampled_target_data.py --action cache --resample  --resample_params close,0.07 --from "$FROM_DATE" --to "$TO_DATE"
+python main_ml_data.py --action cache --resample_params close,0.03 --from "$FROM_DATE" --to "$TO_DATE"
+python main_ml_data.py --action cache --resample_params close,0.05 --from "$FROM_DATE" --to "$TO_DATE"
 python main_ml_data.py --action cache --resample_params close,0.07 --from "$FROM_DATE" --to "$TO_DATE"
 
 

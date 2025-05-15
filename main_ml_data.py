@@ -106,6 +106,7 @@ def main():
         print(f"  Sequence Window: {args.sequence_window}")
     
     if args.action == 'check':
+        print("\nChecking ml_data")
         # Check which date ranges are missing from the ML data cache
         missing_ranges = market_data.util.cache.missing_data_finder.check_missing_ml_data(
             dataset_mode=dataset_mode,
