@@ -272,4 +272,7 @@ def load_cached_ml_data(
         cache_base_path=CACHE_BASE_PATH
     )
 
+    if ml_data_df.empty:
+        return ml_data_df
+    
     return ml_data_df.sort_values(["timestamp", "symbol"])
