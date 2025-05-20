@@ -20,6 +20,7 @@ _DATASET_ID_KRAKEN = 'market_data_kraken'
 _DATASET_ID_OKX = 'market_data_okx'
 _DATASET_ID_CEX = 'market_data_cex'
 _DATASET_ID_BITHUMB = 'market_data_bithumb'
+_DATASET_ID_FOREX_IBKR = 'market_data_forex_ibkr'
 
 _TABLE_ID_BY_MINUTE = 'by_minute'
 _TABLE_ID_RAW = 'raw'
@@ -95,6 +96,7 @@ class DATASET_MODE(Enum):
     OKX = 7
     CEX = 8
     BITHUMB = 9
+    FOREX_IBKR = 10
 
 def get_full_table_id(dataset_mode, export_mode):
     ds_id = _DATASET_ID_EQUITY
@@ -116,6 +118,8 @@ def get_full_table_id(dataset_mode, export_mode):
         ds_id = _DATASET_ID_CEX
     elif dataset_mode is DATASET_MODE.BITHUMB:
         ds_id = _DATASET_ID_BITHUMB
+    elif dataset_mode is DATASET_MODE.FOREX_IBKR:
+        ds_id = _DATASET_ID_FOREX_IBKR
 
     t_id = _TABLE_ID_BY_MINUTE
     if export_mode is EXPORT_MODE.BY_MINUTE:

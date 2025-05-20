@@ -59,6 +59,7 @@ def _fetch_minute_candle_datetime(t_id: str, aggregation_mode: AGGREGATION_MODE,
         t_str_to=util_time.t_to_bq_t_str(t_to),
     )
     df = common.run_query(query_str, timestamp_columnname="timestamp")
+    df = df.reset_index().drop_duplicates(["timestamp", "symbol"]).set_index("timestamp")
     return df
 
 
