@@ -30,7 +30,7 @@ def main():
     
     # Feature to process
     parser.add_argument('--feature', type=str, default=None,
-                        help='Specific feature label to process (required for check and cache actions). Use "all" to process all available features.')
+                        help='Specific feature label to process (required for check and cache actions). Use "all" to process all available features. Use "forex" or "crypto" to process only forex or crypto features.')
     
     # Arguments with defaults
     parser.add_argument('--dataset_mode', type=str, default='OKX', 
@@ -63,7 +63,8 @@ def main():
     
     if args.action == 'list':
         # List all available features
-        features = list_registered_features()
+        security_type = args.feature or 'all'
+        features = list_registered_features(security_type=security_type)
         print(f"\nAvailable features ({len(features)}):")
         for i, feature in enumerate(sorted(features)):
             print(f"  {i+1}. {feature}")
@@ -98,6 +99,12 @@ def main():
     if args.feature == "all":
         features_to_process = list_registered_features()
         print(f"\nProcessing all {len(features_to_process)} registered features")
+    elif args.feature == "forex":
+        features_to_process = list_registered_features(security_type="forex")
+        print(f"\nProcessing all {len(features_to_process)} registered forex features")
+    elif args.feature == "crypto":
+        features_to_process = list_registered_features(security_type="crypto")
+        print(f"\nProcessing all {len(features_to_process)} registered crypto features")
     else:
         features_to_process = [args.feature]
     

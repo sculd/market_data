@@ -63,14 +63,17 @@ def get_feature_by_label(label: str) -> Optional[Any]:
         logger.warning(f"Feature module with label '{label}' not found in registry.")
     return module
 
-def list_registered_features() -> List[str]:
+def list_registered_features(security_type: str = "all") -> List[str]:
     """
     Get a list of all registered feature labels.
     
     Returns:
         List of registered feature labels
     """
-    return list(_FEATURE_REGISTRY.keys())
+    features = list(_FEATURE_REGISTRY.keys())
+    if security_type == "forex":
+        features = [f for f in features if not f.startswith("btc_")]
+    return features
 
 # Column pattern to feature mapping
 # Maps regex patterns or prefixes to their respective feature modules
