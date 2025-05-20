@@ -67,7 +67,7 @@ def main():
     
     # Parse resample parameters if provided
     resample_params = None
-    if args.resample or args.resample_params:
+    if args.resample_params:
         resample_params = main_util.parse_resample_params(args.resample_params)
     
     print(f"Processing with parameters:")

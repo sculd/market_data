@@ -7,7 +7,6 @@ import math
 from pathlib import Path
 from dataclasses import asdict
 
-import market_data.feature.cache_reader
 import market_data.target.cache_target
 from market_data.target.target import TargetParamsBatch
 from market_data.feature.util import parse_feature_label_params
@@ -59,9 +58,7 @@ def _get_mldata_params_dir(
     })
     
     # Create a directory for target params
-    target_dir = params_to_dir_name({
-        f't_{key}': value for key, value in asdict(target_params_batch).items()
-    })
+    target_dir = f't_{market_data.target.cache_target._get_target_params_dir(target_params_batch)}'
     
     # Combine base directories
     base_path = os.path.join(resample_dir, target_dir)
