@@ -39,9 +39,9 @@ def _get_target_params_dir(params: TargetParamsBatch = None) -> str:
     """Convert target parameters to a directory name string"""
     params = params or TargetParamsBatch()
     params_dict = {
-        'fp': params.forward_periods,
-        'tp': params.tp_values,
-        'sl': params.sl_values
+        'fp': sorted(set([p.forward_period for p in params.target_params_list])),
+        'tp': sorted(set([p.tp_value for p in params.target_params_list])),
+        'sl': sorted(set([p.sl_value for p in params.target_params_list])),
     }
     return params_to_dir_name(params_dict)
 
@@ -56,7 +56,7 @@ def _get_recommended_warm_up_days(params: TargetParamsBatch) -> int:
         int: Recommended number of warm-up days
     """
     # Find the maximum forward period
-    max_forward = max(params.forward_periods)
+    max_forward = max(p.forward_period for p in params.target_params_list)
     
     # Convert to days (assuming periods are in minutes for 24/7 markets)
     # Add a small buffer of 2 days to be safe

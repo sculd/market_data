@@ -153,7 +153,9 @@ The project provides several command-line tools for managing different aspects o
 
 - `main_feature_data.py`: Manages feature calculation and caching. Allows checking and caching specific features across defined date ranges.
 
-- `main_resampled_target_data.py`: Dedicated tool for processing and caching target labels and resampled data. Supports configurable resampling parameters for event-based analysis.
+- `main_target_data.py`: Dedicated tool for processing and caching target labels.
+
+- `main_resampled_data.py`: Dedicated tool for processing and caching resampled data. Supports configurable resampling parameters for event-based analysis.
 
 - `main_ml_data.py`: Prepares machine learning datasets by combining features and targets. Supports sequential feature generation and customizable data preparation parameters.
 

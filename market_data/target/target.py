@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 # Default values for target parameters
 DEFAULT_FORWARD_PERIODS = [5, 10, 30]
 DEFAULT_TP_VALUES = [0.015, 0.03, 0.05]
-DEFAULT_SL_VALUES = [0.015, 0.03, 0.05]
 
 @dataclass
 class TargetParams:
@@ -28,6 +27,11 @@ class TargetParams:
             f"sl_value={self.sl_value})"
         )
 
+def _get_default_target_params_list() -> List[TargetParams]:
+    return [TargetParams(forward_period=period, tp_value=tp, sl_value=tp) 
+            for period in DEFAULT_FORWARD_PERIODS 
+            for tp in DEFAULT_TP_VALUES]
+
 @dataclass
 class TargetParamsBatch:
     """
@@ -35,23 +39,12 @@ class TargetParamsBatch:
     
     This class holds all the parameters needed for target calculation,
     providing a single source of truth for target configuration.
-    
-    Attributes:
-        forward_periods (List[int]): Periods (in minutes) for calculating forward returns
-        tp_values (List[float]): Take-profit threshold values (as decimal)
-        sl_values (List[float]): Stop-loss threshold values (as decimal)
     """
-    forward_periods: List[int] = field(default_factory=lambda: DEFAULT_FORWARD_PERIODS)
-    tp_values: List[float] = field(default_factory=lambda: DEFAULT_TP_VALUES)
-    sl_values: List[float] = field(default_factory=lambda: DEFAULT_SL_VALUES)
-    
+    target_params_list: List[TargetParams] = field(default_factory=lambda: _get_default_target_params_list())
+
     def __repr__(self) -> str:
         """String representation of the parameters."""
-        return (
-            f"TargetParamsBatch(forward_periods={self.forward_periods}, "
-            f"tp_values={self.tp_values}, "
-            f"sl_values={self.sl_values})"
-        )
+        return '\n'.join([f'{p.__repr__}' for p in self.target_params_list])
 
 # Numba-accelerated functions for performance-critical calculations
 @nb.njit(cache=True)
@@ -161,22 +154,19 @@ class TargetEngineer:
             # Create a dictionary to hold all target columns
             target_data = {'symbol': symbol}
             
-            # Add forward returns for different periods
-            for period in self.params.forward_periods:
+            for target_params in self.params.target_params_list:
+                period = target_params.forward_period
                 target_data[f'label_forward_return_{period}m'] = self.calculate_forward_return(group, period)
-            
-            # Add classification labels for different configurations
-            for period in self.params.forward_periods:
-                for tp in self.params.tp_values:
-                    for sl in self.params.sl_values:
-                        # Long position labels
-                        target_data[f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
-                            self.calculate_tp_sl_labels(group, period, tp, sl, 'long')
-                        
-                        # Short position labels
-                        target_data[f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
-                            self.calculate_tp_sl_labels(group, period, tp, sl, 'short')
-            
+
+                tp, sl = target_params.tp_value, target_params.sl_value
+                # Long position labels
+                target_data[f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
+                    self.calculate_tp_sl_labels(group, period, tp, sl, 'long')
+                
+                # Short position labels
+                target_data[f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
+                    self.calculate_tp_sl_labels(group, period, tp, sl, 'short')
+
             # Create a single DataFrame from all targets at once
             symbol_targets = pd.DataFrame(target_data, index=group.index)
             
@@ -200,19 +190,16 @@ class TargetEngineer:
         """
         column_names = []
         
-        # Forward return column names
-        for period in self.params.forward_periods:
+        for target_params in self.params.target_params_list:
+            period = target_params.forward_period
             column_names.append(f'label_forward_return_{period}m')
-        
-        # Classification label column names
-        for period in self.params.forward_periods:
-            for tp in self.params.tp_values:
-                for sl in self.params.sl_values:
-                    # Long position labels
-                    column_names.append(f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m')
-                    # Short position labels
-                    column_names.append(f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m')
-        
+
+            tp, sl = target_params.tp_value, target_params.sl_value
+            # Long position labels
+            column_names.append(f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m')
+            # Short position labels
+            column_names.append(f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m')
+
         return column_names
     
     @staticmethod

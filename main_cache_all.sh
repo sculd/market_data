@@ -25,17 +25,19 @@ if [ -z "$FROM_DATE" ] || [ -z "$TO_DATE" ]; then
   exit 1
 fi
 
+resample_params_list=("close,0.03" "close,0.05" "close,0.07")
+
 echo "Checking data from $FROM_DATE to $TO_DATE"
 
 python main_raw_data.py --action check --from "$FROM_DATE" --to "$TO_DATE"
 python main_feature_data.py --action check --feature all --from "$FROM_DATE" --to "$TO_DATE"
-python main_resampled_target_data.py --action check --target --from "$FROM_DATE" --to "$TO_DATE"
-python main_resampled_target_data.py --action check --resample  --resample_params close,0.05 --from "$FROM_DATE" --to "$TO_DATE"
-python main_resampled_target_data.py --action check --resample  --resample_params close,0.03 --from "$FROM_DATE" --to "$TO_DATE"
-python main_resampled_target_data.py --action check --resample  --resample_params close,0.07 --from "$FROM_DATE" --to "$TO_DATE"
-python main_ml_data.py --action check --resample_params close,0.03 --from "$FROM_DATE" --to "$TO_DATE"
-python main_ml_data.py --action check --resample_params close,0.05 --from "$FROM_DATE" --to "$TO_DATE"
-python main_ml_data.py --action check --resample_params close,0.07 --from "$FROM_DATE" --to "$TO_DATE"
+python main_target_data.py --action check --from "$FROM_DATE" --to "$TO_DATE"
+for resample_params in "${resample_params_list[@]}"; do
+    python main_resampled_data.py --action check --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE"
+done
+for resample_params in "${resample_params_list[@]}"; do
+    python main_ml_data.py --action check --features all --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE"
+done
 
 # Ask for confirmation before proceeding
 read -p "Do you want to proceed with caching data? (y/N): " response
@@ -48,12 +50,11 @@ echo "Caching data from $FROM_DATE to $TO_DATE"
 
 python main_raw_data.py --action cache --from "$FROM_DATE" --to "$TO_DATE"
 python main_feature_data.py --action cache --feature all --from "$FROM_DATE" --to "$TO_DATE"
-python main_resampled_target_data.py --action cache --target --from "$FROM_DATE" --to "$TO_DATE"
-python main_resampled_target_data.py --action cache --resample  --resample_params close,0.05 --from "$FROM_DATE" --to "$TO_DATE"
-python main_resampled_target_data.py --action cache --resample  --resample_params close,0.03 --from "$FROM_DATE" --to "$TO_DATE"
-python main_resampled_target_data.py --action cache --resample  --resample_params close,0.07 --from "$FROM_DATE" --to "$TO_DATE"
-python main_ml_data.py --action cache --resample_params close,0.03 --from "$FROM_DATE" --to "$TO_DATE"
-python main_ml_data.py --action cache --resample_params close,0.05 --from "$FROM_DATE" --to "$TO_DATE"
-python main_ml_data.py --action cache --resample_params close,0.07 --from "$FROM_DATE" --to "$TO_DATE"
-
+python main_target_data.py --action cache --from "$FROM_DATE" --to "$TO_DATE"
+for resample_params in "${resample_params_list[@]}"; do
+    python main_resampled_data.py --action cache --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE"
+done
+for resample_params in "${resample_params_list[@]}"; do
+    python main_ml_data.py --action cache --features all --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE"
+done
 

@@ -161,9 +161,9 @@ def check_missing_target_data(
     
     # Convert params to directory name
     params_dict = {
-        'fp': target_params.forward_periods,
-        'tp': target_params.tp_values,
-        'sl': target_params.sl_values
+        'fp': sorted(set([p.forward_period for p in target_params.target_params_list])),
+        'tp': sorted(set([p.tp_value for p in target_params.target_params_list])),
+        'sl': sorted(set([p.sl_value for p in target_params.target_params_list])),
     }
     params_dir = params_to_dir_name(params_dict)
     
