@@ -55,8 +55,8 @@ def main():
                         help='End date in YYYY-MM-DD format')
     
     # Feature handling
-    parser.add_argument('--features', type=str, nargs='+', default=None,
-                        help='Specific feature labels to include (space separated)')
+    parser.add_argument('--features', type=str, default="all",
+                        help='Specific feature labels to include (comma separated)')
                         
     # Optional arguments
     parser.add_argument('--sequential', action='store_true',
@@ -82,7 +82,20 @@ def main():
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
     
     # Create parameter objects
-    feature_label_params = args.features  # Will be parsed by the processing functions
+    features_to_process = []
+    if args.features == "all":
+        features_to_process = list_registered_features()
+        print(f"\nProcessing all {len(features_to_process)} registered features")
+    elif args.features == "forex":
+        features_to_process = list_registered_features(security_type="forex")
+        print(f"\nProcessing all {len(features_to_process)} registered forex features")
+    elif args.features == "crypto":
+        features_to_process = list_registered_features(security_type="crypto")
+        print(f"\nProcessing all {len(features_to_process)} registered crypto features")
+    else:
+        features_to_process = [f.strip() for f in args.features.split(",")]
+    
+    feature_label_params = features_to_process  # with default parameters
     target_params_batch = TargetParamsBatch()  # Use default target parameters
     
     # Parse resample parameters
@@ -139,7 +152,7 @@ def main():
             # Suggest command to cache the ML data
             features_str = ""
             if args.features:
-                features_str = "--features " + " ".join(args.features)
+                features_str = f"--features {args.features}"
                 
             sequential_str = "--sequential" if args.sequential else ""
             seq_window_str = f"--sequence_window {args.sequence_window}" if args.sequential else ""
