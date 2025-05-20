@@ -27,9 +27,18 @@ fi
 
 echo "Checking data from $FROM_DATE to $TO_DATE"
 dataset_aggregation_options="--dataset_mode FOREX_IBKR --aggregation_mode COLLECT_ALL_UPDATES "
+target_arg="--forward_periods=5,10,30 --tps=0.01,0.015,0.02,0.03"
 resample_params_list=("close,0.01" "close,0.015" "close,0.02" "close,0.03")
 
-python main_target_data.py --action check --forward_periods=5,10,30 --tps=0.01,0.015,0.02,0.03 --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+python main_target_data.py --action check $target_arg --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+python main_raw_data.py --action check --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+python main_feature_data.py --action check --feature forex --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+for resample_params in "${resample_params_list[@]}"; do
+    python main_resampled_data.py --action check --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+done
+for resample_params in "${resample_params_list[@]}"; do
+    python main_ml_data.py --action check --features forex $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+done
 
 # Ask for confirmation before proceeding
 read -p "Do you want to proceed with caching data? (y/N): " response
@@ -38,4 +47,14 @@ if [[ ! "$response" =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-python main_target_data.py --action cache --forward_periods=5,10,30 --tps=0.01,0.015,0.02,0.03 --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
+echo "Caching data from $FROM_DATE to $TO_DATE"
+
+python main_raw_data.py --action cache --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+python main_feature_data.py --action cache --feature forex --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+python main_target_data.py --action cache $target_arg --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
+for resample_params in "${resample_params_list[@]}"; do
+    python main_resampled_data.py --action cache --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
+done
+for resample_params in "${resample_params_list[@]}"; do
+    python main_ml_data.py --action cache --features forex $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
+done

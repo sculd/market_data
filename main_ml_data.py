@@ -10,7 +10,7 @@ import main_util
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
-from market_data.target.target import TargetParamsBatch
+from market_data.target.target import TargetParamsBatch, TargetParams
 from market_data.machine_learning.resample import ResampleParams
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.util import parse_feature_label_params
@@ -65,6 +65,13 @@ def main():
     parser.add_argument('--sequence_window', type=int, default=30,
                         help='Window size for sequential features')
     
+    # Target parameters
+    parser.add_argument('--forward_periods', type=str,
+                        help='Comma-separated list of forward periods (e.g., "1,2,3")')
+    
+    parser.add_argument('--tps', type=str,
+                        help='Comma-separated list of target price shifts (e.g., "0.001,0.002,0.003")')
+    
     parser.add_argument('--resample_params', type=str, default=None,
                         help='Resampling parameters in format "price_col,threshold" (e.g., "close,0.07")')
                         
@@ -72,6 +79,10 @@ def main():
                         help='Overwrite existing cache files')
     
     args = parser.parse_args()
+    
+    # Validate forward_periods and tps are specified together
+    if (args.forward_periods is None) != (args.tps is None):
+        parser.error("--forward_periods and --tps must be specified together")
     
     # Get enum values by name
     dataset_mode = getattr(DATASET_MODE, args.dataset_mode)
@@ -96,7 +107,13 @@ def main():
         features_to_process = [f.strip() for f in args.features.split(",")]
     
     feature_label_params = features_to_process  # with default parameters
-    target_params_batch = TargetParamsBatch()  # Use default target parameters
+    target_params_batch = TargetParamsBatch()
+    if args.forward_periods and args.tps:
+        target_params_batch = TargetParamsBatch(
+            target_params_list=[TargetParams(forward_period=int(period), tp_value=float(tp), sl_value=float(tp)) 
+                for period in args.forward_periods.split(',') 
+                for tp in args.tps.split(',')]
+        )
     
     # Parse resample parameters
     resample_params = main_util.parse_resample_params(args.resample_params)
@@ -113,6 +130,9 @@ def main():
     print(f"  Aggregation Mode: {aggregation_mode}")
     print(f"  Time Range: {args.date_from} to {args.date_to}")
     print(f"  Features: {args.features if args.features else 'All registered features'}")
+    if args.forward_periods and args.tps:
+        print(f"  Forward Periods: {args.forward_periods}")
+        print(f"  Target Price Shifts: {args.tps}")
     print(f"  Resample Params: price_col={resample_params.price_col}, threshold={resample_params.threshold}")
     print(f"  Sequential: {args.sequential}")
     if args.sequential:
