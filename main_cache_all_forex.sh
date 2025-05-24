@@ -27,8 +27,8 @@ fi
 
 echo "Checking data from $FROM_DATE to $TO_DATE"
 dataset_aggregation_options="--dataset_mode FOREX_IBKR --aggregation_mode COLLECT_ALL_UPDATES "
-target_arg="--forward_periods=5,10,30 --tps=0.01,0.015,0.02,0.03"
-resample_params_list=("close,0.01" "close,0.015" "close,0.02" "close,0.03")
+target_arg="--forward_periods=10,30,60 --tps=0.0025,0.005,0.01"
+resample_params_list=("close,0.0025" "close,0.005" "close,0.01")
 
 python main_target_data.py --action check $target_arg --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
 python main_raw_data.py --action check --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}

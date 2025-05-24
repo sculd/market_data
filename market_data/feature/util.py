@@ -40,10 +40,25 @@ def _create_default_params(feature_label: str) -> Optional[Any]:
             module_path = f"market_data.feature.impl.{feature_label}"
             module = importlib.import_module(module_path)
             
-            # Look for a class ending with "Params"
+            # Look for feature-specific parameter class first
+            # Try to find a class that contains the feature name or relates to it
+            feature_specific_classes = []
+            generic_param_classes = []
+            
             for name, obj in inspect.getmembers(module):
                 if inspect.isclass(obj) and name.endswith('Params'):
-                    return obj()
+                    # Check if it's defined in this module (not imported)
+                    if obj.__module__ == module_path:
+                        feature_specific_classes.append(obj)
+                    else:
+                        generic_param_classes.append(obj)
+            
+            # Prefer feature-specific classes over imported ones
+            if feature_specific_classes:
+                return feature_specific_classes[0]()
+            elif generic_param_classes:
+                return generic_param_classes[0]()
+                
         except (ImportError, AttributeError):
             pass
         
