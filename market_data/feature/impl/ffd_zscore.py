@@ -25,15 +25,15 @@ FEATURE_LABEL = "ffd_zscore"
 
 @dataclass
 class ZscoredFFDParams:
-    """Parameters for FFD returns feature calculations."""
+    """Parameters for FFD zscore feature calculations."""
     zscored_ffd_params: BaseZscoredFFDParams = field(default_factory=BaseZscoredFFDParams)
-    price_col: str = "close"
+    cols: List[str] = field(default_factory=lambda: ["close", "volume"])
     
     def get_params_dir(self) -> str:
         from market_data.util.cache.path import params_to_dir_name
         
         params_dict = {
-            'price': self.price_col,
+            'cols': self.cols,
             'd': self.zscored_ffd_params.ffd_params.d,
             'threshold': self.zscored_ffd_params.ffd_params.threshold,
             'zscore_window': self.zscored_ffd_params.zscore_window
@@ -71,34 +71,36 @@ class ZscoredFFDParams:
 
 @register_feature(FEATURE_LABEL)
 class ZscoredFFDsFeature:
-    """FFD Returns feature implementation."""
+    """FFD zscore feature implementation."""
     
     @staticmethod
     def calculate(df: pd.DataFrame, params: Optional[ZscoredFFDParams] = None) -> pd.DataFrame:
         """
-        Calculate FFD returns features.
+        Calculate FFD zscore features for multiple columns.
         
         Args:
             df: Input DataFrame with OHLCV data
-            params: Parameters for FFD returns calculation
+            params: Parameters for FFD zscore calculation
             
         Returns:
-            DataFrame with calculated FFD returns features
+            DataFrame with calculated FFD zscore features
         """
         if params is None:
             params = ZscoredFFDParams()
             
-        logger.info(f"Calculating FFD returns for {params}")
+        logger.info(f"Calculating FFD zscore for {params}")
         
-        # Ensure we have the price column
-        if params.price_col not in df.columns:
-            raise ValueError(f"Price column '{params.price_col}' not found in DataFrame")
+        # Ensure we have all the required columns
+        missing_cols = [col for col in params.cols if col not in df.columns]
+        if missing_cols:
+            raise ValueError(f"Columns {missing_cols} not found in DataFrame")
         
         # Check if 'symbol' is in index or columns
         has_symbol = 'symbol' in df.columns
         
         logger.info(f"Original DF index names: {df.index.names}")
         logger.info(f"Original DF columns: {df.columns.tolist()}")
+        logger.info(f"Processing columns: {params.cols}")
         
         if not has_symbol:
             logger.warning("DataFrame does not have a 'symbol' column or index level, will use a single default symbol")
@@ -116,22 +118,24 @@ class ZscoredFFDsFeature:
             # Add symbol column
             symbol_result['symbol'] = symbol
             
-            price_series = group_df[params.price_col]
-            
-            try:
-                ffd_prices = get_zscored_ffd_series(
-                    price_series, 
-                    zscored_params=params.zscored_ffd_params
-                )
-                
-                ffd_prices_array = ffd_prices.reindex(group_df.index).values
-                
-                symbol_result[f'ffd_zscore'] = ffd_prices_array
+            # Process each column
+            for col in params.cols:
+                try:
+                    price_series = group_df[col]
                     
-            except Exception as e:
-                logger.warning(f"Failed to calculate FFD for symbol {symbol}: {e}")
-                # Fill with NaN if FFD calculation fails
-                symbol_result[f'ffd_zscore'] = np.nan
+                    ffd_prices = get_zscored_ffd_series(
+                        price_series, 
+                        zscored_params=params.zscored_ffd_params
+                    )
+                    
+                    ffd_prices_array = ffd_prices.reindex(group_df.index).values
+                    
+                    symbol_result[f'ffd_zscore_{col}'] = ffd_prices_array
+                        
+                except Exception as e:
+                    logger.warning(f"Failed to calculate FFD for column {col}, symbol {symbol}: {e}")
+                    # Fill with NaN if FFD calculation fails
+                    symbol_result[f'ffd_zscore_{col}'] = np.nan
             
             # Add to results list
             results.append(symbol_result)
