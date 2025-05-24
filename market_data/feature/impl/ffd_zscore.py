@@ -21,10 +21,10 @@ from market_data.feature.registry import register_feature
 logger = logging.getLogger(__name__)
 
 # Feature label for registration
-FEATURE_LABEL = "ffd_returns"
+FEATURE_LABEL = "ffd_zscore"
 
 @dataclass
-class ZscoredFFDReturnParams:
+class ZscoredFFDParams:
     """Parameters for FFD returns feature calculations."""
     zscored_ffd_params: BaseZscoredFFDParams = field(default_factory=BaseZscoredFFDParams)
     price_col: str = "close"
@@ -49,7 +49,7 @@ class ZscoredFFDReturnParams:
 
     def get_warm_up_days(self) -> int:
         """
-        Calculate the recommended warm-up period based on the maximum return period,
+        Calculate the recommended warm-up period based on the maximum period,
         FFD requirements, and zscore window.
         
         Returns:
@@ -70,11 +70,11 @@ class ZscoredFFDReturnParams:
 
 
 @register_feature(FEATURE_LABEL)
-class ZscoredFFDReturnsFeature:
+class ZscoredFFDsFeature:
     """FFD Returns feature implementation."""
     
     @staticmethod
-    def calculate(df: pd.DataFrame, params: Optional[ZscoredFFDReturnParams] = None) -> pd.DataFrame:
+    def calculate(df: pd.DataFrame, params: Optional[ZscoredFFDParams] = None) -> pd.DataFrame:
         """
         Calculate FFD returns features.
         
@@ -86,7 +86,7 @@ class ZscoredFFDReturnsFeature:
             DataFrame with calculated FFD returns features
         """
         if params is None:
-            params = ZscoredFFDReturnParams()
+            params = ZscoredFFDParams()
             
         logger.info(f"Calculating FFD returns for {params}")
         
@@ -116,7 +116,6 @@ class ZscoredFFDReturnsFeature:
             # Add symbol column
             symbol_result['symbol'] = symbol
             
-            # Extract prices as numpy array for return calculation
             price_series = group_df[params.price_col]
             
             try:
@@ -125,16 +124,14 @@ class ZscoredFFDReturnsFeature:
                     zscored_params=params.zscored_ffd_params
                 )
                 
-                # Convert FFD prices back to numpy array for return calculations
                 ffd_prices_array = ffd_prices.reindex(group_df.index).values
                 
-                symbol_result[f'ffd_return'] = ffd_prices_array
+                symbol_result[f'ffd_zscore'] = ffd_prices_array
                     
             except Exception as e:
                 logger.warning(f"Failed to calculate FFD for symbol {symbol}: {e}")
                 # Fill with NaN if FFD calculation fails
-                for period in params.periods:
-                    symbol_result[f'ffd_return_{period}'] = np.nan
+                symbol_result[f'ffd_zscore'] = np.nan
             
             # Add to results list
             results.append(symbol_result)
