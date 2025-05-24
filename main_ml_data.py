@@ -56,7 +56,7 @@ def main():
     
     # Feature handling
     parser.add_argument('--features', type=str, default="all",
-                        help='Specific feature labels to include (comma separated)')
+                        help='Specific feature labels to include (comma separated). "forex" or "crypto" or "all" are special values')
                         
     # Optional arguments
     parser.add_argument('--sequential', action='store_true',
@@ -67,13 +67,13 @@ def main():
     
     # Target parameters
     parser.add_argument('--forward_periods', type=str,
-                        help='Comma-separated list of forward periods (e.g., "1,2,3")')
+                        help='Comma-separated list of forward periods (e.g., "1,2,3"). For forex, 10,30,60 are used')
     
     parser.add_argument('--tps', type=str,
-                        help='Comma-separated list of target price shifts (e.g., "0.001,0.002,0.003")')
+                        help='Comma-separated list of target price shifts (e.g., "0.001,0.002,0.003"). For forex, 0.0025,0.005,0.01 are used')
     
     parser.add_argument('--resample_params', type=str, default=None,
-                        help='Resampling parameters in format "price_col,threshold" (e.g., "close,0.07")')
+                        help='Resampling parameters in format "price_col,threshold" (e.g., "close,0.07"). For forex, close,0.0025" "close,0.005" "close,0.01" are used')
                         
     parser.add_argument('--overwrite_cache', action='store_true',
                         help='Overwrite existing cache files')
