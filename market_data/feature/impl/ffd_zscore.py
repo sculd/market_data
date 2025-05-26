@@ -1,7 +1,7 @@
 """
-Returns Feature Module
+Fractional Finite Difference Zscore Feature Module
 
-This module provides functions for calculating return-based features.
+This module provides functions for calculating ffd zscore features.
 """
 
 import pandas as pd
@@ -13,7 +13,6 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 
-import market_data.feature.fractional_difference
 from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams, get_zscored_ffd_series
 from market_data.feature.impl.returns import _calculate_log_returns_numba, _calculate_simple_returns_numba
 from market_data.feature.registry import register_feature

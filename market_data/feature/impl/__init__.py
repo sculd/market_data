@@ -8,6 +8,7 @@ All modules are imported here to ensure they are registered with the feature reg
 # Import all feature implementations to ensure they are registered
 from market_data.feature.impl import returns
 from market_data.feature.impl import ffd_zscore
+from market_data.feature.impl import ffd_volatility_zscore
 from market_data.feature.impl import volatility
 from market_data.feature.impl import bollinger
 from market_data.feature.impl import indicators
@@ -20,6 +21,7 @@ from market_data.feature.impl import garch
 __all__ = [
     'returns',
     'ffd_zscore',
+    'ffd_volatility_zscore',
     'volatility',
     'bollinger',
     'indicators',
