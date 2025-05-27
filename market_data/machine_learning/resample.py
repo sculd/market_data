@@ -26,7 +26,10 @@ def _get_events_t_arr(values: np.ndarray, threshold: float = 0.05) -> np.ndarray
             
     return np.array(t_events)
 
-def _get_events_t(df: pd.DataFrame, col: str, threshold: float = 0.05) -> pd.DataFrame:
+def _get_events_t(
+        df: pd.DataFrame,
+        params: ResampleParams,
+    ) -> pd.DataFrame:
     """
     Get time index from a DataFrame where the target column cumulatively changes by more than threshold.
     
@@ -37,28 +40,30 @@ def _get_events_t(df: pd.DataFrame, col: str, threshold: float = 0.05) -> pd.Dat
     """
     t_events = []
     s_pos, s_neg = 0, 0
-    diff =  df[col].pct_change().diff()
+    diff =  df[params.price_col].pct_change().diff()
     for i in diff.index[1:]:
         s_pos = max(0, s_pos + diff.loc[i])
         s_neg = min(0, s_neg + diff.loc[i])
-        if s_pos > threshold:
+        if s_pos > params.threshold:
             t_events.append(i)
             s_pos = 0
-        elif s_neg < -threshold:
+        elif s_neg < -params.threshold:
             t_events.append(i)
             s_neg = 0
             
     return pd.DatetimeIndex(t_events).as_unit(df.index.unit)
 
-def _get_events_t_multi(df: pd.DataFrame, col: str, threshold: float = 0.05) -> pd.DataFrame:
+def _get_events_t_multi(
+        df: pd.DataFrame,
+        params: ResampleParams,
+    ) -> pd.DataFrame:
     """
     Get time index from a DataFrame with multiple symbols where the target column cumulatively 
     changes by more than threshold, resetting the cumulative sums for each new symbol and date.
     
     Args:
         df: DataFrame with timestamp index and target column, must contain 'symbol' column
-        col: Name of the target column
-        threshold: Threshold for the change in target column
+        params: ResampleParams object containing resampling parameters. If None, uses default parameters.
         
     Returns:
         DataFrame with timestamp index and symbol column, containing event timestamps
@@ -81,7 +86,7 @@ def _get_events_t_multi(df: pd.DataFrame, col: str, threshold: float = 0.05) -> 
                 continue
                 
             # Use get_events_t to identify events for this symbol/date
-            events_idx = _get_events_t(date_df, col, threshold)
+            events_idx = _get_events_t(date_df, params)
             
             # Add to all_events with the corresponding symbol
             for timestamp in events_idx:
@@ -128,8 +133,7 @@ def resample_at_events(
     # Identify significant price movements
     events_df = _get_events_t_multi(
         df,
-        params.price_col,
-        params.threshold
+        params
     )
     
     if events_df.empty:
