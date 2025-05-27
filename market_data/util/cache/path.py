@@ -46,7 +46,7 @@ def params_to_dir_name(params: dict) -> str:
         # For list values, create a human-readable string with actual values
         if isinstance(value, list):
             # Handle different types of elements
-            if all(isinstance(x, (int, float)) for x in value):
+            if all(isinstance(x, (int, float, str)) for x in value):
                 # For numeric lists, join with underscores
                 value_str = f"{key}-" + "_".join(str(x) for x in value)
                 
