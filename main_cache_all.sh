@@ -52,9 +52,9 @@ python main_raw_data.py --action cache --from "$FROM_DATE" --to "$TO_DATE"
 python main_feature_data.py --action cache --feature all --from "$FROM_DATE" --to "$TO_DATE"
 python main_target_data.py --action cache --from "$FROM_DATE" --to "$TO_DATE"
 for resample_params in "${resample_params_list[@]}"; do
-    python main_resampled_data.py --action cache --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE"
+    python main_resampled_data.py --action cache --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache
 done
 for resample_params in "${resample_params_list[@]}"; do
-    python main_ml_data.py --action cache --features all --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE"
+    python main_ml_data.py --action cache --features all --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache
 done
 

@@ -14,13 +14,14 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
-from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
-from market_data.feature.impl.indicators import _calculate_zscore_numba
+from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams, get_zscored_ffd_series
+from market_data.feature.impl.common_calc import _calculate_rolling_mean_numba
 
 logger = logging.getLogger(__name__)
 
 # Feature label for registration
 FEATURE_LABEL = "volume"
+_volume_col = "volume"
 
 # Numba-accelerated volume calculations
 @nb.njit(cache=True)
@@ -87,15 +88,6 @@ def _calculate_ratio_numba(values, mean):
 
 @nb.njit(cache=True)
 def _calculate_pct_change_numba(values):
-    """
-    Calculate percentage change using Numba.
-    
-    Args:
-        values: Array of input values
-        
-    Returns:
-        Array of percentage change values
-    """
     n = len(values)
     pct_change = np.full(n, np.nan)
     
@@ -105,13 +97,33 @@ def _calculate_pct_change_numba(values):
     
     return pct_change
 
+@nb.njit(cache=True)
+def _calculate_log_numba(values):
+    """
+    Apply log transformation to reduce explosiveness, using log(1 + abs(x)) * sign(x).
+    This preserves the sign while reducing the magnitude of extreme values.
+    """
+    n = len(values)
+    log_values = np.full(n, np.nan)
+    
+    for i in range(n):
+        if not np.isnan(values[i]):
+            if values[i] == 0:
+                log_values[i] = 0.0
+            else:
+                # Use log(1 + abs(x)) * sign(x) to preserve sign and reduce explosiveness
+                sign = 1.0 if values[i] > 0 else -1.0
+                log_values[i] = np.log1p(abs(values[i])) * sign
+    
+    return log_values
+
+
 @dataclass
 class VolumeParams:
     """Parameters for volume indicator calculations."""
-    ratio_periods: List[int] = field(default_factory=lambda: [20, 50, 100])
-    obv_zscore_window: int = 20
+    ratio_period: int = 100
     price_col: str = "close"
-    volume_col: str = "volume"
+    zscored_ffd_params: BaseZscoredFFDParams = field(default_factory=BaseZscoredFFDParams)
     
     def get_params_dir(self) -> str:
         """
@@ -122,24 +134,21 @@ class VolumeParams:
         """
         from market_data.util.cache.path import params_to_dir_name
         
-        periods_str = '_'.join(str(p) for p in self.ratio_periods)
-        
         params_dict = {
-            'ratio_periods': self.ratio_periods,
-            'obv_zscore': self.obv_zscore_window,
+            'ratio_period': self.ratio_period,
             'price': self.price_col,
-            'volume': self.volume_col
+            'd': self.zscored_ffd_params.ffd_params.d,
+            'threshold': self.zscored_ffd_params.ffd_params.threshold,
+            'zscore_window': self.zscored_ffd_params.zscore_window
         }
         return params_to_dir_name(params_dict)
         
+    def _get_warm_up_len(self) -> int:
+        max_window = self.zscored_ffd_params.zscore_window + 100  # 100 is the warm-up period for ffd
+        return max(max_window, self.ratio_period)
+        
     def get_warm_up_period(self) -> datetime.timedelta:
-        max_window = self.obv_zscore_window
-        
-        if self.ratio_periods:
-            max_period = max(self.ratio_periods)
-            max_window = max(max_window, max_period)
-        
-        return datetime.timedelta(minutes=max_window)
+        return datetime.timedelta(minutes=self._get_warm_up_len())
 
     def get_warm_up_days(self) -> int:
         """
@@ -151,12 +160,7 @@ class VolumeParams:
         """
         import math
         
-        # Find the maximum window from all parameters
-        max_window = self.obv_zscore_window
-        
-        if self.ratio_periods:
-            max_period = max(self.ratio_periods)
-            max_window = max(max_window, max_period)
+        max_window = self._get_warm_up_len()
         
         # Convert to days (assuming periods are in minutes for 24/7 markets)
         days_needed = math.ceil(max_window / (24 * 60))
@@ -187,8 +191,8 @@ class VolumeFeature:
         # Ensure we have the required columns
         if params.price_col not in df.columns:
             raise ValueError(f"Price column '{params.price_col}' not found in DataFrame")
-        if params.volume_col not in df.columns:
-            raise ValueError(f"Volume column '{params.volume_col}' not found in DataFrame")
+        if _volume_col not in df.columns:
+            raise ValueError(f"Volume column '{_volume_col}' not found in DataFrame")
         
         # Check if 'symbol' column exists
         has_symbol = 'symbol' in df.columns
@@ -210,30 +214,34 @@ class VolumeFeature:
             
             # Extract arrays for Numba functions
             prices = group_df[params.price_col].values
-            volumes = group_df[params.volume_col].values
+            volumes = group_df[_volume_col].values
             
             # Calculate On-Balance Volume using Numba (used for derived metrics, not stored directly)
             obv = _calculate_obv_numba(prices, volumes)
             
+            # Convert obv numpy array to pandas Series for zscored_ffd_series function
+            obv_series = pd.Series(obv, index=group_df.index)
+            
+            ffd_obv = get_zscored_ffd_series(
+                obv_series, 
+                zscored_params=params.zscored_ffd_params
+            )
+            symbol_result[f'obv_ffd_zscore'] = ffd_obv
+
             # Calculate OBV percentage change
             obv_pct_change = _calculate_pct_change_numba(obv)
-            symbol_result['obv_pct_change'] = obv_pct_change
+            # Apply log transformation to reduce explosiveness for ML models
+            obv_pct_change_log = _calculate_log_numba(obv_pct_change)
+            symbol_result['obv_pct_change_log'] = obv_pct_change_log
             
-            # Calculate OBV Z-score
-            obv_mean = _calculate_rolling_mean_numba(obv, params.obv_zscore_window)
-            obv_std = _calculate_rolling_std_numba(obv, params.obv_zscore_window)
-            obv_zscore = _calculate_zscore_numba(obv, obv_mean, obv_std)
-            symbol_result['obv_zscore'] = obv_zscore
+            # Calculate rolling mean of volume
+            avg_volume = _calculate_rolling_mean_numba(volumes, params.ratio_period)
             
-            # Calculate volume ratios for each period
-            for period in params.ratio_periods:
-                # Calculate rolling mean of volume
-                avg_volume = _calculate_rolling_mean_numba(volumes, period)
-                
-                # Calculate volume to average ratio
-                volume_ratio = _calculate_ratio_numba(volumes, avg_volume)
-                symbol_result[f'volume_ratio_{period}'] = volume_ratio
-            
+            # Calculate volume to average ratio
+            volume_ratio = _calculate_ratio_numba(volumes, avg_volume)
+            volume_ratio_log = _calculate_log_numba(volume_ratio)
+            symbol_result[f'volume_ratio_log'] = volume_ratio_log
+        
             # Add to results list
             results.append(symbol_result)
         
