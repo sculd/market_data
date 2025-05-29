@@ -128,7 +128,7 @@ class BTCFeature:
             btc_return = btc_df[params.price_col].pct_change(period)
             
             # Reindex to match the full index range
-            btc_return = btc_return.reindex(df.index)
+            btc_return = btc_return.groupby(btc_return.index).mean().reindex(df.index)
             
             # Add as a feature
             result[f'btc_return_{period}'] = btc_return

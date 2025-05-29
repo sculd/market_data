@@ -3,17 +3,6 @@ Feature Registry
 
 This module provides a registry for feature modules and utility functions
 to register and retrieve feature implementations by their labels.
-
-Available Column Patterns:
-- return_\\d+: Returns features (e.g., return_5, return_30)
-- volatility_\\d+: Volatility features (e.g., volatility_60, volatility_240)
-- bb_upper, bb_middle, bb_lower, bb_position, bb_width: Bollinger Bands features
-- ema_\\d+, ema_rel_\\d+: EMA features (e.g., ema_15, ema_rel_60)
-- rsi, open_close_ratio, autocorr_lag1, etc.: Technical indicators
-- volume_ratio_\\d+, obv_pct_change, obv_zscore: Volume features
-- return_mean, return_variance, volatility_regime_\\d+, etc.: Market regime features
-- garch_volatility: GARCH features
-- btc_return_\\d+: BTC-specific features
 """
 
 from typing import Dict, Any, Callable, TypeVar, Type, Optional, List, Tuple
@@ -126,7 +115,7 @@ _COLUMN_TO_FEATURE_MAP = {
     "ffd_volatility_zscore_.+": "ffd_volatility_zscore",
 }
 
-def _find_features_for_columns(column_names: List[str]) -> Dict[str, List[str]]:
+def find_features_for_columns(column_names: List[str]) -> Dict[str, List[str]]:
     """
     Returns:
         Dictionary mapping feature labels to lists of columns they can generate
@@ -184,7 +173,7 @@ def find_feature_params_for_columns(column_names: List[str]) -> List[Tuple[str, 
     import re
 
     # First get the mapping from features to columns
-    feature_map = _find_features_for_columns(column_names)
+    feature_map = find_features_for_columns(column_names)
     
     # Create the result list with feature labels and their params
     result = []
