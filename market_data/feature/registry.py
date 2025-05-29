@@ -123,8 +123,8 @@ _COLUMN_TO_FEATURE_MAP = {
     # BTC feature columns
     "btc_return_\\d+": "btc_features",
 
-    "ffd_zscore_\\d+": "ffd_zscore",
-    "ffd_volatility_zscore_\\d+": "ffd_volatility_zscore",
+    "ffd_zscore_.+": "ffd_zscore",
+    "ffd_volatility_zscore_.+": "ffd_volatility_zscore",
 }
 
 def _find_features_for_columns(column_names: List[str]) -> Dict[str, List[str]]:
