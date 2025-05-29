@@ -104,9 +104,8 @@ _COLUMN_TO_FEATURE_MAP = {
     "close_minmax": "indicators",
     
     # Volume feature columns
-    "obv_pct_change": "volume",
-    "obv_zscore": "volume",
-    "volume_ratio_\\d+": "volume",
+    "obv_.+": "volume",
+    "volume_ratio_.+": "volume",
     
     # Market Regime feature columns
     "return_mean": "market_regime",
