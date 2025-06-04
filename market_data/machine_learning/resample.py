@@ -35,23 +35,42 @@ def _get_events_t(
     
     Args:
         df: DataFrame with timestamp index and target column
-        col: Name of the target column
-        threshold: Threshold for the change in target column
+        params: ResampleParams object containing resampling parameters
+        
+    Returns:
+        DataFrame with columns: timestamp (index), breakout_side
+        where breakout_side is +1 for positive breakout, -1 for negative breakout
     """
-    t_events = []
+    events = []
     s_pos, s_neg = 0, 0
-    diff =  df[params.price_col].pct_change().diff()
+    diff = df[params.price_col].pct_change()
+    
     for i in diff.index[1:]:
         s_pos = max(0, s_pos + diff.loc[i])
         s_neg = min(0, s_neg + diff.loc[i])
+        
         if s_pos > params.threshold:
-            t_events.append(i)
+            events.append({
+                'timestamp': i,
+                'breakout_side': 1  # Positive breakout
+            })
             s_pos = 0
         elif s_neg < -params.threshold:
-            t_events.append(i)
+            events.append({
+                'timestamp': i,
+                'breakout_side': -1  # Negative breakout
+            })
             s_neg = 0
-            
-    return pd.DatetimeIndex(t_events).as_unit(df.index.unit)
+    
+    if not events:
+        return pd.DataFrame(columns=['breakout_side'], 
+                          index=pd.DatetimeIndex([], name='timestamp'))
+    
+    events_df = pd.DataFrame(events)
+    events_df = events_df.set_index('timestamp')
+    events_df.index = events_df.index.as_unit(df.index.unit)
+    
+    return events_df
 
 def _get_events_t_multi(
         df: pd.DataFrame,
@@ -66,7 +85,8 @@ def _get_events_t_multi(
         params: ResampleParams object containing resampling parameters. If None, uses default parameters.
         
     Returns:
-        DataFrame with timestamp index and symbol column, containing event timestamps
+        DataFrame with columns: timestamp (index), symbol, breakout_side
+        where breakout_side is +1 for positive breakout, -1 for negative breakout
     """
     if 'symbol' not in df.columns:
         raise ValueError("DataFrame must contain a 'symbol' column")
@@ -86,15 +106,20 @@ def _get_events_t_multi(
                 continue
                 
             # Use get_events_t to identify events for this symbol/date
-            events_idx = _get_events_t(date_df, params)
+            events_df = _get_events_t(date_df, params)
             
-            # Add to all_events with the corresponding symbol
-            for timestamp in events_idx:
-                all_events.append({'timestamp': timestamp, 'symbol': symbol})
+            # Add to all_events with the corresponding symbol and event details
+            for timestamp, row in events_df.iterrows():
+                all_events.append({
+                    'timestamp': timestamp, 
+                    'symbol': symbol,
+                    'breakout_side': row['breakout_side']
+                })
     
     # Convert list of events to DataFrame
     if not all_events:
-        return pd.DataFrame(columns=['symbol'], index=pd.DatetimeIndex([]))
+        return pd.DataFrame(columns=['symbol', 'breakout_side'], 
+                          index=pd.DatetimeIndex([], name='timestamp'))
     
     events_df = pd.DataFrame(all_events)
     events_df = events_df.set_index('timestamp')    
@@ -113,13 +138,15 @@ def resample_at_events(
     1. Takes any DataFrame with 'timestamp' index and 'symbol' column
     2. Identifies significant price movements using the specified price column
     3. Filters the DataFrame to include only rows at those significant price movement timestamps
+    4. Adds event information: breakout_side column indicating breakout direction
     
     Args:
         df: DataFrame with timestamp index, 'symbol' column, and price columns
         params: ResampleParams object containing resampling parameters. If None, uses default parameters.
         
     Returns:
-        Filtered DataFrame containing only rows at significant price movement timestamps
+        Filtered DataFrame containing only rows at significant price movement timestamps,
+        with additional column: breakout_side (+1 for positive breakout, -1 for negative breakout)
     """
     # Use default parameters if none provided
     params = params or ResampleParams()
@@ -137,14 +164,19 @@ def resample_at_events(
     )
     
     if events_df.empty:
-        return pd.DataFrame(columns=df.columns, index=pd.DatetimeIndex([]))
+        # Return empty DataFrame with all original columns plus event columns
+        empty_df = pd.DataFrame(columns=list(df.columns) + ['breakout_side'], 
+                               index=pd.DatetimeIndex([]))
+        return empty_df
     
-    # Create multi-indices for filtering
+    # Create multi-indices for merging
     events_multi = events_df.reset_index().set_index(['timestamp', 'symbol'])
     df_multi = df.reset_index().set_index(['timestamp', 'symbol'])
     
-    # Filter to event timestamps only
-    common_idx = events_multi.index.intersection(df_multi.index)
-    resampled_df = df_multi.loc[common_idx].reset_index().set_index('timestamp')
+    # Merge the DataFrames to include event information
+    merged_df = df_multi.join(events_multi, how='inner')
+    
+    # Reset index to get timestamp back as index
+    resampled_df = merged_df.reset_index().set_index('timestamp')
     
     return resampled_df
