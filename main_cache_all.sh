@@ -25,7 +25,7 @@ if [ -z "$FROM_DATE" ] || [ -z "$TO_DATE" ]; then
   exit 1
 fi
 
-resample_params_list=("close,0.03" "close,0.05" "close,0.07")
+resample_params_list=("close,0.03" "close,0.05" "close,0.07" "close,0.1" "close,0.15")
 
 echo "Checking data from $FROM_DATE to $TO_DATE"
 
