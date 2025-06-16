@@ -46,11 +46,10 @@ class TargetParamsBatch:
         """String representation of the parameters."""
         return '\n'.join([f'{p.__repr__}' for p in self.target_params_list])
 
-# Numba-accelerated functions for performance-critical calculations
 @nb.njit(cache=True)
-def _calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
+def _calculate_tp_sl_labels_and_scores_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
     """
-    Numba-accelerated take-profit/stop-loss label calculation.
+    Numba-accelerated take-profit/stop-loss label and score calculation.
     
     Args:
         closes: Array of close prices
@@ -62,10 +61,13 @@ def _calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop
         position_type: 0 for long, 1 for short
         
     Returns:
-        Array with classification labels (1=TP hit, -1=SL hit, 0=neither)
+        Tuple of (labels, scores) where:
+        - labels: Array with classification labels (1=TP hit, -1=SL hit, 0=neither)
+        - scores: Array with score when TP/SL is hit or forward return scaled by threshold
     """
     n = len(closes)
     labels = np.zeros(n)
+    scores = np.full(n, np.nan)
     
     # Pre-compute TP/SL price levels for all data points
     if position_type == 0:  # long position
@@ -80,35 +82,52 @@ def _calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop
         if i + period >= n:
             # Not enough future data
             continue
-                
-        if position_type == 0:  # long position
-            # Check forward window for TP/SL hits
-            for j in range(i + 1, min(i + period + 1, n)):
-                if highs[j] >= tp_prices[i]:
-                    labels[i] = 1
-                    break
-                elif lows[j] <= sl_prices[i]:
-                    labels[i] = -1
-                    break
-        else:  # short position
-            # Check forward window for TP/SL hits
-            for j in range(i + 1, min(i + period + 1, n)):
-                if lows[j] <= tp_prices[i]:
-                    labels[i] = 1
-                    break
-                elif highs[j] >= sl_prices[i]:
-                    labels[i] = -1
-                    break
-                
-    return labels
 
-def _calculate_tp_sl_labels(df: pd.DataFrame, 
-                            period: int, 
-                            take_profit: float, 
-                            stop_loss: float, 
-                            position_type: Literal['long', 'short'] = 'long') -> pd.Series:
+        price_cur = closes[i]
+        end_idx = min(i + period, n - 1)  # End of period index
+        tp_sl_hit = False
+
+        for j in range(i + 1, min(i + period + 1, n)):
+            # note that the close price, not high/low values are used
+            # one problem of using high/low is the difficulty of knowing 
+            # the market price at tp/sl hit.
+            price_fut = closes[j]
+
+            # Check forward window for TP/SL hits. 0 for long, 1 for short
+            if (price_fut >= tp_prices[i] and position_type == 0) or \
+                (price_fut <= tp_prices[i] and position_type == 1):
+                labels[i] = 1
+                # Calculate score at TP hit
+                scores[i] = (1 if position_type == 0 else -1) * (price_fut - price_cur) / price_cur / take_profit
+                tp_sl_hit = True
+                break
+            elif (price_fut <= sl_prices[i] and position_type == 0) or \
+                (price_fut >= sl_prices[i] and position_type == 1):
+                labels[i] = -1
+                # Calculate score at SL hit
+                scores[i] = (1 if position_type == 0 else -1) * (price_fut - price_cur) / price_cur / stop_loss
+                tp_sl_hit = True
+                break
+        
+        # If no TP/SL hit, use forward return at end of period
+        if not tp_sl_hit:
+            price_end = closes[end_idx]
+            forward_return = (1 if position_type == 0 else -1) * (price_end - price_cur) / price_cur
+            # Score based on whether forward return is positive or negative
+            if forward_return >= 0:
+                scores[i] = forward_return / take_profit
+            else:
+                scores[i] = forward_return / stop_loss
+                
+    return labels, scores
+
+def _calculate_tp_sl_labels_and_scores(df: pd.DataFrame, 
+                                       period: int, 
+                                       take_profit: float, 
+                                       stop_loss: float, 
+                                       position_type: Literal['long', 'short'] = 'long') -> Tuple[pd.Series, pd.Series]:
     """
-    Calculate classification labels based on take-profit and stop-loss levels.
+    Calculate classification labels and scores based on take-profit and stop-loss levels.
     
     Args:
         df: DataFrame with OHLCV data
@@ -118,10 +137,9 @@ def _calculate_tp_sl_labels(df: pd.DataFrame,
         position_type: 'long' or 'short'
         
     Returns:
-        Series with classification labels:
-            1: take-profit reached within period
-            -1: stop-loss reached within period
-            0: neither reached within period
+        Tuple of (labels, scores) where:
+        - labels: Series with classification labels (1=TP hit, -1=SL hit, 0=neither)
+        - scores: Series with scores when TP/SL is hit or forward return scaled by threshold
     """
     # Extract arrays for Numba processing
     closes = df['close'].values
@@ -132,13 +150,13 @@ def _calculate_tp_sl_labels(df: pd.DataFrame,
     pos_type_int = 0 if position_type == 'long' else 1
     
     # Call Numba-accelerated function
-    labels = _calculate_tp_sl_labels_numba(
+    labels, scores = _calculate_tp_sl_labels_and_scores_numba(
         closes, highs, lows, period, take_profit, stop_loss, pos_type_int
     )
     
-    # Convert result back to pandas Series
-    return pd.Series(labels, index=df.index)
-
+    # Convert results back to pandas Series
+    return (pd.Series(labels, index=df.index), 
+            pd.Series(scores, index=df.index))
 
 class TargetEngineer:
     """
@@ -197,13 +215,16 @@ class TargetEngineer:
                 target_data[f'label_forward_return_{period}m'] = self.calculate_forward_return(group, period)
 
                 tp, sl = target_params.tp_value, target_params.sl_value
-                # Long position labels
-                target_data[f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
-                    _calculate_tp_sl_labels(group, period, tp, sl, 'long')
                 
-                # Short position labels
-                target_data[f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
-                    _calculate_tp_sl_labels(group, period, tp, sl, 'short')
+                # Long position labels and returns
+                long_labels, long_scores = _calculate_tp_sl_labels_and_scores(group, period, tp, sl, 'long')
+                target_data[f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = long_labels
+                target_data[f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m_score'] = long_scores
+
+                # Short position labels and returns
+                short_labels, short_scores = _calculate_tp_sl_labels_and_scores(group, period, tp, sl, 'short')
+                target_data[f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = short_labels
+                target_data[f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m_score'] = short_scores
 
             # Create a single DataFrame from all targets at once
             symbol_targets = pd.DataFrame(target_data, index=group.index)
