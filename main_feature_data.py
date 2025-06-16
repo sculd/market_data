@@ -56,6 +56,9 @@ def main():
     parser.add_argument('--calculation_batch_days', type=int, default=1,
                         help='Number of days to calculate features for in each batch')
     
+    parser.add_argument('--warmup-days', type=int, default=None,
+                        help='Warm up days. Auto-detection if not provided.')
+    
     parser.add_argument('--overwrite_cache', action='store_true',
                         help='Overwrite existing cache files')
     
@@ -156,7 +159,7 @@ def main():
                 aggregation_mode=aggregation_mode,
                 time_range=time_range,
                 calculation_batch_days=args.calculation_batch_days,
-                warm_up_days=None,  # Use auto-detection
+                warm_up_days=args.warmup_days,
                 overwrite_cache=args.overwrite_cache
             )
             

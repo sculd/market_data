@@ -102,6 +102,44 @@ def _calculate_tp_sl_labels_numba(closes, highs, lows, period, take_profit, stop
                 
     return labels
 
+def _calculate_tp_sl_labels(df: pd.DataFrame, 
+                            period: int, 
+                            take_profit: float, 
+                            stop_loss: float, 
+                            position_type: Literal['long', 'short'] = 'long') -> pd.Series:
+    """
+    Calculate classification labels based on take-profit and stop-loss levels.
+    
+    Args:
+        df: DataFrame with OHLCV data
+        period: Number of periods (minutes) to look forward
+        take_profit: Take-profit threshold as decimal (e.g., 0.01 for 1%)
+        stop_loss: Stop-loss threshold as decimal (e.g., 0.01 for 1%)
+        position_type: 'long' or 'short'
+        
+    Returns:
+        Series with classification labels:
+            1: take-profit reached within period
+            -1: stop-loss reached within period
+            0: neither reached within period
+    """
+    # Extract arrays for Numba processing
+    closes = df['close'].values
+    highs = df['high'].values
+    lows = df['low'].values
+    
+    # Convert position_type to integer for Numba
+    pos_type_int = 0 if position_type == 'long' else 1
+    
+    # Call Numba-accelerated function
+    labels = _calculate_tp_sl_labels_numba(
+        closes, highs, lows, period, take_profit, stop_loss, pos_type_int
+    )
+    
+    # Convert result back to pandas Series
+    return pd.Series(labels, index=df.index)
+
+
 class TargetEngineer:
     """
     Class for engineering target features from OHLCV market data.
@@ -161,11 +199,11 @@ class TargetEngineer:
                 tp, sl = target_params.tp_value, target_params.sl_value
                 # Long position labels
                 target_data[f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
-                    self.calculate_tp_sl_labels(group, period, tp, sl, 'long')
+                    _calculate_tp_sl_labels(group, period, tp, sl, 'long')
                 
                 # Short position labels
                 target_data[f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m'] = \
-                    self.calculate_tp_sl_labels(group, period, tp, sl, 'short')
+                    _calculate_tp_sl_labels(group, period, tp, sl, 'short')
 
             # Create a single DataFrame from all targets at once
             symbol_targets = pd.DataFrame(target_data, index=group.index)
@@ -181,27 +219,6 @@ class TargetEngineer:
             # Return an empty DataFrame with only the symbol column
             return pd.DataFrame({'symbol': []}, index=self.df.index)
     
-    def get_target_column_names(self) -> List[str]:
-        """
-        Get the names of target columns that would be created by add_target_features.
-        
-        Returns:
-            List of column names for target features
-        """
-        column_names = []
-        
-        for target_params in self.params.target_params_list:
-            period = target_params.forward_period
-            column_names.append(f'label_forward_return_{period}m')
-
-            tp, sl = target_params.tp_value, target_params.sl_value
-            # Long position labels
-            column_names.append(f'label_long_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m')
-            # Short position labels
-            column_names.append(f'label_short_tp{int(tp*1000)}_sl{int(sl*1000)}_{period}m')
-
-        return column_names
-    
     @staticmethod
     def calculate_forward_return(df: pd.DataFrame, period: int = 1) -> pd.Series:
         """
@@ -216,44 +233,6 @@ class TargetEngineer:
         """
         # Reverse the shift direction for forward returns
         return df['close'].pct_change(period).shift(-period)
-    
-    @staticmethod
-    def calculate_tp_sl_labels(df: pd.DataFrame, 
-                              period: int, 
-                              take_profit: float, 
-                              stop_loss: float, 
-                              position_type: Literal['long', 'short'] = 'long') -> pd.Series:
-        """
-        Calculate classification labels based on take-profit and stop-loss levels.
-        
-        Args:
-            df: DataFrame with OHLCV data
-            period: Number of periods (minutes) to look forward
-            take_profit: Take-profit threshold as decimal (e.g., 0.01 for 1%)
-            stop_loss: Stop-loss threshold as decimal (e.g., 0.01 for 1%)
-            position_type: 'long' or 'short'
-            
-        Returns:
-            Series with classification labels:
-                1: take-profit reached within period
-               -1: stop-loss reached within period
-                0: neither reached within period
-        """
-        # Extract arrays for Numba processing
-        closes = df['close'].values
-        highs = df['high'].values
-        lows = df['low'].values
-        
-        # Convert position_type to integer for Numba
-        pos_type_int = 0 if position_type == 'long' else 1
-        
-        # Call Numba-accelerated function
-        labels = _calculate_tp_sl_labels_numba(
-            closes, highs, lows, period, take_profit, stop_loss, pos_type_int
-        )
-        
-        # Convert result back to pandas Series
-        return pd.Series(labels, index=df.index)
 
 
 # Convenience functions
@@ -277,26 +256,3 @@ def create_targets(df: pd.DataFrame, params: TargetParamsBatch = None) -> pd.Dat
     # Create a copy to defragment
     return engineer.add_target_features().copy()
 
-
-def get_target_columns(params: TargetParamsBatch = None) -> List[str]:
-    """
-    Get the names of all target columns that would be created by create_targets.
-    
-    Args:
-        params: Target calculation parameters. If None, uses default parameters.
-        
-    Returns:
-        List of column names for target features
-    """
-    # Create a temporary instance with empty DataFrame
-    empty_df = pd.DataFrame({'symbol': ['BTC'], 
-                             'open': [1], 'high': [1], 'low': [1], 'close': [1], 'volume': [1]},
-                           index=[pd.Timestamp.now()])
-    engineer = TargetEngineer(empty_df, params=params)
-    
-    # Get column names
-    return engineer.get_target_column_names()
-
-
-# Predefined target column lists for common configurations
-TARGET_COLUMNS_DEFAULT = get_target_columns(TargetParamsBatch())

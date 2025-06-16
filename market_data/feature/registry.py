@@ -62,6 +62,8 @@ def list_registered_features(security_type: str = "all") -> List[str]:
     features = list(_FEATURE_REGISTRY.keys())
     if security_type == "forex":
         features = [f for f in features if not f.startswith("btc_")]
+    elif security_type == "stock":
+        features = [f for f in features if not f.startswith("btc_")]
     return features
 
 # Column pattern to feature mapping

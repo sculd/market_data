@@ -116,7 +116,7 @@ def cache_feature_cache(
         logger.info(f"Successfully cached {feature_label} for {time_range}")
         return True
     except Exception as e:
-        logger.error(f"Error calculating/caching {feature_label}: {e}")
+        logger.error(f"[cache_writer] Error calculating/caching {feature_label}: {e}")
         return False
 
 def cache_seq_feature_cache(

@@ -92,19 +92,19 @@ def calculate_and_cache_data(
         calc_t_from, calc_t_to = calc_range
         logger.info(f"Processing {label} calculation batch {calc_t_from} to {calc_t_to}")
         
-        # Get raw data (fetch and cache if not present)
-        raw_df = read_from_cache_or_query_and_cache(
-            dataset_mode, export_mode, aggregation_mode,
-            t_from=calc_t_from, t_to=calc_t_to,
-            overwirte_cache=overwrite_cache
-        )
-        
-        if raw_df is None or len(raw_df) == 0:
-            logger.warning(f"No raw data available for {calc_t_from} to {calc_t_to}")
-            continue
-            
         # Calculate data for this batch
         try:
+            # Get raw data (fetch and cache if not present)
+            raw_df = read_from_cache_or_query_and_cache(
+                dataset_mode, export_mode, aggregation_mode,
+                t_from=calc_t_from, t_to=calc_t_to,
+                overwirte_cache=overwrite_cache
+            )
+            
+            if raw_df is None or len(raw_df) == 0:
+                logger.warning(f"No raw data available for {calc_t_from} to {calc_t_to}")
+                continue
+                
             result_df = calculate_batch_fn(raw_df, params)
             
             if result_df is None or len(result_df) == 0:
@@ -136,5 +136,5 @@ def calculate_and_cache_data(
             )
             
         except Exception as e:
-            logger.error(f"Error calculating {label} for {calc_t_from} to {calc_t_to}: {e}")
+            logger.error(f"[core] Error calculating {label} for {calc_t_from} to {calc_t_to}: {e}")
             continue

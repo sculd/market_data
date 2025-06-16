@@ -110,19 +110,19 @@ def calculate_and_cache_resampled(
         calc_t_from, calc_t_to = calc_range
         logging.info(f"Processing resampling batch {calc_t_from} to {calc_t_to}")
         
-        # 1 & 2. Get raw data (fetch and cache if not present)
-        raw_df = read_from_cache_or_query_and_cache(
-            dataset_mode, export_mode, aggregation_mode,
-            t_from=calc_t_from, t_to=calc_t_to,
-            overwirte_cache=overwrite_cache
-        )
-        
-        if raw_df is None or len(raw_df) == 0:
-            logging.warning(f"No raw data available for {calc_t_from} to {calc_t_to}")
-            continue
-            
         # 3. Resample data for this batch
         try:
+            # 1 & 2. Get raw data (fetch and cache if not present)
+            raw_df = read_from_cache_or_query_and_cache(
+                dataset_mode, export_mode, aggregation_mode,
+                t_from=calc_t_from, t_to=calc_t_to,
+                overwirte_cache=overwrite_cache
+            )
+            
+            if raw_df is None or len(raw_df) == 0:
+                logging.warning(f"No raw data available for {calc_t_from} to {calc_t_to}")
+                continue
+                
             resampled_df = resample_at_events(raw_df, params)
             
             if resampled_df is None or len(resampled_df) == 0:

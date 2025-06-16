@@ -21,6 +21,7 @@ _DATASET_ID_OKX = 'market_data_okx'
 _DATASET_ID_CEX = 'market_data_cex'
 _DATASET_ID_BITHUMB = 'market_data_bithumb'
 _DATASET_ID_FOREX_IBKR = 'market_data_forex_ibkr'
+_DATASET_ID_STOCK_HIGH_VOLATILITY = 'market_data_stock_high_volatility'
 _DATASET_ID_FUTURE_FIRSTDATA_ABSOLUTE = 'market_data_future_firstdata_absolute'
 _DATASET_ID_FUTURE_FIRSTDATA_RATIO = 'market_data_future_firstdata_ratio'
 _DATASET_ID_FUTURE_FIRSTDATA_NOADJUST = 'market_data_future_firstdata_noadjust'
@@ -100,6 +101,7 @@ class DATASET_MODE(Enum):
     CEX = 8
     BITHUMB = 9
     FOREX_IBKR = 10
+    STOCK_HIGH_VOLATILITY = 11
 
 def get_full_table_id(dataset_mode, export_mode):
     ds_id = _DATASET_ID_EQUITY
@@ -123,6 +125,8 @@ def get_full_table_id(dataset_mode, export_mode):
         ds_id = _DATASET_ID_BITHUMB
     elif dataset_mode is DATASET_MODE.FOREX_IBKR:
         ds_id = _DATASET_ID_FOREX_IBKR
+    elif dataset_mode is DATASET_MODE.STOCK_HIGH_VOLATILITY:
+        ds_id = _DATASET_ID_STOCK_HIGH_VOLATILITY
 
     t_id = _TABLE_ID_BY_MINUTE
     if export_mode is EXPORT_MODE.BY_MINUTE:
