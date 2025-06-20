@@ -56,7 +56,7 @@ def main():
     
     # Feature handling
     parser.add_argument('--features', type=str, default="all",
-                        help='Specific feature labels to include (comma separated). "forex" or "crypto" or "all" are special values')
+                        help='Specific feature labels to include (comma separated). "forex", "stock", "crypto" or "all" are special values')
                         
     # Optional arguments
     parser.add_argument('--sequential', action='store_true',
@@ -103,6 +103,9 @@ def main():
     elif args.features == "crypto":
         features_to_process = list_registered_features(security_type="crypto")
         print(f"\nProcessing all {len(features_to_process)} registered crypto features")
+    elif args.features == "stock":
+        features_to_process = list_registered_features(security_type="stock")
+        print(f"\nProcessing all {len(features_to_process)} registered stock features")
     else:
         features_to_process = [f.strip() for f in args.features.split(",")]
     
