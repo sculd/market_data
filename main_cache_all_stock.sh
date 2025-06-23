@@ -1,61 +1,10 @@
 #!/bin/bash
 
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --from)
-      FROM_DATE="$2"
-      shift 2
-      ;;
-    --to)
-      TO_DATE="$2"
-      shift 2
-      ;;
-    *)
-      echo "Unknown parameter: $1"
-      exit 1
-      ;;
-  esac
-done
+# Stock market data cache script
+# This is a wrapper script that calls the common cache script with stock configuration
 
-# Check if FROM_DATE and TO_DATE are set
-if [ -z "$FROM_DATE" ] || [ -z "$TO_DATE" ]; then
-  echo "Error: Both --from and --to parameters are required"
-  echo "Usage: $0 --from YYYY-MM-DD --to YYYY-MM-DD"
-  exit 1
-fi
+# Get the directory of this script
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-echo "Checking data from $FROM_DATE to $TO_DATE"
-dataset_aggregation_options="--dataset_mode STOCK_HIGH_VOLATILITY --aggregation_mode COLLECT_ALL_UPDATES "
-target_arg="--forward_periods=10,30,60 --tps=0.03,0.05"
-resample_params_list=("close,0.03" "close,0.05" "close,0.07" "close,0.1" "close,0.15")
-warm_param="--warmup-days=0"
-
-python main_target_data.py --action check $target_arg --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
-python main_raw_data.py --action check --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
-python main_feature_data.py --action check --feature stock --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options} ${warm_param}
-for resample_params in "${resample_params_list[@]}"; do
-    python main_resampled_data.py --action check --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
-done
-for resample_params in "${resample_params_list[@]}"; do
-    python main_ml_data.py --action check --features stock $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
-done
-
-# Ask for confirmation before proceeding
-read -p "Do you want to proceed with caching data? (y/N): " response
-if [[ ! "$response" =~ ^[Yy]$ ]]; then
-    echo "Caching canceled."
-    exit 0
-fi
-
-echo "Caching data from $FROM_DATE to $TO_DATE"
-
-python main_raw_data.py --action cache --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
-python main_feature_data.py --action cache --feature stock --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options} ${warm_param}
-python main_target_data.py --action cache $target_arg --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
-for resample_params in "${resample_params_list[@]}"; do
-    python main_resampled_data.py --action cache --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
-done
-for resample_params in "${resample_params_list[@]}"; do
-    python main_ml_data.py --action cache --features stock $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
-done
+# Call the common script with stock configuration
+exec "$SCRIPT_DIR/main_cache_common.sh" --config stock "$@"
