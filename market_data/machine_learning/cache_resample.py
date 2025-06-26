@@ -5,7 +5,9 @@ import typing
 import os
 from pathlib import Path
 from dataclasses import asdict
-
+import numpy as np
+from typing import List, Optional, Dict, Any, Union
+from dataclasses import dataclass, field
 
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
@@ -22,11 +24,15 @@ from market_data.util.cache.dataframe import (
 )
 
 from market_data.util.cache.path import (
-    params_to_dir_name
+    params_to_dir_name,
+    get_cache_base_path,
 )
+from market_data.util.cache.core import calculate_and_cache_data
 
-# The base directory for cache
-RESAMPLE_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
+logger = logging.getLogger(__name__)
+
+# Global paths configuration - use configurable base path
+RESAMPLE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
 Path(RESAMPLE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def _cache_resampled_data(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 

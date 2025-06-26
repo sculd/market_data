@@ -10,9 +10,9 @@ import logging
 import os
 import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Callable
 
-from market_data.util.cache.path import to_filename
+from market_data.util.cache.path import to_filename, get_cache_base_path
 from market_data.util.cache.time import (
     CACHE_INTERVAL,
     CACHE_TIMEZONE,
@@ -66,7 +66,7 @@ def fetch_from_daily_cache(label: str, t_from: datetime.datetime, t_to: datetime
         return None
 
     if cache_base_path is None:
-        cache_base_path = os.path.expanduser('~/algo_cache')
+        cache_base_path = get_cache_base_path()
         Path(cache_base_path).mkdir(parents=True, exist_ok=True)
 
     filename = to_filename(cache_base_path, label, t_from, t_to, params_dir, dataset_id, dataset_mode, export_mode, aggregation_mode)
@@ -148,3 +148,24 @@ def cache_data_by_day(df: pd.DataFrame, label: str, t_from: datetime.datetime, t
                        dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode,
                        cache_base_path=cache_base_path)
         del df_daily 
+
+def cache_dataframe(
+    cache_key: str,
+    fetch_function: Callable[[], pd.DataFrame], 
+    overwrite_cache: bool = False,
+    cache_base_path: Optional[str] = None
+) -> pd.DataFrame:
+    """
+    Cache a DataFrame to disk and retrieve it on subsequent calls.
+    
+    Args:
+        cache_key: Unique key for the cache file
+        fetch_function: Function to generate the DataFrame if not cached
+        overwrite_cache: If True, ignore existing cache and regenerate
+        cache_base_path: Optional custom cache base path. If None, uses default.
+        
+    Returns:
+        The cached or freshly generated DataFrame
+    """
+    if cache_base_path is None:
+        cache_base_path = get_cache_base_path() 

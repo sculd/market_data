@@ -6,6 +6,8 @@ import datetime
 import math
 from pathlib import Path
 from dataclasses import asdict
+import numpy as np
+from dataclasses import dataclass, field
 
 import market_data.target.cache_target
 from market_data.target.target import TargetParamsBatch
@@ -13,7 +15,7 @@ from market_data.feature.util import parse_feature_label_params
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample import ResampleParams
-from market_data.machine_learning.ml_data import prepare_ml_data, prepare_sequential_ml_data
+from market_data.machine_learning.ml_data import prepare_ml_data, prepare_sequential_ml_data, MLDataParams, create_ml_data
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.sequential_feature import sequentialize_feature
 from market_data.util.cache.time import (
@@ -24,13 +26,15 @@ from market_data.util.cache.dataframe import (
     read_from_cache_generic,
 )
 from market_data.util.cache.path import (
-    params_to_dir_name
+    params_to_dir_name,
+    get_cache_base_path,
 )
+from market_data.util.cache.core import calculate_and_cache_data
 
 logger = logging.getLogger(__name__)
 
-# The base directory for cache
-CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/ml_data')
+# Global paths configuration - use configurable base path
+CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'ml_data')
 Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def _get_mldata_params_dir(

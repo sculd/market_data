@@ -10,6 +10,8 @@ import os
 import datetime
 from pathlib import Path
 from typing import Optional, List, Union, Tuple
+import numpy as np
+from dataclasses import dataclass, field
 
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
@@ -24,12 +26,13 @@ from market_data.util.cache.dataframe import (
     cache_daily_df
 )
 from market_data.util.cache.path import (
-    params_to_dir_name
+    params_to_dir_name,
+    get_cache_base_path
 )
 from market_data.util.cache.core import calculate_and_cache_data
 
-# Define the cache base path for targets
-TARGET_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
+# Global paths configuration - use configurable base path
+TARGET_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
 # Ensure the directory exists
 Path(TARGET_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 

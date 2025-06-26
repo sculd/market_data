@@ -4,6 +4,7 @@ import pytz
 import logging
 import typing
 import os
+from pathlib import Path
 
 from . import candle
 from . import orderbook1l
@@ -13,11 +14,12 @@ from ...util import time as util_time
 from ..gcs.util import get_gcsblobname, download_gcs_blob, upload_file_to_public_gcs_bucket, if_blob_exist
 from google.cloud import storage
 from ...util.cache.time import split_t_range, anchor_to_begin_of_day, is_exact_cache_interval
+from market_data.util.cache.path import get_cache_base_path
 
 
 # the cache will be stored per day.
 _cache_interval = datetime.timedelta(days=1)
-_cache_base_path = os.path.expanduser('~/algo_cache')
+_cache_base_path = get_cache_base_path()
 try:
     os.mkdir(_cache_base_path)
 except FileExistsError:

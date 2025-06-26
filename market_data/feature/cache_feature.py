@@ -6,6 +6,8 @@ import math
 import os
 from pathlib import Path
 from typing import Optional, List, Union, Tuple
+import numpy as np
+from dataclasses import dataclass, field
 
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
@@ -18,12 +20,13 @@ from market_data.util.cache.dataframe import (
     read_from_cache_generic,
 )
 from market_data.util.cache.path import (
-    params_to_dir_name
+    params_to_dir_name,
+    get_cache_base_path
 )
 from market_data.util.cache.core import calculate_and_cache_data
 
-# The base directory for feature cache
-FEATURE_CACHE_BASE_PATH = os.path.expanduser('~/algo_cache/feature_data')
+# Global paths configuration - use configurable base path
+FEATURE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
 Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
