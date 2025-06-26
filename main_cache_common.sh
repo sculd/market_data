@@ -81,6 +81,13 @@ case $CONFIG in
         resample_params_list=("close,0.0025" "close,0.005" "close,0.01")
         warm_param=""
         ;;
+    crypto)
+        dataset_aggregation_options=""
+        target_arg="--forward_periods=5,10,30 --tps=0.015,0.03,0.05"
+        feature_type="crypto"
+        resample_params_list=("close,0.03" "close,0.05" "close,0.07" "close,0.1" "close,0.15")
+        warm_param=""
+        ;;
     default)
         dataset_aggregation_options=""
         target_arg=""
@@ -89,7 +96,7 @@ case $CONFIG in
         warm_param=""
         ;;
     *)
-        echo "Error: Invalid config '$CONFIG'. Must be 'stock', 'forex', or 'default'"
+        echo "Error: Invalid config '$CONFIG'. Must be 'crypto', 'stock', 'forex', or 'default'"
         usage
         ;;
 esac
@@ -165,7 +172,7 @@ if is_datatype_selected "feature"; then
     python main_feature_data.py --action cache --feature $feature_type --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options} ${warm_param}
 fi
 
-if is_datatype_selected "target" && [ -n "$target_arg" ]; then
+if is_datatype_selected "target"; then
     echo "Caching target data..."
     python main_target_data.py --action cache $target_arg --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
 fi
@@ -180,11 +187,7 @@ fi
 if is_datatype_selected "ml_data"; then
     echo "Caching ML data..."
     for resample_params in "${resample_params_list[@]}"; do
-        if [ -n "$target_arg" ]; then
-            python main_ml_data.py --action cache --features $feature_type $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
-        else
-            python main_ml_data.py --action cache --features $feature_type --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
-        fi
+        python main_ml_data.py --action cache --features $feature_type $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
     done
 fi
 
