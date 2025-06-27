@@ -108,19 +108,21 @@ echo "Selected datatypes: $DATATYPES"
 if [ "$SKIP_CHECK" = false ]; then
     echo "=== CHECKING DATA ==="
 
-    if is_datatype_selected "target" && [ -n "$target_arg" ]; then
-        echo "Checking target data..."
-        python main_target_data.py --action check $target_arg --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
-    fi
-
-    if is_datatype_selected "raw"; then
+    if is_datatype_selected "raw" && [ "$CONFIG" != "stock" ]; then
         echo "Checking raw data..."
         python main_raw_data.py --action check --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+    elif is_datatype_selected "raw" && [ "$CONFIG" = "stock" ]; then
+        echo "Skipping raw data check for stock (separate process)"
     fi
 
     if is_datatype_selected "feature"; then
         echo "Checking feature data..."
         python main_feature_data.py --action check --feature $feature_type --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options} ${warm_param}
+    fi
+
+    if is_datatype_selected "target" && [ -n "$target_arg" ]; then
+        echo "Checking target data..."
+        python main_target_data.py --action check $target_arg --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
     fi
 
     if is_datatype_selected "resample"; then
@@ -162,9 +164,11 @@ fi
 echo ""
 echo "=== CACHING DATA ==="
 
-if is_datatype_selected "raw"; then
+if is_datatype_selected "raw" && [ "$CONFIG" != "stock" ]; then
     echo "Caching raw data..."
     python main_raw_data.py --action cache --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+elif is_datatype_selected "raw" && [ "$CONFIG" = "stock" ]; then
+    echo "Skipping raw data caching for stock (separate process)"
 fi
 
 if is_datatype_selected "feature"; then
@@ -172,7 +176,7 @@ if is_datatype_selected "feature"; then
     python main_feature_data.py --action cache --feature $feature_type --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options} ${warm_param}
 fi
 
-if is_datatype_selected "target"; then
+if is_datatype_selected "target" && [ -n "$target_arg" ]; then
     echo "Caching target data..."
     python main_target_data.py --action cache $target_arg --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
 fi
