@@ -77,7 +77,7 @@ def calculate_and_cache_data(
     t_from, t_to = time_range.to_datetime()
     
     # Get dataset ID for cache path - use get_full_table_id from common.py
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     
     # Set up calculation parameters
     if calculation_batch_days <= 0:

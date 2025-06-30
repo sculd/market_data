@@ -128,9 +128,9 @@ def main():
     
     print(f"Processing with parameters:")
     print(f"  Action: {args.action}")
-    print(f"  Dataset Mode: {dataset_mode}")
-    print(f"  Export Mode: {export_mode}")
-    print(f"  Aggregation Mode: {aggregation_mode}")
+    print(f"  Dataset Mode: {str(dataset_mode)}")
+    print(f"  Export Mode: {str(export_mode)}")
+    print(f"  Aggregation Mode: {str(aggregation_mode)}")
     print(f"  Time Range: {args.date_from} to {args.date_to}")
     print(f"  Features: {args.features if args.features else 'All registered features'}")
     if args.forward_periods and args.tps:

@@ -225,7 +225,7 @@ def check_missing_resampled_data(
         
         # Check if file exists in cache
         cache_path = f"{RESAMPLE_CACHE_BASE_PATH}"
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
         
         # The resampled data filename pattern
         filename = to_filename(
@@ -273,7 +273,7 @@ def check_missing_ml_data(
         params_dir = os.path.join(seq_params.get_params_dir(), params_dir)
     
     t_from, t_to = time_range.to_datetime()
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     
     # Split the range into daily intervals
     daily_ranges = split_t_range(t_from, t_to)

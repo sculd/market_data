@@ -111,7 +111,7 @@ def to_filename(basedir: str, label: str, t_from: datetime.datetime, t_to: datet
     
     # Generate dataset_id if not provided but we have the necessary parameters
     if dataset_id is None and all(x is not None for x in [dataset_mode, export_mode]):
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
 
     # Base directory structure with dataset_id if provided
     if dataset_id:

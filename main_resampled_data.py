@@ -76,9 +76,9 @@ def main():
     if resample_params:
         print(f"  Resample Params: price_col={resample_params.price_col}, threshold={resample_params.threshold}")
     
-    print(f"  Dataset Mode: {dataset_mode}")
-    print(f"  Export Mode: {export_mode}")
-    print(f"  Aggregation Mode: {aggregation_mode}")
+    print(f"  Dataset Mode: {str(dataset_mode)}")
+    print(f"  Export Mode: {str(export_mode)}")
+    print(f"  Aggregation Mode: {str(aggregation_mode)}")
     print(f"  Time Range: {args.date_from} to {args.date_to}")
 
     if args.action == 'check':

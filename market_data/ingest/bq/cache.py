@@ -35,7 +35,7 @@ _timestamp_index_name = 'timestamp'
 def to_filename(basedir: str, label: str, t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
     t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
     t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
-    fn = os.path.join(basedir, label, f"{t_id}_{aggregation_mode}", f"{t_str_from}_{t_str_to}.parquet")
+    fn = os.path.join(basedir, label, f"{t_id}_{str(aggregation_mode)}", f"{t_str_from}_{t_str_to}.parquet")
     dir = os.path.dirname(fn)
     try:
         os.makedirs(dir, exist_ok=True)

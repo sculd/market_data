@@ -148,7 +148,7 @@ def _calculate_daily_ml_data(
     
     # Cache the data
     logger.info(f"Caching ML data for {date}")
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch)
     
     if seq_params is not None:
@@ -255,7 +255,7 @@ def load_cached_ml_data(
     feature_label_params = parse_feature_label_params(feature_label_params)
     target_params_batch = target_params_batch or TargetParamsBatch()
     resample_params = resample_params or ResampleParams()
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch)
     
     if seq_params is not None:

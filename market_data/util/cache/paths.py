@@ -107,7 +107,7 @@ def get_cache_path(dataset_mode: str, export_mode: str, aggregation_mode: str, t
         Cache path string
     """
     t_from, t_to = time_range.to_datetime()
-    return f"{dataset_mode}_{export_mode}_{aggregation_mode}_{t_from}_{t_to}"
+    return f"{dataset_mode}_{export_mode}_{str(aggregation_mode)}_{t_from}_{t_to}"
 
 def get_full_table_id(dataset_mode: str, export_mode: str) -> str:
     """

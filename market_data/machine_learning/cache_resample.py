@@ -102,7 +102,7 @@ def calculate_and_cache_resampled(
     resample_label = "resampled"
     
     # Get dataset ID for cache path
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     
     # Set up calculation parameters
     if calculation_batch_days <= 0:
@@ -179,7 +179,7 @@ def load_cached_resampled_data(
     # Get dataset ID for cache path if dataset_mode, export_mode, and aggregation_mode are provided
     dataset_id = None
     if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{aggregation_mode}"
+        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     
     return _read_resampled_data_from_cache(
         resample_label,
