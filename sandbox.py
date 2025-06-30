@@ -193,15 +193,20 @@ market_data.feature.cache_feature.calculate_and_cache_features(
     )
 #'''
 
-'''
+#'''
 time_range = market_data.util.time.TimeRange(
-    date_str_from='2024-01-01', date_str_to='2025-04-01',
+    date_str_from='2024-01-01', date_str_to='2025-01-01',
     )
 
 import market_data.target.cache_target
 market_data.target.cache_target.calculate_and_cache_targets(
-      market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+      market_data.ingest.bq.common.DATASET_MODE.FOREX_IBKR, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.COLLECT_ALL_UPDATES,
       time_range=time_range,
+      params = market_data.target.cache_target.TargetParamsBatch(
+        target_params_list=[market_data.target.target.TargetParams(forward_period=period, tp_value=tp, sl_value=tp) 
+            for period in market_data.target.target.DEFAULT_FORWARD_PERIODS 
+            for tp in [0.01, 0.015, 0.02, 0.03]]
+      ),
     )
 #'''
 
@@ -214,20 +219,20 @@ import market_data.machine_learning.cache_resample
 market_data.machine_learning.cache_resample.calculate_and_cache_resampled(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
-    params=market_data.machine_learning.resample.ResampleParams(price_col = 'close', threshold = 0.03,),
+    params=market_data.machine_learning.resample.ResampleParams(price_col = 'close', threshold = 0.07,),
 )
 #'''
 
-#'''
+'''
 time_range = market_data.util.time.TimeRange(
-    date_str_from='2024-01-01', date_str_to='2025-04-01',
+    date_str_from='2025-04-01', date_str_to='2025-04-05',
     )
 
 import market_data.machine_learning.cache_ml_data
 market_data.machine_learning.cache_ml_data.calculate_and_cache_ml_data(
     market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
-    resample_params=market_data.machine_learning.resample.ResampleParams(price_col = 'close', threshold = 0.03,),
+    resample_params=market_data.machine_learning.resample.ResampleParams(price_col = 'close', threshold = 0.07,),
 )
 #'''
 
