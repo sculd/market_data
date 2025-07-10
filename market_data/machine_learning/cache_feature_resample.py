@@ -191,23 +191,30 @@ def calculate_and_cache_feature_resampled(
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Starting {data_type} feature resampled data processing for {feature_label}")
     
-    # Process each day
-    while current_date < t_to:
-        logger.info(f"Processing day {current_date}")
-        
-        _calculate_and_cache_daily_feature_resampled(
-            date=current_date,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            feature_label=feature_label,
-            feature_params=feature_params,
-            resample_params=resample_params,
-            seq_params=seq_params,
-            overwrite_cache=overwrite_cache
-        )
+    try:
+        # Process each day
+        while current_date < t_to:
+            logger.info(f"Processing day {current_date}")
+            
+            _calculate_and_cache_daily_feature_resampled(
+                date=current_date,
+                dataset_mode=dataset_mode,
+                export_mode=export_mode,
+                aggregation_mode=aggregation_mode,
+                feature_label=feature_label,
+                feature_params=feature_params,
+                resample_params=resample_params,
+                seq_params=seq_params,
+                overwrite_cache=overwrite_cache
+            )
 
-        current_date = anchor_to_begin_of_day(current_date + datetime.timedelta(days=1))
+            current_date = anchor_to_begin_of_day(current_date + datetime.timedelta(days=1))
+
+        logger.info(f"Successfully cached {feature_label} resampled for {time_range}")
+        return True
+    except Exception as e:
+        logger.error(f"[cache_writer] Error calculating/caching {feature_label} resampled: {e}")
+        return False
 
 
 def load_cached_feature_resampled(

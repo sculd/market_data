@@ -9,24 +9,21 @@ import setup_env # needed for env variables
 import main_util
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
-from market_data.util.cache.time import split_t_range
 from market_data.feature.registry import list_registered_features
-from market_data.feature.cache_writer import cache_feature_cache
-from market_data.feature.util import parse_feature_label_param
-import market_data.util.cache.missing_data_finder
-
-import market_data.feature.impl  # Import to ensure all features are registered
+from market_data.machine_learning.resample import ResampleParams
+from market_data.machine_learning.cache_feature_resample import calculate_and_cache_feature_resampled
+from market_data.util.cache.missing_data_finder import check_missing_feature_resampled_data, group_consecutive_dates
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Feature data management tool',
+        description='Resampled data management tool',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     
     # Action argument
     parser.add_argument('--action', type=str, default='cache',
-                        choices=['list', 'check', 'cache'],
-                        help='Action to perform: list features, check missing data, or cache feature data')
+                        choices=['check', 'cache'],
+                        help='Action to perform: check missing data or cache data')
     
     # Feature to process
     parser.add_argument('--feature', type=str, default=None,
@@ -46,40 +43,24 @@ def main():
                         help='Aggregation mode')
     
     # Time range arguments - can be specified as date strings
-    parser.add_argument('--from', dest='date_from', type=str,
+    parser.add_argument('--from', dest='date_from', type=str, required=True,
                         help='Start date in YYYY-MM-DD format')
     
-    parser.add_argument('--to', dest='date_to', type=str,
+    parser.add_argument('--to', dest='date_to', type=str, required=True,
                         help='End date in YYYY-MM-DD format')
     
     # Optional arguments
     parser.add_argument('--calculation_batch_days', type=int, default=1,
                         help='Number of days to calculate features for in each batch')
     
-    parser.add_argument('--warmup-days', type=int, default=None,
-                        help='Warm up days. Auto-detection if not provided.')
-    
     parser.add_argument('--overwrite_cache', action='store_true',
                         help='Overwrite existing cache files')
     
+    # Resample parameters if using the --resample flag
+    parser.add_argument('--resample_params', type=str, default=None,
+                        help='Resampling parameters in format "price_col,threshold" (e.g., "close,0.07")')
+    
     args = parser.parse_args()
-    
-    if args.action == 'list':
-        # List all available features
-        security_type = args.feature or 'all'
-        features = list_registered_features(security_type=security_type)
-        print(f"\nAvailable features ({len(features)}):")
-        for i, feature in enumerate(sorted(features)):
-            print(f"  {i+1}. {feature}")
-        return
-    
-    # Check if feature is provided for non-list actions
-    if args.action in ['check', 'cache'] and args.feature is None:
-        parser.error("--feature is required for 'check' and 'cache' actions")
-        
-    # For check and cache actions, ensure we have a date range
-    if args.action in ['check', 'cache'] and (args.date_from is None or args.date_to is None):
-        parser.error("--from and --to arguments are required for 'check' and 'cache' actions")
     
     # Get enum values by name
     dataset_mode = getattr(DATASET_MODE, args.dataset_mode)
@@ -89,14 +70,22 @@ def main():
     # Create TimeRange object
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
     
+    # Parse resample parameters if provided
+    resample_params = None
+    if args.resample_params:
+        resample_params = main_util.parse_resample_params(args.resample_params)
+    
     print(f"Processing with parameters:")
     print(f"  Action: {args.action}")
     print(f"  Feature: {args.feature}")
+    if resample_params:
+        print(f"  Resample Params: price_col={resample_params.price_col}, threshold={resample_params.threshold}")
+    
     print(f"  Dataset Mode: {str(dataset_mode)}")
     print(f"  Export Mode: {str(export_mode)}")
     print(f"  Aggregation Mode: {str(aggregation_mode)}")
     print(f"  Time Range: {args.date_from} to {args.date_to}")
-    
+
     # Determine features to process
     features_to_process = []
     if args.feature in ["all", "forex", "crypto", "stock"]:
@@ -108,20 +97,23 @@ def main():
     if args.action == 'check':
         # Process each feature
         for feature_label in features_to_process:
-            print(f"\nChecking feature: {feature_label}")
-            missing_ranges = market_data.util.cache.missing_data_finder.check_missing_feature_data(
-                feature_label=feature_label,
+            print(f"\nChecking feature resampled: {feature_label}")
+            missing_ranges = check_missing_feature_resampled_data(
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,
-                time_range=time_range
+                time_range=time_range,
+                feature_label=feature_label,
+                feature_params=None,
+                resample_params=resample_params,
+                seq_params=None,
             )
             
             if not missing_ranges:
                 print(f"  All data for '{feature_label}' is present in the cache.")
             else:
                 # Group consecutive dates
-                grouped_ranges = market_data.util.cache.missing_data_finder.group_consecutive_dates(missing_ranges)
+                grouped_ranges = group_consecutive_dates(missing_ranges)
                 
                 total_missing_days = len(missing_ranges)
                 print(f"  Missing data for '{feature_label}': {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
@@ -135,28 +127,32 @@ def main():
                         print(f"    {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
                 
                 # Suggest command to cache this feature
-                suggest_cmd = f"python main_feature_data.py --action cache --feature {feature_label} --from {args.date_from} --to {args.date_to}"
+                suggest_cmd = f"python main_feature_resampled.py --action cache --feature {feature_label} --from {args.date_from} --to {args.date_to}"
+                if args.resample_params:
+                    suggest_cmd += f" --resample_params {args.resample_params}"
                 print(f"\n  To cache this feature, run:")
                 print(f"    {suggest_cmd}")
-    
+
     elif args.action == 'cache':
         # Process each feature
         successful_features = []
         failed_features = []
         
         for feature_label in features_to_process:
-            print(f"\nCaching feature: {feature_label}")
-            success = cache_feature_cache(
-                feature_label_param=feature_label,
+            print(f"\nCaching feature resampled: {feature_label}")
+
+            success = calculate_and_cache_feature_resampled(
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,
                 time_range=time_range,
-                calculation_batch_days=args.calculation_batch_days,
-                warm_up_days=args.warmup_days,
-                overwrite_cache=args.overwrite_cache
+                feature_label=feature_label,
+                feature_params=None,
+                resample_params=resample_params,
+                seq_params=None,
+                overwrite_cache=args.overwrite_cache,
             )
-            
+
             if success:
                 successful_features.append(feature_label)
                 print(f"  Successfully cached feature: {feature_label}")
