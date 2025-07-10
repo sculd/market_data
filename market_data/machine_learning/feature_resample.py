@@ -59,9 +59,10 @@ def prepare_feature_resampled(
         logger.error("No resampled data available")
         return pd.DataFrame()
     
-    # Remove OHLCV columns from resampled data as they'll be added with features
-    resampled_df_cleaned = resampled_df.drop(["open", "high", "low", "close", "volume"], axis=1, errors='ignore')
-    resampled_df_cleaned = resampled_df_cleaned.reset_index().set_index(["timestamp", "symbol"])
+    # Remove all columns from resampled data, keeping only the index (timestamp, symbol)
+    # We only need the timestamps and symbols for joining - feature data comes from feature_df
+    resampled_df_cleaned = resampled_df.reset_index().set_index(["timestamp", "symbol"])
+    resampled_df_cleaned = resampled_df_cleaned[[]]
     
     # Load the feature data
     logger.info(f"Processing feature: {feature_label_param}")
@@ -145,8 +146,10 @@ def prepare_sequential_feature_resampled(
         logger.error("No resampled data available")
         return pd.DataFrame()
     
-    # Remove OHLCV columns from resampled data
-    resampled_df = resampled_df.drop(["open", "high", "low", "close", "volume"], axis=1, errors='ignore')
+    # Remove all columns from resampled data, keeping only the index (timestamp, symbol)
+    # We only need the timestamps and symbols for sequencing - feature data comes from feature_df
+    resampled_df_cleaned = resampled_df.reset_index().set_index(["timestamp", "symbol"])
+    resampled_df_cleaned = resampled_df_cleaned[[]]
     
     # Create a mapping of symbols to their resampled timestamps
     symbol_to_resampled_timestamps = {}
