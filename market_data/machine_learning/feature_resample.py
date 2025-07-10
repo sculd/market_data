@@ -101,36 +101,36 @@ def prepare_sequential_feature_resampled(
     seq_params: Optional[SequentialFeatureParam] = None,
 ) -> pd.DataFrame:
     """
-    Prepare sequential machine learning data more efficiently.
+    Prepare sequential feature data by creating sequences aligned with resampled timestamps.
     
     This function:
     1. First loads resampled data to identify the timestamps and symbols
-    2. For each feature and resampled timestamp, creates a small DataFrame with sequence data
-    3. Concatenates these DataFrames within each feature, then joins across features
-    4. Joins with targets to create the final ML dataset
+    2. For each resampled timestamp, creates a sequence of historical feature data
+    3. Returns a DataFrame where each row contains a sequence of feature values
     
-    This approach uses pandas' efficient join operations to combine data.
+    This approach creates time-series sequences that can be used for sequential machine learning models.
     
     Args:
         dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
         export_mode: Export mode (OHLC, TICKS, etc.)
         aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
         time_range: TimeRange object specifying the time range
-        feature_label_params: List of feature labels and parameters
-        target_params_batch: Target calculation parameters. If None, uses default parameters.
+        feature_label: Name of the feature to load (e.g., 'bollinger_bands', 'rsi')
+        feature_params: Parameters for the feature calculation. If None, uses default parameters.
         resample_params: Resampling parameters. If None, uses default parameters.
         seq_params: Sequential feature parameters. If None, uses default parameters.
         
     Returns:
-        DataFrame with sequential features and targets
+        DataFrame with sequential feature data, indexed by [timestamp, symbol].
+        Each row contains sequence arrays for the feature columns.
     """
     # Use default parameters if none provided
-    feature_label_param = parse_feature_label_param((feature_label, feature_params,))
+    feature_label_param = parse_feature_label_param((feature_label, feature_params))
     resample_params = resample_params or ResampleParams()
     seq_params = seq_params or SequentialFeatureParam()
     
     sequence_window = seq_params.sequence_window
-    logger.info(f"Preparing sequential ML data with sequence window: {sequence_window}")
+    logger.info(f"Preparing sequential feature data with sequence window: {sequence_window}")
     
     # First, get the resampled data to identify required timestamps and symbols
     resampled_df = load_cached_resampled_data(
@@ -150,26 +150,24 @@ def prepare_sequential_feature_resampled(
     
     # Create a mapping of symbols to their resampled timestamps
     symbol_to_resampled_timestamps = {}
-    for symbol, ts in resampled_df.groupby('symbol'): 
-        symbol_to_resampled_timestamps[symbol] = ts.index
-
+    for symbol, symbol_group in resampled_df.groupby('symbol'): 
+        symbol_to_resampled_timestamps[symbol] = symbol_group.index.get_level_values('timestamp').unique()
+ 
     # Extend time range to include historical data for sequencing
     t_from, t_to = time_range.to_datetime()
     
     # For minute-level data, calculate lookback period
     # Add a buffer to ensure we have enough data
-    extended_t_from = t_from - pd.Timedelta(minutes=sequence_window)
+    extended_t_from = t_from - pd.Timedelta(minutes=sequence_window * 2)  # Add buffer
     extended_time_range = TimeRange(extended_t_from, t_to)
     
     logger.info(f"Loading features with extended time range: {extended_t_from} to {t_to}")
-    
-    feature_label, params = parse_feature_label_param(feature_label_param)
     
     logger.info(f"Processing feature: {feature_label}")
     
     # Load feature data with extended time range
     feature_df = read_multi_feature_cache(
-        feature_labels_params=[(feature_label, params)],
+        feature_labels_params=[feature_label_param],
         time_range=extended_time_range,
         dataset_mode=dataset_mode,
         export_mode=export_mode,
@@ -218,31 +216,32 @@ def prepare_sequential_feature_resampled(
             if len(sequence_data) > sequence_window:
                 sequence_data = sequence_data.iloc[-sequence_window:]
             
-            # Extract the sequence of values for this feature
-            sequence_values = sequence_data.values
-            
             # Ensure we have the right number of values
-            if len(sequence_values) != sequence_window:
-                logger.debug(f"Expected {sequence_window} values but got {len(sequence_values)} for {ts}, {symbol}, {feature_label}")
+            if len(sequence_data) != sequence_window:
+                logger.debug(f"Expected {sequence_window} values but got {len(sequence_data)} for {ts}, {symbol}, {feature_label}")
                 continue
             
             # Create a small DataFrame with this sequence
-            # Use MultiIndex with timestamp and symbol
+            # Convert each column to a sequence array
+            sequence_dict = {}
+            for col in sequence_data.columns:
+                sequence_dict[f"{col}"] = [sequence_data[col].values]
             
-            sequence_df = pd.DataFrame({
-                c: [sequence_data[c].values] for c in sequence_data.columns
-            }, index=pd.MultiIndex.from_tuples([(ts, symbol)], names=['timestamp', 'symbol']))
+            sequence_df = pd.DataFrame(
+                sequence_dict,
+                index=pd.MultiIndex.from_tuples([(ts, symbol)], names=['timestamp', 'symbol'])
+            )
             
             # Add to our list of sequence DataFrames
             sequence_dfs.append(sequence_df)
     
-    sequence_df = pd.concat(sequence_dfs).sort_index(level='timestamp')
-    
-    # Check if we have any feature DataFrames
-    if len(sequence_df) == 0:
+    if len(sequence_dfs) == 0:
         logger.error("No feature sequences could be created")
         return pd.DataFrame()
     
-    logger.info(f"Successfully prepared sequential ML data with {len(sequence_df)} rows and {len(sequence_df.columns)} columns")
-    return sequence_df
+    # Concatenate all sequences
+    result_df = pd.concat(sequence_dfs).sort_index()
+    
+    logger.info(f"Successfully prepared sequential feature data with {len(result_df)} rows and {len(result_df.columns)} columns")
+    return result_df
 
