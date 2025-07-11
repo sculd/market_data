@@ -13,7 +13,7 @@ usage() {
     echo "Options:"
     echo "  --skip-check           Skip the data checking phase and go directly to caching"
     echo "  --datatypes TYPES      Comma-separated list of data types to process:"
-    echo "                         raw,feature,target,resample,ml_data (default: all)"
+    echo "                         raw,feature,target,resample,feature_resample,ml_data (default: all)"
     echo "Examples:"
     echo "  $0 --config stock --from 2024-01-01 --to 2024-01-02"
     echo "  $0 --config stock --from 2024-01-01 --to 2024-01-02 --datatypes raw,feature"
@@ -104,44 +104,65 @@ esac
 echo "Running $CONFIG configuration from $FROM_DATE to $TO_DATE"
 echo "Selected datatypes: $DATATYPES"
 
-# Check phase (only if not skipped)
-if [ "$SKIP_CHECK" = false ]; then
-    echo "=== CHECKING DATA ==="
+# Main function to process data (check or cache)
+process_data() {
+    local action=$1
+    local action_display=$2
+    
+    # Set additional flags for cache operations
+    local cache_flags=""
+    if [ "$action" = "cache" ]; then
+        cache_flags="--overwrite_cache"
+    fi
+    
+    echo "=== ${action_display} DATA ==="
 
     if is_datatype_selected "raw" && [ "$CONFIG" != "stock" ]; then
-        echo "Checking raw data..."
-        python main_raw_data.py --action check --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+        echo "${action_display} raw data..."
+        python main_raw_data.py --action $action --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
     elif is_datatype_selected "raw" && [ "$CONFIG" = "stock" ]; then
-        echo "Skipping raw data check for stock (separate process)"
+        echo "Skipping raw data ${action,,} for stock (separate process)"
     fi
 
     if is_datatype_selected "feature"; then
-        echo "Checking feature data..."
-        python main_feature_data.py --action check --feature $feature_type --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options} ${warm_param}
+        echo "${action_display} feature data..."
+        python main_feature_data.py --action $action --feature $feature_type --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options} ${warm_param}
     fi
 
     if is_datatype_selected "target" && [ -n "$target_arg" ]; then
-        echo "Checking target data..."
-        python main_target_data.py --action check $target_arg --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+        echo "${action_display} target data..."
+        python main_target_data.py --action $action $target_arg --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
     fi
 
     if is_datatype_selected "resample"; then
-        echo "Checking resampled data..."
+        echo "${action_display} resampled data..."
         for resample_params in "${resample_params_list[@]}"; do
-            python main_resampled_data.py --action check --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+            python main_resampled_data.py --action $action --feature $feature_type --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
+        done
+    fi
+
+    if is_datatype_selected "feature_resample"; then
+        echo "${action_display} feature_resample data..."
+        for resample_params in "${resample_params_list[@]}"; do
+            python main_feature_resampled_data.py --action $action --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
         done
     fi
 
     if is_datatype_selected "ml_data"; then
-        echo "Checking ML data..."
+        echo "${action_display} ML data..."
         for resample_params in "${resample_params_list[@]}"; do
             if [ -n "$target_arg" ]; then
-                python main_ml_data.py --action check --features $feature_type $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+                python main_ml_data.py --action $action --features $feature_type $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
             else
-                python main_ml_data.py --action check --features $feature_type --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+                python main_ml_data.py --action $action --features $feature_type --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
             fi
         done
     fi
+}
+
+# Check phase (only if not skipped)
+if [ "$SKIP_CHECK" = false ]; then
+    process_data "check" "CHECKING"
 
     # Ask for confirmation before proceeding
     echo ""
@@ -162,38 +183,7 @@ fi
 
 # Cache phase
 echo ""
-echo "=== CACHING DATA ==="
-
-if is_datatype_selected "raw" && [ "$CONFIG" != "stock" ]; then
-    echo "Caching raw data..."
-    python main_raw_data.py --action cache --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
-elif is_datatype_selected "raw" && [ "$CONFIG" = "stock" ]; then
-    echo "Skipping raw data caching for stock (separate process)"
-fi
-
-if is_datatype_selected "feature"; then
-    echo "Caching feature data..."
-    python main_feature_data.py --action cache --feature $feature_type --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options} ${warm_param}
-fi
-
-if is_datatype_selected "target" && [ -n "$target_arg" ]; then
-    echo "Caching target data..."
-    python main_target_data.py --action cache $target_arg --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
-fi
-
-if is_datatype_selected "resample"; then
-    echo "Caching resampled data..."
-    for resample_params in "${resample_params_list[@]}"; do
-        python main_resampled_data.py --action cache --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
-    done
-fi
-
-if is_datatype_selected "ml_data"; then
-    echo "Caching ML data..."
-    for resample_params in "${resample_params_list[@]}"; do
-        python main_ml_data.py --action cache --features $feature_type $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" --overwrite_cache ${dataset_aggregation_options}
-    done
-fi
+process_data "cache" "CACHING"
 
 echo ""
 echo "✅ $CONFIG configuration caching completed successfully!" 
