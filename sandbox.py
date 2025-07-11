@@ -193,7 +193,7 @@ market_data.feature.cache_feature.calculate_and_cache_features(
     )
 #'''
 
-#'''
+'''
 time_range = market_data.util.time.TimeRange(
     date_str_from='2024-01-01', date_str_to='2025-01-01',
     )
@@ -221,6 +221,54 @@ market_data.machine_learning.cache_resample.calculate_and_cache_resampled(
     time_range=time_range,
     params=market_data.machine_learning.resample.ResampleParams(price_col = 'close', threshold = 0.07,),
 )
+#'''
+
+'''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2024-01-03',
+    )
+
+from market_data.feature.registry import list_registered_features
+feature_labels = list_registered_features(security_type="all")
+
+
+import market_data.machine_learning.ml_data
+from market_data.target.target import TargetParamsBatch
+
+ml_data_df = market_data.machine_learning.ml_data.prepare_ml_data(
+    dataset_mode=market_data.ingest.bq.common.DATASET_MODE.OKX,
+    export_mode=market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE,
+    aggregation_mode=market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    time_range=time_range,
+    feature_label_params = feature_labels,
+    resample_params = market_data.machine_learning.resample.ResampleParams(
+        threshold=0.05,
+    ),
+    target_params_batch = TargetParamsBatch(),
+)
+print(ml_data_df)
+#'''
+
+#'''
+time_range = market_data.util.time.TimeRange(
+    date_str_from='2024-01-01', date_str_to='2024-01-04',
+    )
+
+import market_data.util.cache.missing_data_finder
+
+missing = market_data.util.cache.missing_data_finder.check_missing_feature_resampled_data(
+    dataset_mode=market_data.ingest.bq.common.DATASET_MODE.OKX,
+    export_mode=market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE,
+    aggregation_mode=market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    time_range=time_range,
+    feature_label='returns',
+    feature_params=None,
+    resample_params=market_data.machine_learning.resample.ResampleParams(
+        threshold=0.05,
+    ),
+    #seq_params=None,
+)
+print(missing)
 #'''
 
 '''
