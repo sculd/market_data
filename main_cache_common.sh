@@ -162,7 +162,7 @@ process_data() {
     if is_datatype_selected "feature_resample"; then
         echo "${action_display} feature_resample data..."
         for resample_params in "${resample_params_list[@]}"; do
-            cmd="python main_feature_resampled_data.py --action $action --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+            cmd="python main_feature_resampled_data.py --action $action --feature $feature_type --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
             echo "Running: $cmd"
             eval $cmd
         done
@@ -172,11 +172,11 @@ process_data() {
         echo "${action_display} ML data..."
         for resample_params in "${resample_params_list[@]}"; do
             if [ -n "$target_arg" ]; then
-                cmd="python main_ml_data.py --action $action --feature $feature_type $target_arg --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+                cmd="python main_ml_data.py --action $action --features $feature_type $target_arg --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
                 echo "Running: $cmd"
                 eval $cmd
             else
-                cmd="python main_ml_data.py --action $action --feature $feature_type --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+                cmd="python main_ml_data.py --action $action --features $feature_type --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
                 echo "Running: $cmd"
                 eval $cmd
             fi
