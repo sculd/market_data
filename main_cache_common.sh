@@ -119,32 +119,52 @@ process_data() {
 
     if is_datatype_selected "raw" && [ "$CONFIG" != "stock" ]; then
         echo "${action_display} raw data..."
-        python main_raw_data.py --action $action --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options}
+        cmd="python main_raw_data.py --action $action --from \"$FROM_DATE\" --to \"$TO_DATE\" ${dataset_aggregation_options}"
+        echo "Running: $cmd"
+        eval $cmd
     elif is_datatype_selected "raw" && [ "$CONFIG" = "stock" ]; then
         echo "Skipping raw data ${action,,} for stock (separate process)"
     fi
 
     if is_datatype_selected "feature"; then
         echo "${action_display} feature data..."
-        python main_feature_data.py --action $action --feature $feature_type --from "$FROM_DATE" --to "$TO_DATE" ${dataset_aggregation_options} ${warm_param}
+        cmd="python main_feature_data.py --action $action --feature $feature_type --from \"$FROM_DATE\" --to \"$TO_DATE\" ${dataset_aggregation_options} ${warm_param}"
+        echo "Running: $cmd"
+        eval $cmd
     fi
 
-    if is_datatype_selected "target" && [ -n "$target_arg" ]; then
-        echo "${action_display} target data..."
-        python main_target_data.py --action $action $target_arg --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
+    if is_datatype_selected "target"; then
+        if [ -n "$target_arg" ]; then
+            echo "${action_display} target data..."
+            cmd="python main_target_data.py --action $action $target_arg --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+            echo "Running: $cmd"
+            eval $cmd
+        else
+            echo "❌ ERROR: Target processing requested but not configured for '$CONFIG' configuration"
+            echo "   Target processing is only available for: stock, forex, crypto"
+            echo "   Current config '$CONFIG' has no target_arg defined (forward_periods, tps, etc.)"
+            echo "   Either:"
+            echo "   1. Use a different config: --config stock, --config forex, or --config crypto"
+            echo "   2. Remove 'target' from --datatypes parameter"
+            echo "   3. Modify the script to add target_arg for '$CONFIG' configuration"
+        fi
     fi
 
     if is_datatype_selected "resample"; then
         echo "${action_display} resampled data..."
         for resample_params in "${resample_params_list[@]}"; do
-            python main_resampled_data.py --action $action --feature $feature_type --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
+            cmd="python main_resampled_data.py --action $action --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+            echo "Running: $cmd"
+            eval $cmd
         done
     fi
 
     if is_datatype_selected "feature_resample"; then
         echo "${action_display} feature_resample data..."
         for resample_params in "${resample_params_list[@]}"; do
-            python main_feature_resampled_data.py --action $action --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
+            cmd="python main_feature_resampled_data.py --action $action --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+            echo "Running: $cmd"
+            eval $cmd
         done
     fi
 
@@ -152,9 +172,13 @@ process_data() {
         echo "${action_display} ML data..."
         for resample_params in "${resample_params_list[@]}"; do
             if [ -n "$target_arg" ]; then
-                python main_ml_data.py --action $action --features $feature_type $target_arg --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
+                cmd="python main_ml_data.py --action $action --feature $feature_type $target_arg --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+                echo "Running: $cmd"
+                eval $cmd
             else
-                python main_ml_data.py --action $action --features $feature_type --resample_params $resample_params --from "$FROM_DATE" --to "$TO_DATE" ${cache_flags} ${dataset_aggregation_options}
+                cmd="python main_ml_data.py --action $action --feature $feature_type --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+                echo "Running: $cmd"
+                eval $cmd
             fi
         done
     fi
