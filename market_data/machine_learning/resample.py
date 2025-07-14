@@ -9,6 +9,33 @@ class ResampleParams:
     price_col: str = 'close'
     threshold: float = 0.05
 
+    @staticmethod
+    def parse_resample_params(param_str):
+        """
+        Parse a string in the format 'price_col,threshold' into ResampleParams.
+        Example: 'close,0.07' -> ResampleParams(price_col='close', threshold=0.07)
+        
+        Args:
+            param_str: String in format 'price_col,threshold'
+            
+        Returns:
+            ResampleParams instance
+        """
+        if not param_str:
+            return ResampleParams()
+            
+        try:
+            parts = param_str.split(',')
+            if len(parts) != 2:
+                raise ValueError("Format should be 'price_col,threshold'")
+                
+            price_col = parts[0].strip()
+            threshold = float(parts[1].strip())
+            
+            return ResampleParams(price_col=price_col, threshold=threshold)
+        except Exception as e:
+            raise ValueError(f"Invalid resample_params format: {e}. Format should be 'price_col,threshold' (e.g. 'close,0.07')")
+
 def _get_events_t_arr(values: np.ndarray, threshold: float = 0.05) -> np.ndarray:
     t_events = []
     s_pos, s_neg = 0, 0
