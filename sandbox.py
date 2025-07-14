@@ -27,7 +27,7 @@ from market_data.feature.impl.common import SequentialFeatureParam
 
 import market_data.ingest.bq.common
 import market_data.ingest.bq.cache
-import market_data.machine_learning.resample
+import market_data.machine_learning.resample.resample
 
 import market_data.util
 import market_data.util.time
@@ -263,7 +263,7 @@ missing = market_data.util.cache.missing_data_finder.check_missing_feature_resam
     time_range=time_range,
     feature_label='returns',
     feature_params=None,
-    resample_params=market_data.machine_learning.resample.ResampleParams(
+    resample_params=market_data.machine_learning.resample.resample.ResampleParams(
         threshold=0.05,
     ),
     #seq_params=None,

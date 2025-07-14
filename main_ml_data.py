@@ -6,12 +6,14 @@ from pathlib import Path
 
 import setup_env # needed for env variables
 
-import main_util
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
 from market_data.target.target import TargetParamsBatch, TargetParams
-from market_data.machine_learning.resample import ResampleParams
+from market_data.machine_learning.resample import (
+    get_resample_params_class,
+    list_registered_resample_methods
+)
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.util import parse_feature_label_params
 from market_data.feature.registry import list_registered_features
@@ -53,17 +55,15 @@ def main():
     parser.add_argument('--to', dest='date_to', type=str, required=True,
                         help='End date in YYYY-MM-DD format')
     
-    # Feature handling
-    parser.add_argument('--features', type=str, default="all",
-                        help='Specific feature labels to include (comma separated). "forex", "stock", "crypto" or "all" are special values')
-                        
-    # Optional arguments
+    parser.add_argument('--features', type=str, default='all',
+                        help='Features to process: "all", "forex", "crypto", "stock", or comma-separated list')
+    
     parser.add_argument('--sequential', action='store_true',
-                        help='Create sequential features for ML data')
+                        help='Use sequential features instead of regular features')
     
     parser.add_argument('--sequence_window', type=int, default=30,
-                        help='Window size for sequential features')
-    
+                        help='Size of the sliding window for sequential features')
+
     # Target parameters
     parser.add_argument('--forward_periods', type=str,
                         help='Comma-separated list of forward periods (e.g., "1,2,3"). For forex, 10,30,60 are used')
@@ -71,8 +71,16 @@ def main():
     parser.add_argument('--tps', type=str,
                         help='Comma-separated list of target price shifts (e.g., "0.001,0.002,0.003"). For forex, 0.0025,0.005,0.01 are used')
     
+    # Resample type and parameters
+    available_methods = list_registered_resample_methods()
+    parser.add_argument('--resample_type_label', type=str, default='cumsum',
+                        choices=available_methods,
+                        help=f'Resampling method to use. Available: {", ".join(available_methods)}')
+    
     parser.add_argument('--resample_params', type=str, default=None,
-                        help='Resampling parameters in format "price_col,threshold" (e.g., "close,0.07"). For forex, close,0.0025" "close,0.005" "close,0.01" are used')
+                        help='Resampling parameters. Format depends on method: '
+                             'cumsum: "price_col,threshold" (e.g., "close,0.07") '
+                             'reversal: "price_col,threshold,threshold_reversal" (e.g., "close,0.1,0.03")')
                         
     parser.add_argument('--overwrite_cache', action='store_true',
                         help='Overwrite existing cache files')
@@ -90,6 +98,14 @@ def main():
     
     # Create TimeRange object
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
+    
+    # Get resample method components from registry
+    resample_params_class = get_resample_params_class(args.resample_type_label)
+    
+    if resample_params_class is None:
+        print(f"Error: Unknown resample type '{args.resample_type_label}'")
+        print(f"Available methods: {', '.join(list_registered_resample_methods())}")
+        return 1
     
     # Create parameter objects
     features_to_process = []
@@ -118,7 +134,7 @@ def main():
         )
     
     # Parse resample parameters
-    resample_params = ResampleParams.parse_resample_params(args.resample_params)
+    resample_params = resample_params_class.parse_resample_params(args.resample_params)
     
     # Create sequential parameters if needed
     seq_params = None
@@ -135,7 +151,13 @@ def main():
     if args.forward_periods and args.tps:
         print(f"  Forward Periods: {args.forward_periods}")
         print(f"  Target Price Shifts: {args.tps}")
-    print(f"  Resample Params: price_col={resample_params.price_col}, threshold={resample_params.threshold}")
+    print(f"  Resample Type: {args.resample_type_label}")
+    if resample_params:
+        # Create a display string for the parameters
+        param_display = []
+        for field_name, field_value in resample_params.__dict__.items():
+            param_display.append(f"{field_name}={field_value}")
+        print(f"  Resample Params: {', '.join(param_display)}")
     print(f"  Sequential: {args.sequential}")
     if args.sequential:
         print(f"  Sequence Window: {args.sequence_window}")
@@ -155,7 +177,7 @@ def main():
         )
         
         if not missing_ranges:
-            print("\nAll ML data for the specified range is present in the cache.")
+            print("  All ml_data is present in the cache.")
         else:
             # Group consecutive dates
             grouped_ranges = market_data.util.cache.missing_data_finder.group_consecutive_dates(missing_ranges)
@@ -171,24 +193,17 @@ def main():
                     # Multi-day range
                     print(f"  {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
             
-            # Suggest command to cache the ML data
-            features_str = ""
-            if args.features:
-                features_str = f"--features {args.features}"
-                
-            sequential_str = "--sequential" if args.sequential else ""
-            seq_window_str = f"--sequence_window {args.sequence_window}" if args.sequential else ""
+            # Suggest command to cache ML data
+            resample_type_option = f" --resample_type_label {args.resample_type_label}" if args.resample_type_label != 'cumsum' else ""
+            resample_param_option = f" --resample_params {args.resample_params}" if args.resample_params else ""
+            target_options = ""
+            if args.forward_periods and args.tps:
+                target_options = f" --forward_periods {args.forward_periods} --tps {args.tps}"
+            sequential_option = " --sequential" if args.sequential else ""
             
-            suggest_cmd = (f"python main_ml_data.py --action cache "
-                          f"--dataset_mode {args.dataset_mode} "
-                          f"--export_mode {args.export_mode} "
-                          f"--aggregation_mode {args.aggregation_mode} "
-                          f"--from {args.date_from} --to {args.date_to} "
-                          f"--resample_params '{args.resample_params}' "
-                          f"{features_str} {sequential_str} {seq_window_str}")
-            
-            print(f"\nTo cache the missing ML data, run:")
-            print(f"  {suggest_cmd}")
+            suggest_cmd = f"python main_ml_data.py --action cache --features {args.features}{resample_type_option}{resample_param_option}{target_options}{sequential_option} --from {args.date_from} --to {args.date_to}"
+            print(f"\n  To cache ML data, run:")
+            print(f"    {suggest_cmd}")
     
     elif args.action == 'cache':
         print("\nCalculating and caching ML data...")
@@ -232,7 +247,7 @@ def main():
         except Exception as e:
             print(f"\nError caching ML data: {e}")
 
-if __name__ == "__main__":     
+if __name__ == "__main__":
     main()
 
 

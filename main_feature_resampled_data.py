@@ -6,11 +6,13 @@ from pathlib import Path
 
 import setup_env # needed for env variables
 
-import main_util
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.feature.registry import list_registered_features
-from market_data.machine_learning.resample import ResampleParams
+from market_data.machine_learning.resample import (
+    get_resample_params_class,
+    list_registered_resample_methods
+)
 from market_data.machine_learning.cache_feature_resample import calculate_and_cache_feature_resampled
 from market_data.util.cache.missing_data_finder import check_missing_feature_resampled_data, group_consecutive_dates
 
@@ -56,9 +58,16 @@ def main():
     parser.add_argument('--overwrite_cache', action='store_true',
                         help='Overwrite existing cache files')
     
-    # Resample parameters if using the --resample flag
+    # Resample type and parameters
+    available_methods = list_registered_resample_methods()
+    parser.add_argument('--resample_type_label', type=str, default='cumsum',
+                        choices=available_methods,
+                        help=f'Resampling method to use. Available: {", ".join(available_methods)}')
+    
     parser.add_argument('--resample_params', type=str, default=None,
-                        help='Resampling parameters in format "price_col,threshold" (e.g., "close,0.07")')
+                        help='Resampling parameters. Format depends on method: '
+                             'cumsum: "price_col,threshold" (e.g., "close,0.07") '
+                             'reversal: "price_col,threshold,threshold_reversal" (e.g., "close,0.1,0.03")')
     
     args = parser.parse_args()
     
@@ -70,16 +79,29 @@ def main():
     # Create TimeRange object
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
     
+    # Get resample method components from registry
+    resample_params_class = get_resample_params_class(args.resample_type_label)
+    
+    if resample_params_class is None:
+        print(f"Error: Unknown resample type '{args.resample_type_label}'")
+        print(f"Available methods: {', '.join(list_registered_resample_methods())}")
+        return 1
+    
     # Parse resample parameters if provided
     resample_params = None
     if args.resample_params:
-        resample_params = ResampleParams.parse_resample_params(args.resample_params)
+        resample_params = resample_params_class.parse_resample_params(args.resample_params)
     
     print(f"Processing with parameters:")
     print(f"  Action: {args.action}")
     print(f"  Feature: {args.feature}")
+    print(f"  Resample Type: {args.resample_type_label}")
     if resample_params:
-        print(f"  Resample Params: price_col={resample_params.price_col}, threshold={resample_params.threshold}")
+        # Create a display string for the parameters
+        param_display = []
+        for field_name, field_value in resample_params.__dict__.items():
+            param_display.append(f"{field_name}={field_value}")
+        print(f"  Resample Params: {', '.join(param_display)}")
     
     print(f"  Dataset Mode: {str(dataset_mode)}")
     print(f"  Export Mode: {str(export_mode)}")
@@ -127,7 +149,8 @@ def main():
                         print(f"    {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
                 
                 # Suggest command to cache this feature
-                suggest_cmd = f"python main_feature_resampled.py --action cache --feature {feature_label} --from {args.date_from} --to {args.date_to}"
+                resample_type_option = f" --resample_type_label {args.resample_type_label}" if args.resample_type_label != 'cumsum' else ""
+                suggest_cmd = f"python main_feature_resampled_data.py --action cache --feature {feature_label}{resample_type_option} --from {args.date_from} --to {args.date_to}"
                 if args.resample_params:
                     suggest_cmd += f" --resample_params {args.resample_params}"
                 print(f"\n  To cache this feature, run:")

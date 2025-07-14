@@ -10,8 +10,8 @@ from market_data.target.target import TargetParamsBatch
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.target.cache_target import load_cached_targets
-from market_data.machine_learning.cache_resample import load_cached_resampled_data, calculate_and_cache_resampled
-from market_data.machine_learning.resample import ResampleParams
+from market_data.machine_learning.resample.cache_resample import load_cached_resampled_data
+from market_data.machine_learning.resample.resample import ResampleParams
 from market_data.machine_learning.cache_feature_resample import load_cached_feature_resampled
 from market_data.feature.cache_reader import read_multi_feature_cache
 from market_data.feature.util import _create_default_params, parse_feature_label_param, parse_feature_label_params

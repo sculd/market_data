@@ -71,28 +71,24 @@ case $CONFIG in
         dataset_aggregation_options="--dataset_mode STOCK_HIGH_VOLATILITY --aggregation_mode COLLECT_ALL_UPDATES "
         target_arg="--forward_periods=10,30,60 --tps=0.03,0.05"
         feature_type="stock"
-        resample_params_list=("close,0.03" "close,0.05" "close,0.07" "close,0.1" "close,0.15")
         warm_param="--warmup-days=0"
         ;;
     forex)
         dataset_aggregation_options="--dataset_mode FOREX_IBKR --aggregation_mode COLLECT_ALL_UPDATES "
         target_arg="--forward_periods=10,30,60 --tps=0.0025,0.005,0.01"
         feature_type="forex"
-        resample_params_list=("close,0.0025" "close,0.005" "close,0.01")
         warm_param=""
         ;;
     crypto)
         dataset_aggregation_options=""
         target_arg="--forward_periods=5,10,30 --tps=0.015,0.03,0.05"
         feature_type="crypto"
-        resample_params_list=("close,0.03" "close,0.05" "close,0.07" "close,0.1" "close,0.15")
         warm_param=""
         ;;
     default)
         dataset_aggregation_options=""
         target_arg=""
         feature_type="all"
-        resample_params_list=("close,0.03" "close,0.05" "close,0.07" "close,0.1" "close,0.15")
         warm_param=""
         ;;
     *)
@@ -101,8 +97,45 @@ case $CONFIG in
         ;;
 esac
 
+# Get all registered resample methods from Python
+echo "Discovering resample methods and parameters..."
+registered_methods=($(python -c "
+from market_data.machine_learning.resample import list_registered_resample_methods
+print(' '.join(list_registered_resample_methods()))
+"))
+
+# Create a temporary file to store method-parameter mappings
+temp_file=$(mktemp)
+trap "rm -f $temp_file" EXIT
+
+# Build resample method configuration
+for method in "${registered_methods[@]}"; do
+    params_output=$(python -c "
+from market_data.machine_learning.resample import get_resample_params_class
+try:
+    cls = get_resample_params_class('$method')
+    if hasattr(cls, 'get_default_params_for_config'):
+        params = cls.get_default_params_for_config('$CONFIG')
+        for param in params:
+            print('$method:' + param)
+    else:
+        print('# No default params for $method')
+except Exception as e:
+    print('# Error getting params for $method:', str(e))
+" 2>/dev/null)
+    
+    # Only add methods that have valid parameters
+    if [[ ! "$params_output" =~ ^"#" ]]; then
+        echo "$params_output" >> "$temp_file"
+    fi
+done
+
 echo "Running $CONFIG configuration from $FROM_DATE to $TO_DATE"
 echo "Selected datatypes: $DATATYPES"
+echo "Discovered resample methods and parameters:"
+while IFS=':' read -r method param; do
+    echo "  $method: $param"
+done < "$temp_file"
 
 # Main function to process data (check or cache)
 process_data() {
@@ -152,35 +185,38 @@ process_data() {
 
     if is_datatype_selected "resample"; then
         echo "${action_display} resampled data..."
-        for resample_params in "${resample_params_list[@]}"; do
-            cmd="python main_resampled_data.py --action $action --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+        while IFS=':' read -r method param; do
+            echo "  Processing resample method: $method with params: $param"
+            cmd="python main_resampled_data.py --action $action --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
             echo "Running: $cmd"
             eval $cmd
-        done
+        done < "$temp_file"
     fi
 
     if is_datatype_selected "feature_resample"; then
         echo "${action_display} feature_resample data..."
-        for resample_params in "${resample_params_list[@]}"; do
-            cmd="python main_feature_resampled_data.py --action $action --feature $feature_type --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+        while IFS=':' read -r method param; do
+            echo "  Processing feature_resample for method: $method with params: $param"
+            cmd="python main_feature_resampled_data.py --action $action --feature $feature_type --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
             echo "Running: $cmd"
             eval $cmd
-        done
+        done < "$temp_file"
     fi
 
     if is_datatype_selected "ml_data"; then
         echo "${action_display} ML data..."
-        for resample_params in "${resample_params_list[@]}"; do
+        while IFS=':' read -r method param; do
+            echo "  Processing ML data for method: $method with params: $param"
             if [ -n "$target_arg" ]; then
-                cmd="python main_ml_data.py --action $action --features $feature_type $target_arg --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+                cmd="python main_ml_data.py --action $action --features $feature_type $target_arg --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
                 echo "Running: $cmd"
                 eval $cmd
             else
-                cmd="python main_ml_data.py --action $action --features $feature_type --resample_params $resample_params --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+                cmd="python main_ml_data.py --action $action --features $feature_type --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
                 echo "Running: $cmd"
                 eval $cmd
             fi
-        done
+        done < "$temp_file"
     fi
 }
 

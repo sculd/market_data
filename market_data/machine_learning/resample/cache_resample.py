@@ -5,14 +5,12 @@ import typing
 import os
 from pathlib import Path
 from dataclasses import asdict
-import numpy as np
-from typing import List, Optional, Dict, Any, Union
-from dataclasses import dataclass, field
+from typing import Callable
 
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.ingest.bq.common import get_full_table_id
-from market_data.machine_learning.resample import resample_at_events, ResampleParams
+from market_data.machine_learning.resample.resample import resample_at_events, ResampleParams
 from market_data.util.time import TimeRange
 
 from market_data.util.cache.time import (
@@ -63,6 +61,7 @@ def calculate_and_cache_resampled(
         dataset_mode: DATASET_MODE,
         export_mode: EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
+        resample_at_events_func: Callable = None,
         params: ResampleParams = None,
         time_range: TimeRange = None,
         calculation_batch_days: int = 1,
@@ -93,6 +92,8 @@ def calculate_and_cache_resampled(
     overwrite_cache : bool, optional
         If True, overwrite existing cache files. If False, skip cache files that already exist.
     """
+    assert resample_at_events_func is not None, "resample_at_events_func must be provided"
+    
     params = params or ResampleParams()
     
     # Resolve time range
@@ -129,7 +130,7 @@ def calculate_and_cache_resampled(
                 logging.warning(f"No raw data available for {calc_t_from} to {calc_t_to}")
                 continue
                 
-            resampled_df = resample_at_events(raw_df, params)
+            resampled_df = resample_at_events_func(raw_df, params)
             
             if resampled_df is None or len(resampled_df) == 0:
                 logging.warning(f"Resampling returned empty result for {calc_t_from} to {calc_t_to}")

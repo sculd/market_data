@@ -4,8 +4,8 @@ from typing import Any, Optional
 
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
-from market_data.machine_learning.cache_resample import load_cached_resampled_data
-from market_data.machine_learning.resample import ResampleParams
+from market_data.machine_learning.resample.cache_resample import load_cached_resampled_data
+from market_data.machine_learning.resample.resample import ResampleParams
 from market_data.feature.cache_reader import read_multi_feature_cache
 from market_data.feature.util import parse_feature_label_param
 from market_data.feature.impl.common import SequentialFeatureParam

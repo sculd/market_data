@@ -3,19 +3,36 @@ import numpy as np
 from typing import List, Optional, Union, Tuple
 from dataclasses import dataclass
 
+from .resample_registry import register_resample, register_resample_function
+
+@register_resample("cumsum")
 @dataclass
-class ResampleReversalParams:
-    """Parameters for reversal-based resampling at significant price movements.
-    
-    This implements a two-threshold approach:
-    1. Breakout detection: Wait for movement beyond `threshold`
-    2. Reversal detection: Emit signal when movement reverses by `threshold_reversal`
-    
-    This approach captures complete movement cycles rather than just breakout moments.
-    """
+class ResampleParams:
+    """Parameters for resampling data at significant price movements using López de Prado's CUMSUM filter."""
     price_col: str = 'close'
-    threshold: float = 0.1
-    threshold_reversal: float = 0.03
+    threshold: float = 0.05
+
+    @staticmethod
+    def get_default_params_for_config(config_name: str) -> List[str]:
+        """
+        Get default parameter strings for different market configurations.
+        
+        Args:
+            config_name: Configuration name ('stock', 'forex', 'crypto', 'default')
+            
+        Returns:
+            List of parameter strings in format 'price_col,threshold'
+        """
+        if config_name == 'stock':
+            return ["close,0.03", "close,0.05", "close,0.07", "close,0.1", "close,0.15"]
+        elif config_name == 'forex':
+            return ["close,0.0025", "close,0.005", "close,0.01"]
+        elif config_name == 'crypto':
+            return ["close,0.03", "close,0.05", "close,0.07", "close,0.1", "close,0.15"]
+        elif config_name == 'default':
+            return ["close,0.03", "close,0.05", "close,0.07", "close,0.1", "close,0.15"]
+        else:
+            raise ValueError(f"Unknown config name: {config_name}")
 
     @staticmethod
     def parse_resample_params(param_str):
@@ -30,29 +47,40 @@ class ResampleReversalParams:
             ResampleParams instance
         """
         if not param_str:
-            return ResampleReversalParams()
-
+            return ResampleParams()
+            
         try:
             parts = param_str.split(',')
             if len(parts) != 2:
                 raise ValueError("Format should be 'price_col,threshold'")
-                
+            
             price_col = parts[0].strip()
             threshold = float(parts[1].strip())
-            threshold_reversal = float(parts[2].strip())
             
-            return ResampleReversalParams(
-                price_col=price_col, 
-                threshold=threshold,
-                threshold_reversal=threshold_reversal,
-            )
+            return ResampleParams(price_col=price_col, threshold=threshold)
         except Exception as e:
             raise ValueError(f"Invalid resample_params format: {e}. Format should be 'price_col,threshold' (e.g. 'close,0.07')")
 
+def _get_events_t_arr(values: np.ndarray, threshold: float = 0.05) -> np.ndarray:
+    t_events = []
+    s_pos, s_neg = 0, 0
+    pct_change = np.diff(values) / values[:-1]
+    diff = np.diff(pct_change)
+    for i in diff[1:]:
+        s_pos = max(0, s_pos + diff[i])
+        s_neg = min(0, s_neg + diff[i])
+        if s_pos > threshold:
+            t_events.append(i)
+            s_pos = 0
+        elif s_neg < -threshold:
+            t_events.append(i)
+            s_neg = 0
             
+    return np.array(t_events)
+
 def _get_events_t(
         df: pd.DataFrame,
-        params: ResampleReversalParams,
+        params: ResampleParams,
     ) -> pd.DataFrame:
     """
     Get time index from a DataFrame where the target column cumulatively changes by more than threshold.
@@ -66,56 +94,28 @@ def _get_events_t(
         where breakout_side is +1 for positive breakout, -1 for negative breakout
     """
     events = []
-    s_pos = s_neg = 0
-    s_max = s_min = 0
-    state = 0
+    s_pos, s_neg = 0, 0
     diff = df[params.price_col].pct_change()
     
     for i in diff.index[1:]:
-        ret = diff.loc[i]
-        s_pos = max(0, s_pos + ret)
-        s_neg = min(0, s_neg + ret)  # Fixed: use min(0, ...) for negative accumulation
-
-        if state == 0:  # Neutral state
-            if s_pos > params.threshold:
-                state = 1
-                s_max = s_pos
-            elif s_neg < -params.threshold:
-                state = -1
-                s_min = s_neg
-
-        elif state == 1:  # Positive breakout state
-            if s_pos > s_max:
-                s_max = s_pos
-            elif s_max - s_pos > params.threshold_reversal:
-                # Positive breakout reversal detected
-                state = 0
-                events.append({
-                    'timestamp': i,
-                    'breakout_side': 1,
-                    's_final': s_pos,
-                    's_largest': s_max,
-                })
-                s_pos = s_neg = 0
-                s_max = s_min = 0
-
-        elif state == -1:  # Negative breakout state
-            if s_neg < s_min:
-                s_min = s_neg
-            elif s_neg - s_min > params.threshold_reversal:
-                # Negative breakout reversal detected
-                state = 0
-                events.append({
-                    'timestamp': i,
-                    'breakout_side': -1,
-                    's_final': abs(s_neg),
-                    's_largest': abs(s_min),
-                })
-                s_pos = s_neg = 0
-                s_max = s_min = 0
-
+        s_pos = max(0, s_pos + diff.loc[i])
+        s_neg = min(0, s_neg + diff.loc[i])
+        
+        if s_pos > params.threshold:
+            events.append({
+                'timestamp': i,
+                'breakout_side': 1  # Positive breakout
+            })
+            s_pos = 0
+        elif s_neg < -params.threshold:
+            events.append({
+                'timestamp': i,
+                'breakout_side': -1  # Negative breakout
+            })
+            s_neg = 0
+    
     if not events:
-        return pd.DataFrame(columns=['breakout_side', 's_final', 's_largest'], 
+        return pd.DataFrame(columns=['breakout_side'], 
                           index=pd.DatetimeIndex([], name='timestamp'))
     
     events_df = pd.DataFrame(events)
@@ -126,7 +126,7 @@ def _get_events_t(
 
 def _get_events_t_multi(
         df: pd.DataFrame,
-        params: ResampleReversalParams,
+        params: ResampleParams,
     ) -> pd.DataFrame:
     """
     Get time index from a DataFrame with multiple symbols where the target column cumulatively 
@@ -165,12 +165,12 @@ def _get_events_t_multi(
                 all_events.append({
                     'timestamp': timestamp, 
                     'symbol': symbol,
-                    **row,
+                    'breakout_side': row['breakout_side']
                 })
     
     # Convert list of events to DataFrame
     if not all_events:
-        return pd.DataFrame(columns=['symbol', 'breakout_side', 's_final', 's_largest'], 
+        return pd.DataFrame(columns=['symbol', 'breakout_side'], 
                           index=pd.DatetimeIndex([], name='timestamp'))
     
     events_df = pd.DataFrame(all_events)
@@ -179,9 +179,10 @@ def _get_events_t_multi(
 
     return events_df
 
+@register_resample_function("cumsum")
 def resample_at_events(
     df: pd.DataFrame, 
-    params: ResampleReversalParams = None,
+    params: ResampleParams = None,
 ) -> pd.DataFrame:
     """
     Generic function to resample a DataFrame at significant price movement events.
@@ -201,7 +202,7 @@ def resample_at_events(
         with additional column: breakout_side (+1 for positive breakout, -1 for negative breakout)
     """
     # Use default parameters if none provided
-    params = params or ResampleReversalParams()
+    params = params or ResampleParams()
     
     # Ensure required columns exist
     if params.price_col not in df.columns:
@@ -217,7 +218,7 @@ def resample_at_events(
     
     if events_df.empty:
         # Return empty DataFrame with all original columns plus event columns
-        empty_df = pd.DataFrame(columns=list(df.columns) + ['breakout_side', 's_final', 's_largest'], 
+        empty_df = pd.DataFrame(columns=list(df.columns) + ['breakout_side'], 
                                index=pd.DatetimeIndex([]))
         return empty_df
     

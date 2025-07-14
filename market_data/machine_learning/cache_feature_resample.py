@@ -10,7 +10,7 @@ from dataclasses import asdict
 from market_data.feature.util import parse_feature_label_param
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
 from market_data.util.time import TimeRange
-from market_data.machine_learning.resample import ResampleParams
+from market_data.machine_learning.resample.resample import ResampleParams
 from market_data.machine_learning.feature_resample import prepare_feature_resampled, prepare_sequential_feature_resampled
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.sequential_feature import sequentialize_feature
