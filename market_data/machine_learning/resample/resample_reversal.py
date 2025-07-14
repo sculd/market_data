@@ -135,7 +135,7 @@ def _get_events_t(
                     'timestamp': i,
                     'breakout_side': 1,
                     's_final': s_pos,
-                    's_largest': s_max,
+                    's_extreme': s_max,
                 })
                 s_pos = s_neg = 0
                 s_max = s_min = 0
@@ -149,14 +149,14 @@ def _get_events_t(
                 events.append({
                     'timestamp': i,
                     'breakout_side': -1,
-                    's_final': abs(s_neg),
-                    's_largest': abs(s_min),
+                    's_final': s_neg,
+                    's_extreme': s_min,
                 })
                 s_pos = s_neg = 0
                 s_max = s_min = 0
 
     if not events:
-        return pd.DataFrame(columns=['breakout_side', 's_final', 's_largest'], 
+        return pd.DataFrame(columns=['breakout_side', 's_final', 's_extreme'], 
                           index=pd.DatetimeIndex([], name='timestamp'))
     
     events_df = pd.DataFrame(events)
@@ -211,7 +211,7 @@ def _get_events_t_multi(
     
     # Convert list of events to DataFrame
     if not all_events:
-        return pd.DataFrame(columns=['symbol', 'breakout_side', 's_final', 's_largest'], 
+        return pd.DataFrame(columns=['symbol', 'breakout_side', 's_final', 's_extreme'], 
                           index=pd.DatetimeIndex([], name='timestamp'))
     
     events_df = pd.DataFrame(all_events)
@@ -259,7 +259,7 @@ def resample_at_events(
     
     if events_df.empty:
         # Return empty DataFrame with all original columns plus event columns
-        empty_df = pd.DataFrame(columns=list(df.columns) + ['breakout_side', 's_final', 's_largest'], 
+        empty_df = pd.DataFrame(columns=list(df.columns) + ['breakout_side', 's_final', 's_extreme'], 
                                index=pd.DatetimeIndex([]))
         return empty_df
     
