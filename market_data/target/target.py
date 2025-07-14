@@ -47,7 +47,7 @@ class TargetParamsBatch:
         return '\n'.join([f'{p.__repr__}' for p in self.target_params_list])
 
 @nb.njit(cache=True)
-def _calculate_tp_sl_labels_and_scores_numba(closes, highs, lows, period, take_profit, stop_loss, position_type):
+def _calculate_tp_sl_labels_and_scores_numba(closes, opens, period, take_profit, stop_loss, position_type):
     """
     Numba-accelerated take-profit/stop-loss label, return, and score calculation.
     
@@ -89,18 +89,20 @@ def _calculate_tp_sl_labels_and_scores_numba(closes, highs, lows, period, take_p
         end_idx = min(i + period, n - 1)  # End of period index
         tp_sl_hit = False
 
-        for j in range(i + 1, end_idx + 1):
+        for j in range(i + 1, end_idx):
             # note that the close price, not high/low values are used
             # one problem of using high/low is the difficulty of knowing 
             # the market price at tp/sl hit.
             price_fut = closes[j]
 
+            # tp/sl happens at the next bar's open after observing price_fut crossing tp/sl level.
+            price_tp_sl = opens[j+1]
+            actual_return = (1 if position_type == 0 else -1) * (price_tp_sl - price_cur) / price_cur
+
             # Check forward window for TP/SL hits. 0 for long, 1 for short
             if (price_fut >= tp_prices[i] and position_type == 0) or \
                 (price_fut <= tp_prices[i] and position_type == 1):
                 labels[i] = 1
-                # Calculate return and score at TP hit
-                actual_return = (1 if position_type == 0 else -1) * (price_fut - price_cur) / price_cur
                 returns[i] = actual_return
                 scores[i] = actual_return / take_profit
                 tp_sl_hit = True
@@ -108,8 +110,6 @@ def _calculate_tp_sl_labels_and_scores_numba(closes, highs, lows, period, take_p
             elif (price_fut <= sl_prices[i] and position_type == 0) or \
                 (price_fut >= sl_prices[i] and position_type == 1):
                 labels[i] = -1
-                # Calculate return and score at SL hit
-                actual_return = (1 if position_type == 0 else -1) * (price_fut - price_cur) / price_cur
                 returns[i] = actual_return
                 scores[i] = actual_return / stop_loss
                 tp_sl_hit = True
@@ -151,6 +151,7 @@ def _calculate_tp_sl_labels_and_scores(df: pd.DataFrame,
     """
     # Extract arrays for Numba processing
     closes = df['close'].values
+    opens = df['open'].values
     highs = df['high'].values
     lows = df['low'].values
     
@@ -159,7 +160,7 @@ def _calculate_tp_sl_labels_and_scores(df: pd.DataFrame,
     
     # Call Numba-accelerated function (using the new function, ignoring returns and scores)
     labels, returns, scores = _calculate_tp_sl_labels_and_scores_numba(
-        closes, highs, lows, period, take_profit, stop_loss, pos_type_int
+        closes, opens, period, take_profit, stop_loss, pos_type_int
     )
     
     # Convert results back to pandas Series
