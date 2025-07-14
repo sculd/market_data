@@ -4,15 +4,22 @@ from typing import List, Optional, Union, Tuple
 from dataclasses import dataclass
 
 @dataclass
-class ResampleParams:
-    """Parameters for resampling data at significant price movements."""
+class ResampleReversalParams:
+    """Parameters for reversal-based resampling at significant price movements.
+    
+    This implements a two-threshold approach:
+    1. Breakout detection: Wait for movement beyond `threshold`
+    2. Reversal detection: Emit signal when movement reverses by `threshold_reversal`
+    
+    This approach captures complete movement cycles rather than just breakout moments.
+    """
     price_col: str = 'close'
     threshold: float = 0.1
     threshold_reversal: float = 0.03
 
 def _get_events_t(
         df: pd.DataFrame,
-        params: ResampleParams,
+        params: ResampleReversalParams,
     ) -> pd.DataFrame:
     """
     Get time index from a DataFrame where the target column cumulatively changes by more than threshold.
@@ -86,7 +93,7 @@ def _get_events_t(
 
 def _get_events_t_multi(
         df: pd.DataFrame,
-        params: ResampleParams,
+        params: ResampleReversalParams,
     ) -> pd.DataFrame:
     """
     Get time index from a DataFrame with multiple symbols where the target column cumulatively 
@@ -141,7 +148,7 @@ def _get_events_t_multi(
 
 def resample_at_events(
     df: pd.DataFrame, 
-    params: ResampleParams = None,
+    params: ResampleReversalParams = None,
 ) -> pd.DataFrame:
     """
     Generic function to resample a DataFrame at significant price movement events.
@@ -161,7 +168,7 @@ def resample_at_events(
         with additional column: breakout_side (+1 for positive breakout, -1 for negative breakout)
     """
     # Use default parameters if none provided
-    params = params or ResampleParams()
+    params = params or ResampleReversalParams()
     
     # Ensure required columns exist
     if params.price_col not in df.columns:
