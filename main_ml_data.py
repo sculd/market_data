@@ -21,7 +21,6 @@ from market_data.machine_learning.cache_ml_data import (
     CACHE_BASE_PATH
 )
 import market_data.util.cache.missing_data_finder
-from market_data.machine_learning.ml_data import prepare_ml_data, prepare_sequential_ml_data
 
 def main():
     parser = argparse.ArgumentParser(
