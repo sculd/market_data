@@ -86,7 +86,7 @@ Set up automated daily market data updates using launchd:
 ** Load the launchd job:**
 ```bash
 # Load from project directory (recommended)
-launchctl load /Users/junlim/projects/market_data/com.marketdata.daily-update.plist
+launchctl load ~/projects/market_data/com.marketdata.daily-update.plist
 
 # Check if loaded
 launchctl list | grep com.marketdata.daily-update
@@ -95,7 +95,7 @@ launchctl list | grep com.marketdata.daily-update
 ** Manage the scheduled job:**
 ```bash
 # Unload (stop scheduling)
-launchctl unload /Users/junlim/projects/market_data/com.marketdata.daily-update.plist
+launchctl unload ~/projects/market_data/com.marketdata.daily-update.plist
 ```
 
 ### Documentation
