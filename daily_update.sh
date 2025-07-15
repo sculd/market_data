@@ -30,8 +30,8 @@ send_notification() {
     # You could also add email notifications, Slack webhooks, etc.
 }
 
-# Function to get yesterday's date (skip weekends for stock data)
-get_update_date() {
+# Function to get from date (yesterday, skip weekends for stock data)
+get_from_date() {
     local config=$1
     
     if [[ "$config" == "stock" ]]; then
@@ -51,6 +51,14 @@ get_update_date() {
         # For forex/crypto, use yesterday (markets run 24/7)
         date -v-1d +"%Y-%m-%d"
     fi
+}
+
+# Function to get to date (today)
+get_to_date() {
+    local config=$1
+    
+    # For all configs, use today's date
+    date +"%Y-%m-%d"
 }
 
 # Main execution
@@ -85,16 +93,17 @@ main() {
     for config in "${configs[@]}"; do
         log_message "Processing $config configuration..."
         
-        # Get appropriate date for this config
-        update_date=$(get_update_date "$config")
+        # Get appropriate dates for this config
+        from_date=$(get_from_date "$config")
+        to_date=$(get_to_date "$config")
         
-        log_message "Updating $config data for date: $update_date"
+        log_message "Updating $config data from $from_date to $to_date"
         
         # Run the cache script with automatic yes and skip check
         if timeout 3600 ./main_cache_common.sh \
             --config "$config" \
-            --from "$update_date" \
-            --to "$update_date" \
+            --from "$from_date" \
+            --to "$to_date" \
             --skip-check \
             --datatypes "raw,feature,target,resample,feature_resample,ml_data" \
             <<< "y"; then
