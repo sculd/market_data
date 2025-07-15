@@ -79,6 +79,25 @@ Main pipeline tools:
 - `main_ml_data.py`: ML dataset preparation combining features and targets
 - `main_data.py`: General data operations and utilities
 
+### Automated Daily Updates (macOS)
+
+Set up automated daily market data updates using launchd:
+
+** Load the launchd job:**
+```bash
+# Load from project directory (recommended)
+launchctl load /Users/junlim/projects/market_data/com.marketdata.daily-update.plist
+
+# Check if loaded
+launchctl list | grep com.marketdata.daily-update
+```
+
+** Manage the scheduled job:**
+```bash
+# Unload (stop scheduling)
+launchctl unload /Users/junlim/projects/market_data/com.marketdata.daily-update.plist
+```
+
 ### Documentation
 
 Generate API documentation with Sphinx:

@@ -23,7 +23,7 @@ usage() {
 
 # Parse command line arguments
 SKIP_CHECK=false
-DATATYPES="raw,feature,target,resample,ml_data"  # Default to all
+DATATYPES="raw,feature,target,resample,feature_resample,ml_data"  # Default to all
 while [[ $# -gt 0 ]]; do
   case $1 in
     --config)
