@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/zsh
 
 # Daily Market Data Update Script
 # This script runs the market data cache pipeline for the previous trading day
@@ -6,7 +6,7 @@
 set -e  # Exit on any error
 
 # Configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${0:A}")" && pwd)"
 LOG_DIR="$SCRIPT_DIR/logs"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 LOG_FILE="$LOG_DIR/daily_update_$TIMESTAMP.log"
@@ -86,7 +86,8 @@ main() {
     fi
     
     # Array of configurations to update
-    configs=("stock" "forex")
+    #configs=("crypto" "stock" "forex")
+    configs=("crypto")
     
     local overall_success=true
     
