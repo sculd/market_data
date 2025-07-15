@@ -9,7 +9,7 @@
 # Function to display usage
 usage() {
     echo "Usage: $0 --config CONFIG_NAME --from YYYY-MM-DD --to YYYY-MM-DD [--skip-check] [--datatypes TYPES]"
-    echo "CONFIG_NAME: stock, forex, or default"
+    echo "CONFIG_NAME: crypto, stock, forex, or default"
     echo "Options:"
     echo "  --skip-check           Skip the data checking phase and go directly to caching"
     echo "  --datatypes TYPES      Comma-separated list of data types to process:"
