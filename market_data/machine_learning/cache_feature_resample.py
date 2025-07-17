@@ -25,6 +25,9 @@ from market_data.util.cache.path import (
     params_to_dir_name,
     get_cache_base_path,
 )
+from market_data.util.cache.missing_data_finder import (
+    check_missing_feature_resampled_data,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -186,14 +189,49 @@ def calculate_and_cache_feature_resampled(
     """
     resample_params = resample_params or ResampleParams()
     t_from, t_to = time_range.to_datetime()
-    current_date = t_from
     
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Starting {data_type} feature resampled data processing for {feature_label}")
     
     try:
-        # Process each day
-        while current_date < t_to:
+        # Determine which days need to be processed
+        if overwrite_cache:
+            # If overwriting cache, process all days
+            current_date = t_from
+            days_to_process = []
+            while current_date < t_to:
+                days_to_process.append(current_date)
+                current_date = anchor_to_begin_of_day(current_date + datetime.timedelta(days=1))
+            logger.info(f"Overwrite cache enabled - processing all {len(days_to_process)} days")
+        else:
+            # If not overwriting cache, only process missing days
+            missing_ranges = check_missing_feature_resampled_data(
+                dataset_mode=dataset_mode,
+                export_mode=export_mode,
+                aggregation_mode=aggregation_mode,
+                time_range=time_range,
+                feature_label=feature_label,
+                feature_params=feature_params,
+                resample_params=resample_params,
+                seq_params=seq_params
+            )
+            
+            if not missing_ranges:
+                logger.info(f"All {data_type} feature resampled data already cached for {feature_label} - skipping calculation")
+                return True
+            
+            # Convert missing ranges to list of days
+            days_to_process = []
+            for missing_start, missing_end in missing_ranges:
+                current_date = missing_start
+                while current_date < missing_end:
+                    days_to_process.append(current_date)
+                    current_date = anchor_to_begin_of_day(current_date + datetime.timedelta(days=1))
+            
+            logger.info(f"Found {len(missing_ranges)} missing ranges covering {len(days_to_process)} days to process")
+        
+        # Process each day that needs processing
+        for current_date in days_to_process:
             logger.info(f"Processing day {current_date}")
             
             _calculate_and_cache_daily_feature_resampled(
@@ -207,8 +245,6 @@ def calculate_and_cache_feature_resampled(
                 seq_params=seq_params,
                 overwrite_cache=overwrite_cache
             )
-
-            current_date = anchor_to_begin_of_day(current_date + datetime.timedelta(days=1))
 
         logger.info(f"Successfully cached {feature_label} resampled for {time_range}")
         return True
