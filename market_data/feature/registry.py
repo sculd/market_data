@@ -63,9 +63,9 @@ def list_registered_features(security_type: str = "all") -> List[str]:
     if security_type == "all":
         pass
     elif security_type == "forex":
-        features = [f for f in features if not f.startswith("usd_")]
+        features = [f for f in features if not f.startswith("usd_") and not f.startswith("btc_")]
     elif security_type == "crypto":
-        features = [f for f in features if not f.startswith("btc_")]
+        features = [f for f in features if not f.startswith("usd_")]
     elif security_type == "stock":
         features = [f for f in features if not f.startswith("btc_")]
     else:

@@ -23,12 +23,17 @@ from market_data.util.cache.dataframe import (
     cache_data_by_day,
     read_from_cache_generic,
 )
-from market_data.util.cache.path import (
-    params_to_dir_name,
-    get_cache_base_path,
-)
 
 logger = logging.getLogger(__name__)
+
+
+def get_cache_base_path():
+    '''
+    For ML data, use separate cache base.
+    As the access to external disk via network is slow.
+    '''
+    base_path = os.environ.get('ML_DATA_CACHE_BASE', '~/algo_cache')
+    return os.path.expanduser(base_path) 
 
 # Global paths configuration - use configurable base path
 CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'ml_data')
