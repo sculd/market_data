@@ -8,22 +8,25 @@
 
 # Function to display usage
 usage() {
-    echo "Usage: $0 --config CONFIG_NAME --from YYYY-MM-DD --to YYYY-MM-DD [--skip-check] [--datatypes TYPES]"
+    echo "Usage: $0 --config CONFIG_NAME --from YYYY-MM-DD --to YYYY-MM-DD [--skip-check] [--datatypes TYPES] [--no-overwrite-cache]"
     echo "CONFIG_NAME: crypto, stock, forex, or default"
     echo "Options:"
     echo "  --skip-check           Skip the data checking phase and go directly to caching"
     echo "  --datatypes TYPES      Comma-separated list of data types to process:"
     echo "                         raw,feature,target,resample,feature_resample,ml_data (default: all)"
+    echo "  --no-overwrite-cache   Disable cache overwriting (default: enabled)"
     echo "Examples:"
     echo "  $0 --config stock --from 2024-01-01 --to 2024-01-02"
     echo "  $0 --config stock --from 2024-01-01 --to 2024-01-02 --datatypes raw,feature"
     echo "  $0 --config stock --from 2024-01-01 --to 2024-01-02 --skip-check --datatypes target"
+    echo "  $0 --config stock --from 2024-01-01 --to 2024-01-02 --no-overwrite-cache"
     exit 1
 }
 
 # Parse command line arguments
 SKIP_CHECK=false
 DATATYPES="raw,feature,target,resample,feature_resample,ml_data"  # Default to all
+OVERWRITE_CACHE=true  # Default to overwrite cache
 while [[ $# -gt 0 ]]; do
   case $1 in
     --config)
@@ -45,6 +48,10 @@ while [[ $# -gt 0 ]]; do
     --datatypes)
       DATATYPES="$2"
       shift 2
+      ;;
+    --no-overwrite-cache)
+      OVERWRITE_CACHE=false
+      shift
       ;;
     *)
       echo "Unknown parameter: $1"
@@ -132,6 +139,7 @@ done
 
 echo "Running $CONFIG configuration from $FROM_DATE to $TO_DATE"
 echo "Selected datatypes: $DATATYPES"
+echo "Cache overwrite: $([ "$OVERWRITE_CACHE" = true ] && echo "enabled" || echo "disabled")"
 echo "Discovered resample methods and parameters:"
 while IFS=':' read -r method param; do
     echo "  $method: $param"
@@ -144,7 +152,7 @@ process_data() {
     
     # Set additional flags for cache operations
     local cache_flags=""
-    if [ "$action" = "cache" ]; then
+    if [ "$action" = "cache" ] && [ "$OVERWRITE_CACHE" = true ]; then
         cache_flags="--overwrite_cache"
     fi
     
