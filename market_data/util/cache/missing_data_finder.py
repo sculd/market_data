@@ -12,9 +12,6 @@ from market_data.feature.util import parse_feature_label_param
 from market_data.target.target import TargetParamsBatch
 from market_data.machine_learning.resample.resample import ResampleParams
 from market_data.feature.util import parse_feature_label_params
-from market_data.machine_learning.cache_ml_data import (
-    CACHE_BASE_PATH
-)
 
 
 import market_data.feature.impl  # Import to ensure all features are registered
