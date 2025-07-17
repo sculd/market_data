@@ -20,7 +20,6 @@ from market_data.feature.registry import list_registered_features
 from market_data.machine_learning.cache_ml_data import (
     calculate_and_cache_ml_data,
     load_cached_ml_data,
-    CACHE_BASE_PATH
 )
 import market_data.util.cache.missing_data_finder
 
