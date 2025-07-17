@@ -146,23 +146,81 @@ def main():
         
         for feature_label in features_to_process:
             print(f"\nCaching feature: {feature_label}")
-            success = cache_feature_cache(
-                feature_label_param=feature_label,
-                dataset_mode=dataset_mode,
-                export_mode=export_mode,
-                aggregation_mode=aggregation_mode,
-                time_range=time_range,
-                calculation_batch_days=args.calculation_batch_days,
-                warm_up_days=args.warmup_days,
-                overwrite_cache=args.overwrite_cache
-            )
             
-            if success:
-                successful_features.append(feature_label)
-                print(f"  Successfully cached feature: {feature_label}")
-            else:
+            try:
+                # Set up calculation parameters
+                calculation_batch_days = args.calculation_batch_days
+                if calculation_batch_days <= 0:
+                    calculation_batch_days = 1
+                calculation_interval = datetime.timedelta(days=calculation_batch_days)
+                
+                # Determine which ranges need to be calculated for this feature
+                if args.overwrite_cache:
+                    # If overwriting cache, process all ranges
+                    t_from, t_to = time_range.to_datetime()
+                    calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval)
+                    print(f"  Overwrite cache enabled - processing all {len(calculation_ranges)} ranges")
+                else:
+                    # If not overwriting cache, only process missing ranges
+                    missing_ranges = market_data.util.cache.missing_data_finder.check_missing_feature_data(
+                        feature_label=feature_label,
+                        feature_params=None,
+                        dataset_mode=dataset_mode,
+                        export_mode=export_mode,
+                        aggregation_mode=aggregation_mode,
+                        time_range=time_range
+                    )
+                    
+                    if not missing_ranges:
+                        print(f"  All feature data already cached for {feature_label} - skipping calculation")
+                        successful_features.append(feature_label)
+                        continue
+                    
+                    # Group consecutive missing ranges and split into calculation batches
+                    grouped_ranges = market_data.util.cache.missing_data_finder.group_consecutive_dates(missing_ranges)
+                    calculation_ranges = []
+                    
+                    for grouped_start, grouped_end in grouped_ranges:
+                        # Split each grouped range into calculation batches
+                        batch_ranges = split_t_range(grouped_start, grouped_end, interval=calculation_interval)
+                        calculation_ranges.extend(batch_ranges)
+                    
+                    print(f"  Found {len(missing_ranges)} missing days, grouped into {len(grouped_ranges)} ranges, "
+                          f"split into {len(calculation_ranges)} calculation batches")
+                
+                # Process each calculation range for this feature
+                feature_success = True
+                for i, calc_range in enumerate(calculation_ranges):
+                    calc_t_from, calc_t_to = calc_range
+                    print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                    
+                    calc_time_range = TimeRange(calc_t_from, calc_t_to)
+                    
+                    success = cache_feature_cache(
+                        feature_label_param=feature_label,
+                        dataset_mode=dataset_mode,
+                        export_mode=export_mode,
+                        aggregation_mode=aggregation_mode,
+                        time_range=calc_time_range,
+                        calculation_batch_days=1,  # Process each range as single batch
+                        warm_up_days=args.warmup_days,
+                        overwrite_cache=args.overwrite_cache
+                    )
+                    
+                    if not success:
+                        feature_success = False
+                        print(f"  Failed to process batch {i+1} for feature: {feature_label}")
+                
+                if feature_success:
+                    successful_features.append(feature_label)
+                    print(f"  Successfully cached feature: {feature_label}")
+                else:
+                    failed_features.append(feature_label)
+                    print(f"  Failed to cache feature: {feature_label}")
+                    
+            except Exception as e:
                 failed_features.append(feature_label)
-                print(f"  Failed to cache feature: {feature_label}")
+                print(f"  Failed to cache feature {feature_label}: {e}")
         
         # Summary
         print("\nCaching summary:")
