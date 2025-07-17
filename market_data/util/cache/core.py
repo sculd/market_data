@@ -18,7 +18,6 @@ from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
 from market_data.util.cache.dataframe import cache_data_by_day
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
-from market_data.util.cache.missing_data_finder import group_consecutive_dates
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +77,8 @@ def calculate_and_cache_data(
         Function to check for missing data ranges. Should return list of (start, end) tuples.
         If provided and overwrite_cache is False, will skip calculation for existing data.
     """
+    from market_data.util.cache.missing_data_finder import group_consecutive_dates
+
     # Resolve time range
     t_from, t_to = time_range.to_datetime()
     

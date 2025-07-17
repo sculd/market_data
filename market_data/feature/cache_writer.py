@@ -8,8 +8,8 @@ allowing for caching specific features with their parameters.
 import pandas as pd
 import datetime
 import logging
-import inspect
-import importlib
+import os
+from pathlib import Path
 from typing import List, Optional, Union, Any, Tuple, Dict, Callable, Type
 import numpy as np
 import math
@@ -22,13 +22,17 @@ from market_data.util.cache.time import (
     split_t_range,
 )
 from market_data.util.cache.dataframe import cache_data_by_day, read_from_cache_generic
+from market_data.util.cache.path import get_cache_base_path
 from market_data.feature.registry import get_feature_by_label
-from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
 from market_data.feature.util import parse_feature_label_param
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.sequential_feature import sequentialize_feature
 from market_data.util.cache.core import calculate_and_cache_data
 from market_data.util.cache.missing_data_finder import check_missing_feature_data
+
+# Global paths configuration - use configurable base path
+FEATURE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
+Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 
 logger = logging.getLogger(__name__)

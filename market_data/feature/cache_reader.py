@@ -9,15 +9,21 @@ feature types in a single operation.
 import pandas as pd
 import logging
 import typing
+import os
+from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional, Union
 
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.util.cache.dataframe import read_from_cache_generic
+from market_data.util.cache.path import get_cache_base_path
 import market_data.feature.impl # needed to register features
 from market_data.feature.registry import get_feature_by_label
-from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
 from market_data.feature.util import _create_default_params, parse_feature_label_params
+
+# Global paths configuration - use configurable base path
+FEATURE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
+Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 

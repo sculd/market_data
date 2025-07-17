@@ -8,6 +8,7 @@ import setup_env # needed for env variables
 
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
+from market_data.util.cache.time import split_t_range
 from market_data.machine_learning.resample import (
     get_resample_params_class,
     get_resample_function,
@@ -146,16 +147,62 @@ def main():
     elif args.action == 'cache':
         print("\nCaching resampled data")
         try:
-            calculate_and_cache_resampled(
-                dataset_mode=dataset_mode,
-                export_mode=export_mode,
-                aggregation_mode=aggregation_mode,
-                resample_at_events_func=resample_function,
-                params=resample_params,
-                time_range=time_range,
-                calculation_batch_days=args.calculation_batch_days,
-                overwrite_cache=args.overwrite_cache
-            )
+            # Set up calculation parameters
+            calculation_batch_days = args.calculation_batch_days
+            if calculation_batch_days <= 0:
+                calculation_batch_days = 1
+            calculation_interval = datetime.timedelta(days=calculation_batch_days)
+            
+            # Determine which ranges need to be calculated
+            if args.overwrite_cache:
+                # If overwriting cache, process all ranges
+                t_from, t_to = time_range.to_datetime()
+                calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval)
+                print(f"  Overwrite cache enabled - processing all {len(calculation_ranges)} ranges")
+            else:
+                # If not overwriting cache, only process missing ranges
+                missing_ranges = market_data.util.cache.missing_data_finder.check_missing_resampled_data(
+                    dataset_mode=dataset_mode,
+                    export_mode=export_mode,
+                    aggregation_mode=aggregation_mode,
+                    time_range=time_range,
+                    resample_params=resample_params
+                )
+                
+                if not missing_ranges:
+                    print("  All resampled data already cached - skipping calculation")
+                    return
+                
+                # Group consecutive missing ranges and split into calculation batches
+                grouped_ranges = market_data.util.cache.missing_data_finder.group_consecutive_dates(missing_ranges)
+                calculation_ranges = []
+                
+                for grouped_start, grouped_end in grouped_ranges:
+                    # Split each grouped range into calculation batches
+                    batch_ranges = split_t_range(grouped_start, grouped_end, interval=calculation_interval)
+                    calculation_ranges.extend(batch_ranges)
+                
+                print(f"  Found {len(missing_ranges)} missing days, grouped into {len(grouped_ranges)} ranges, "
+                      f"split into {len(calculation_ranges)} calculation batches")
+            
+            # Process each calculation range
+            for i, calc_range in enumerate(calculation_ranges):
+                calc_t_from, calc_t_to = calc_range
+                print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                
+                calc_time_range = TimeRange(calc_t_from, calc_t_to)
+                
+                calculate_and_cache_resampled(
+                    dataset_mode=dataset_mode,
+                    export_mode=export_mode,
+                    aggregation_mode=aggregation_mode,
+                    resample_at_events_func=resample_function,
+                    params=resample_params,
+                    time_range=calc_time_range,
+                    calculation_batch_days=1,  # Process each range as single batch
+                    overwrite_cache=args.overwrite_cache
+                )
+            
             print("  Successfully cached resampled data")
         except Exception as e:
             print(f"  Failed to cache resampled data: {e}")

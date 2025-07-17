@@ -26,10 +26,6 @@ from market_data.util.cache.path import (
     get_cache_base_path,
 )
 from market_data.util.cache.core import calculate_and_cache_data
-from market_data.util.cache.missing_data_finder import (
-    check_missing_resampled_data,
-    group_consecutive_dates,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -114,33 +110,8 @@ def calculate_and_cache_resampled(
         calculation_batch_days = 1
     calculation_interval = datetime.timedelta(days=calculation_batch_days)
     
-    # Determine which ranges need to be calculated
-    if overwrite_cache:
-        # If overwriting cache, process all ranges
-        calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval)
-        logging.info(f"Overwrite cache enabled - processing all {len(calculation_ranges)} ranges")
-    else:
-        # If not overwriting cache, only process missing ranges
-        missing_ranges = check_missing_resampled_data(
-            dataset_mode, export_mode, aggregation_mode,
-            time_range, params
-        )
-        
-        if not missing_ranges:
-            logging.info("All resampled data already cached - skipping calculation")
-            return
-        
-        # Group consecutive missing ranges and split into calculation batches
-        grouped_ranges = group_consecutive_dates(missing_ranges)
-        calculation_ranges = []
-        
-        for grouped_start, grouped_end in grouped_ranges:
-            # Split each grouped range into calculation batches
-            batch_ranges = split_t_range(grouped_start, grouped_end, interval=calculation_interval)
-            calculation_ranges.extend(batch_ranges)
-        
-        logging.info(f"Found {len(missing_ranges)} missing days, grouped into {len(grouped_ranges)} ranges, "
-                    f"split into {len(calculation_ranges)} calculation batches")
+    # Split the range into calculation batches
+    calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval)
     
     for calc_range in calculation_ranges:
         calc_t_from, calc_t_to = calc_range
