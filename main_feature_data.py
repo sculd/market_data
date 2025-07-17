@@ -110,6 +110,7 @@ def main():
             print(f"\nChecking feature: {feature_label}")
             missing_ranges = market_data.util.cache.missing_data_finder.check_missing_feature_data(
                 feature_label=feature_label,
+                feature_params=None,
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,

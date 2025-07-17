@@ -18,6 +18,7 @@ from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
 from market_data.util.cache.dataframe import cache_data_by_day
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
+from market_data.util.cache.missing_data_finder import group_consecutive_dates
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +38,7 @@ def calculate_and_cache_data(
         calculate_batch_fn: Callable[[pd.DataFrame, T], pd.DataFrame] = None,
         cache_base_path: str = None,
         params_dir: str = None,
+        missing_data_checker: Optional[Callable[[DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, TimeRange, T], List[Tuple[datetime.datetime, datetime.datetime]]]] = None,
         ) -> None:
     """
     Generic function to calculate and cache data for a specified time range.
@@ -72,6 +74,9 @@ def calculate_and_cache_data(
         Base path for caching data
     params_dir : str, optional
         Directory name string generated from the parameters for caching
+    missing_data_checker : Optional[Callable], optional
+        Function to check for missing data ranges. Should return list of (start, end) tuples.
+        If provided and overwrite_cache is False, will skip calculation for existing data.
     """
     # Resolve time range
     t_from, t_to = time_range.to_datetime()
@@ -85,8 +90,33 @@ def calculate_and_cache_data(
     calculation_interval = datetime.timedelta(days=calculation_batch_days)
     warm_up_period = datetime.timedelta(days=warm_up_days)
     
-    # Split the range into calculation batches, with warm-up included in each batch
-    calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval, warm_up=warm_up_period)
+    # Determine which ranges need to be calculated
+    if overwrite_cache or missing_data_checker is None:
+        # If overwriting cache or no missing data checker provided, process all ranges
+        calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval, warm_up=warm_up_period)
+        if overwrite_cache:
+            logger.info(f"Overwrite cache enabled - processing all {len(calculation_ranges)} ranges")
+        else:
+            logger.info(f"No missing data checker provided - processing all {len(calculation_ranges)} ranges")
+    else:
+        # If not overwriting cache and missing data checker provided, only process missing ranges
+        missing_ranges = missing_data_checker(dataset_mode, export_mode, aggregation_mode, time_range, params)
+        
+        if not missing_ranges:
+            logger.info(f"All {label} data already cached - skipping calculation")
+            return
+        
+        # Group consecutive missing ranges
+        grouped_ranges = group_consecutive_dates(missing_ranges)
+        
+        # Split each grouped range into calculation batches with warm-up
+        calculation_ranges = []
+        for grouped_start, grouped_end in grouped_ranges:
+            batch_ranges = split_t_range(grouped_start, grouped_end, interval=calculation_interval, warm_up=warm_up_period)
+            calculation_ranges.extend(batch_ranges)
+        
+        logger.info(f"Found {len(missing_ranges)} missing days, grouped into {len(grouped_ranges)} ranges, "
+                   f"split into {len(calculation_ranges)} calculation batches")
     
     for calc_range in calculation_ranges:
         calc_t_from, calc_t_to = calc_range

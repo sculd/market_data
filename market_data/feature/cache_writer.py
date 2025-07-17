@@ -24,10 +24,12 @@ from market_data.util.cache.time import (
 from market_data.util.cache.dataframe import cache_data_by_day, read_from_cache_generic
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
-from market_data.feature.util import _create_default_params, parse_feature_label_param
+from market_data.feature.util import parse_feature_label_param
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.sequential_feature import sequentialize_feature
 from market_data.util.cache.core import calculate_and_cache_data
+from market_data.util.cache.missing_data_finder import check_missing_feature_data
+
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +99,10 @@ def cache_feature_cache(
             raise ValueError(f"Feature module {feature_label} does not have a calculate method")
         return calculate_fn(raw_df, feature_params)
     
+    def missing_data_checker_fn(dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE, aggregation_mode: AGGREGATION_MODE, time_range: TimeRange):
+        return check_missing_feature_data(
+            feature_label, params, dataset_mode, export_mode, aggregation_mode, time_range)
+    
     try:
         # Use core calculation and caching function
         calculate_and_cache_data(
@@ -111,7 +117,8 @@ def cache_feature_cache(
             label=feature_label,
             calculate_batch_fn=calculate_batch_fn,
             cache_base_path=cache_path,
-            params_dir=params_dir
+            params_dir=params_dir,
+            missing_data_checker=missing_data_checker_fn,
         )
         logger.info(f"Successfully cached {feature_label} for {time_range}")
         return True

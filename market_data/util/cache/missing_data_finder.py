@@ -2,7 +2,7 @@ import datetime
 import pandas as pd
 import os
 from pathlib import Path
-
+from typing import Any
 
 from market_data.ingest.bq.cache import to_filename, _cache_base_path
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
@@ -84,6 +84,7 @@ def check_missing_raw_data(
 
 def check_missing_feature_data(
         feature_label: str,
+        feature_params: Any,
         dataset_mode: DATASET_MODE,
         export_mode: EXPORT_MODE,
         aggregation_mode: AGGREGATION_MODE,
@@ -98,7 +99,7 @@ def check_missing_feature_data(
     from market_data.util.cache.path import to_filename
     
     # Parse feature_label to get params
-    feature_label, params = parse_feature_label_param(feature_label)
+    feature_label, params = parse_feature_label_param((feature_label, feature_params,))
     params_dir = params.get_params_dir()
     
     t_from, t_to = time_range.to_datetime()
@@ -320,6 +321,7 @@ def check_missing_ml_data(
     
     Returns a list of (start_date, end_date) tuples for missing days.
     """
+    from market_data.machine_learning.cache_feature_resample import CACHE_BASE_PATH
     from market_data.util.cache.path import to_filename
     from market_data.machine_learning.cache_ml_data import _get_mldata_params_dir
     from market_data.ingest.bq.common import get_full_table_id
