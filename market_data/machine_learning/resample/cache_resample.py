@@ -19,8 +19,8 @@ from market_data.util.cache.time import (
 from market_data.util.cache.dataframe import (
     cache_data_by_day,
     read_from_cache_generic,
+    read_multithreaded,
 )
-
 from market_data.util.cache.path import (
     params_to_dir_name,
     get_cache_base_path,
@@ -155,7 +155,8 @@ def load_cached_resampled_data(
         columns: typing.List[str] = None,
         dataset_mode: DATASET_MODE = None,
         export_mode: EXPORT_MODE = None,
-        aggregation_mode: AGGREGATION_MODE = None
+        aggregation_mode: AGGREGATION_MODE = None,
+        max_workers: int = 10,
     ) -> pd.DataFrame:
     """
     Load cached resampled data for a specific time range
@@ -182,10 +183,20 @@ def load_cached_resampled_data(
     if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
         dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     
-    return _read_resampled_data_from_cache(
-        resample_label,
-        params=params,
+    # Create worker function that properly handles daily ranges
+    def load(d_from, d_to):
+        daily_time_range = TimeRange(d_from, d_to)
+        df = _read_resampled_data_from_cache(
+            resample_label,
+            params=params,
+            time_range=daily_time_range,
+            columns=columns,
+            dataset_id=dataset_id
+        )
+        return d_from, df
+
+    return read_multithreaded(
+        read_func=load,
         time_range=time_range,
-        columns=columns,
-        dataset_id=dataset_id
+        max_workers=max_workers
     )

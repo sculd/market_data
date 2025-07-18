@@ -25,6 +25,7 @@ from market_data.util.cache.time import (
 from market_data.util.cache.dataframe import (
     cache_data_by_day,
     read_from_cache_generic,
+    read_multithreaded,
 )
 
 logger = logging.getLogger(__name__)
@@ -334,7 +335,7 @@ def load_cached_ml_data(
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
 
     # Create worker function that properly handles daily ranges
-    def load_daily_range(d_from, d_to):
+    def load(d_from, d_to):
         daily_time_range = TimeRange(d_from, d_to)
         return d_from, read_from_cache_generic(
             label="ml_data",
@@ -348,30 +349,11 @@ def load_cached_ml_data(
             cache_base_path=CACHE_BASE_PATH
         )
 
-    t_from, t_to = time_range.to_datetime()
-    daily_ranges = split_t_range(t_from, t_to, interval=datetime.timedelta(days=1))
-
-    d_from_to_df = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks
-        futures = {executor.submit(load_daily_range, d_from, d_to): (d_from, d_to) 
-                  for d_from, d_to in daily_ranges}
-        
-        # Collect results
-        for future in as_completed(futures):
-            d_from, df = future.result()
-            if df is not None and not df.empty:
-                d_from_to_df[d_from] = df
-
-    dfs = [d_from_to_df[d_from] for d_from, _ in daily_ranges if d_from in d_from_to_df]
-    # Concatenate all dataframes
-    if dfs:
-        ml_data_df = pd.concat(dfs)
-    else:
-        ml_data_df = pd.DataFrame()
-
-    if ml_data_df.empty:
-        return ml_data_df
+    ml_data_df = read_multithreaded(
+        read_func=load,
+        time_range=time_range,
+        max_workers=max_workers
+    )
     
     # Log cache information for debugging
     logger.debug(f"Loaded ML data from UUID: {params_dir}")

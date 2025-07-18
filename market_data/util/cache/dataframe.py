@@ -11,6 +11,7 @@ import os
 import datetime
 from pathlib import Path
 from typing import List, Optional, Callable
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from market_data.util.cache.path import to_filename, get_cache_base_path
 from market_data.util.cache.time import (
@@ -106,6 +107,32 @@ def read_from_cache_generic(label: str, params_dir: str = None,
         return pd.concat(dfs)
     else:
         return pd.DataFrame()
+
+def read_multithreaded(read_func: Callable, time_range: TimeRange, max_workers: int = 10):
+    t_from, t_to = time_range.to_datetime()
+    daily_ranges = split_t_range(t_from, t_to, interval=datetime.timedelta(days=1))
+
+    d_from_to_df = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        futures = {executor.submit(read_func, d_from, d_to): (d_from, d_to) 
+                  for d_from, d_to in daily_ranges}
+        
+        # Collect results
+        for future in as_completed(futures):
+            d_from, df = future.result()
+            if df is not None and not df.empty:
+                d_from_to_df[d_from] = df
+
+    dfs = [d_from_to_df[d_from] for d_from, _ in daily_ranges if d_from in d_from_to_df]
+    # Concatenate all dataframes
+    if dfs:
+        result_df = pd.concat(dfs)
+    else:
+        result_df = pd.DataFrame()
+
+    return result_df
+        
 
 def cache_data_by_day(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
                      params_dir: str = None, overwrite=False, warm_up_period_days=1, 
