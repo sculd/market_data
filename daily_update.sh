@@ -5,6 +5,9 @@
 
 set -e  # Exit on any error
 
+# Set PATH for launchd compatibility - include Homebrew paths
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${0:A}")" && pwd)"
 LOG_DIR="$SCRIPT_DIR/logs"
