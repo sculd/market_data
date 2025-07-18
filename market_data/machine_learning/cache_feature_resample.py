@@ -20,6 +20,7 @@ from market_data.util.cache.time import (
 from market_data.util.cache.dataframe import (
     cache_data_by_day,
     read_from_cache_generic,
+    read_multithreaded,
 )
 from market_data.util.cache.path import (
     params_to_dir_name,
@@ -226,7 +227,8 @@ def load_cached_feature_resampled(
     feature_params: Any,
     resample_params: ResampleParams = None,
     seq_params: Optional[SequentialFeatureParam] = None,
-    columns: Optional[List[str]] = None
+    columns: Optional[List[str]] = None,
+        max_workers: int = 10,
 ) -> pd.DataFrame:
     """
     Load cached feature resampled data for a specific time range.
@@ -253,19 +255,26 @@ def load_cached_feature_resampled(
     feature_label_params = parse_feature_label_param((feature_label, feature_params))
     params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_params, seq_params)
     
-    feature_resampled_df = read_from_cache_generic(
-        label=feature_label,
-        params_dir=params_dir,
-        time_range=time_range,
-        columns=columns,
-        dataset_id=dataset_id,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-        cache_base_path=CACHE_BASE_PATH
-    )
+    # Create worker function that properly handles daily ranges
+    def load(d_from, d_to):
+        daily_time_range = TimeRange(d_from, d_to)
+        df = read_from_cache_generic(
+            label=feature_label,
+            params_dir=params_dir,
+            time_range=daily_time_range,
+            columns=columns,
+            dataset_id=dataset_id,
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            cache_base_path=CACHE_BASE_PATH
+        )
+        return d_from, df
 
-    if feature_resampled_df.empty:
-        return feature_resampled_df
+    feature_resampled_df = read_multithreaded(
+        read_func=load,
+        time_range=time_range,
+        max_workers=max_workers
+    )
     
     return feature_resampled_df.sort_values(["timestamp", "symbol"])
