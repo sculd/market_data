@@ -7,7 +7,10 @@ from pathlib import Path
 from dataclasses import asdict
 import hashlib
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import partial
 
+from market_data.util.cache.time import split_t_range
 import market_data.target.cache_target
 from market_data.target.target import TargetParamsBatch
 from market_data.feature.util import parse_feature_label_params
@@ -299,7 +302,8 @@ def load_cached_ml_data(
     target_params_batch: TargetParamsBatch = None,
     resample_params: ResampleParams = None,
     seq_params: Optional[SequentialFeatureParam] = None,
-    columns: Optional[List[str]] = None
+    columns: Optional[List[str]] = None,
+    max_workers: int = 10,
 ) -> pd.DataFrame:
     """
     Load cached ML data for a specific time range.
@@ -328,18 +332,43 @@ def load_cached_ml_data(
     resample_params = resample_params or ResampleParams()
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
-    
-    ml_data_df = read_from_cache_generic(
-        label="ml_data",
-        params_dir=params_dir,
-        time_range=time_range,
-        columns=columns,
-        dataset_id=dataset_id,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
-        cache_base_path=CACHE_BASE_PATH
-    )
+
+    # Create worker function that properly handles daily ranges
+    def load_daily_range(d_from, d_to):
+        daily_time_range = TimeRange(d_from, d_to)
+        return d_from, read_from_cache_generic(
+            label="ml_data",
+            params_dir=params_dir,
+            time_range=daily_time_range,
+            columns=columns,
+            dataset_id=dataset_id,
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            cache_base_path=CACHE_BASE_PATH
+        )
+
+    t_from, t_to = time_range.to_datetime()
+    daily_ranges = split_t_range(t_from, t_to, interval=datetime.timedelta(days=1))
+
+    d_from_to_df = {}
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit all tasks
+        futures = {executor.submit(load_daily_range, d_from, d_to): (d_from, d_to) 
+                  for d_from, d_to in daily_ranges}
+        
+        # Collect results
+        for future in as_completed(futures):
+            d_from, df = future.result()
+            if df is not None and not df.empty:
+                d_from_to_df[d_from] = df
+
+    dfs = [d_from_to_df[d_from] for d_from, _ in daily_ranges if d_from in d_from_to_df]
+    # Concatenate all dataframes
+    if dfs:
+        ml_data_df = pd.concat(dfs)
+    else:
+        ml_data_df = pd.DataFrame()
 
     if ml_data_df.empty:
         return ml_data_df
