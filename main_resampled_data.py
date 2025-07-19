@@ -2,7 +2,9 @@ import argparse
 import datetime
 import pandas as pd
 import os
+import multiprocessing
 from pathlib import Path
+from functools import partial
 
 import setup_env # needed for env variables
 
@@ -16,6 +18,32 @@ from market_data.machine_learning.resample import (
 )
 from market_data.machine_learning.resample.cache_resample import calculate_and_cache_resampled
 import market_data.util.cache.missing_data_finder
+
+def _process_resampled_batch(calc_range, dataset_mode, export_mode, aggregation_mode, 
+                           resample_function, resample_params, overwrite_cache):
+    """
+    Worker function for processing a single resampled data batch.
+    """
+    calc_t_from, calc_t_to = calc_range
+    
+    try:
+        calc_time_range = TimeRange(calc_t_from, calc_t_to)
+        
+        calculate_and_cache_resampled(
+            dataset_mode=dataset_mode,
+            export_mode=export_mode,
+            aggregation_mode=aggregation_mode,
+            resample_at_events_func=resample_function,
+            params=resample_params,
+            time_range=calc_time_range,
+            calculation_batch_days=1,  # Process each range as single batch
+            overwrite_cache=overwrite_cache
+        )
+        
+        return (True, calc_range, None)
+        
+    except Exception as e:
+        return (False, calc_range, str(e))
 
 def main():
     parser = argparse.ArgumentParser(
@@ -65,6 +93,13 @@ def main():
                         help='Resampling parameters. Format depends on method: '
                              'cumsum: "price_col,threshold" (e.g., "close,0.07") '
                              'reversal: "price_col,threshold,threshold_reversal" (e.g., "close,0.1,0.03")')
+    
+    # Multiprocessing arguments
+    parser.add_argument('--parallel', action='store_true',
+                        help='Enable parallel processing using multiprocessing')
+    
+    parser.add_argument('--workers', type=int, default=None,
+                        help='Number of worker processes (default: number of CPU cores)')
     
     args = parser.parse_args()
     
@@ -186,26 +221,74 @@ def main():
                       f"split into {len(calculation_ranges)} calculation batches")
             
             # Process each calculation range
-            for i, calc_range in enumerate(calculation_ranges):
-                calc_t_from, calc_t_to = calc_range
-                print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+            if args.parallel:
+                # Parallel processing
+                if args.workers is None:
+                    workers = multiprocessing.cpu_count()
+                else:
+                    workers = args.workers
                 
-                calc_time_range = TimeRange(calc_t_from, calc_t_to)
+                print(f"  Using parallel processing with {workers} workers")
                 
-                calculate_and_cache_resampled(
+                # Create worker function with fixed parameters
+                worker_func = partial(
+                    _process_resampled_batch,
                     dataset_mode=dataset_mode,
                     export_mode=export_mode,
                     aggregation_mode=aggregation_mode,
-                    resample_at_events_func=resample_function,
-                    params=resample_params,
-                    time_range=calc_time_range,
-                    calculation_batch_days=1,  # Process each range as single batch
+                    resample_function=resample_function,
+                    resample_params=resample_params,
                     overwrite_cache=args.overwrite_cache
                 )
+                
+                # Process batches in parallel
+                with multiprocessing.Pool(processes=workers) as pool:
+                    results = pool.map(worker_func, calculation_ranges)
+                
+                # Collect results and report progress
+                successful_batches = 0
+                failed_batches = 0
+                
+                for success, calc_range, error_msg in results:
+                    calc_t_from, calc_t_to = calc_range
+                    if success:
+                        successful_batches += 1
+                        print(f"  ✅ Completed batch: {calc_t_from.date()} to {calc_t_to.date()}")
+                    else:
+                        failed_batches += 1
+                        print(f"  ❌ Failed batch: {calc_t_from.date()} to {calc_t_to.date()}: {error_msg}")
+                
+                print(f"\n  Parallel processing summary:")
+                print(f"    Successful batches: {successful_batches}")
+                print(f"    Failed batches: {failed_batches}")
+                
+                if failed_batches > 0:
+                    raise Exception(f"{failed_batches} out of {len(calculation_ranges)} batches failed")
+                    
+            else:
+                # Sequential processing (original behavior)
+                for i, calc_range in enumerate(calculation_ranges):
+                    calc_t_from, calc_t_to = calc_range
+                    print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                    
+                    calc_time_range = TimeRange(calc_t_from, calc_t_to)
+                    
+                    calculate_and_cache_resampled(
+                        dataset_mode=dataset_mode,
+                        export_mode=export_mode,
+                        aggregation_mode=aggregation_mode,
+                        resample_at_events_func=resample_function,
+                        params=resample_params,
+                        time_range=calc_time_range,
+                        calculation_batch_days=1,  # Process each range as single batch
+                        overwrite_cache=args.overwrite_cache
+                    )
             
             print("  Successfully cached resampled data")
         except Exception as e:
             print(f"  Failed to cache resampled data: {e}")
 
 if __name__ == "__main__":
+    # Set multiprocessing start method for compatibility
+    multiprocessing.set_start_method('spawn', force=True)
     main()
