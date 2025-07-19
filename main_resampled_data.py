@@ -18,6 +18,7 @@ from market_data.machine_learning.resample import (
 )
 from market_data.machine_learning.resample.cache_resample import calculate_and_cache_resampled
 import market_data.util.cache.missing_data_finder
+import market_data.util.cache.dataframe
 
 def _process_resampled_batch(calc_range, dataset_mode, export_mode, aggregation_mode, 
                            resample_function, resample_params, overwrite_cache):
@@ -229,42 +230,24 @@ def main():
                     workers = args.workers
                 
                 print(f"  Using parallel processing with {workers} workers")
-                
-                # Create worker function with fixed parameters
-                worker_func = partial(
-                    _process_resampled_batch,
+
+                cache_func = partial(
+                    calculate_and_cache_resampled,
                     dataset_mode=dataset_mode,
                     export_mode=export_mode,
                     aggregation_mode=aggregation_mode,
-                    resample_function=resample_function,
-                    resample_params=resample_params,
-                    overwrite_cache=args.overwrite_cache
+                    resample_at_events_func=resample_function,
+                    params=resample_params,
+                    calculation_batch_days=1,  # Process each range as single batch
+                    overwrite_cache=args.overwrite_cache,
                 )
-                
-                # Process batches in parallel
-                with multiprocessing.Pool(processes=workers) as pool:
-                    results = pool.map(worker_func, calculation_ranges)
-                
-                # Collect results and report progress
-                successful_batches = 0
-                failed_batches = 0
-                
-                for success, calc_range, error_msg in results:
-                    calc_t_from, calc_t_to = calc_range
-                    if success:
-                        successful_batches += 1
-                        print(f"  ✅ Completed batch: {calc_t_from.date()} to {calc_t_to.date()}")
-                    else:
-                        failed_batches += 1
-                        print(f"  ❌ Failed batch: {calc_t_from.date()} to {calc_t_to.date()}: {error_msg}")
-                
-                print(f"\n  Parallel processing summary:")
-                print(f"    Successful batches: {successful_batches}")
-                print(f"    Failed batches: {failed_batches}")
-                
-                if failed_batches > 0:
-                    raise Exception(f"{failed_batches} out of {len(calculation_ranges)} batches failed")
-                    
+
+                time_ranges = [TimeRange(t_from=t_from, t_to=t_to) for t_from, t_to in calculation_ranges]
+                market_data.util.cache.dataframe.cache_multiprocess(
+                    cache_func=cache_func,
+                    time_ranges=time_ranges,
+                    workers=workers
+                )
             else:
                 # Sequential processing (original behavior)
                 for i, calc_range in enumerate(calculation_ranges):

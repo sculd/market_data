@@ -11,6 +11,8 @@ import os
 import datetime
 from pathlib import Path
 from typing import List, Optional, Callable
+import multiprocessing
+from functools import partial
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from market_data.util.cache.path import to_filename, get_cache_base_path
@@ -122,6 +124,44 @@ def fetch_from_daily_cache(label: str, t_from: datetime.datetime, t_to: datetime
         logger.info(f"{filename} does not exist.")
         return None
 
+
+def _cache_at_top_level(time_range: TimeRange, cache_func: Callable):
+    try:
+        cache_func(time_range=time_range)
+        return (True, time_range, None)
+        
+    except Exception as e:
+        return (False, time_range, str(e))
+
+
+def cache_multiprocess(cache_func: Callable, time_ranges: List[TimeRange], workers: int = 10):
+    worker_func = partial(
+        _cache_at_top_level,
+        cache_func=cache_func,
+    )
+
+    # Process batches in parallel
+    with multiprocessing.Pool(processes=workers) as pool:
+        results = pool.map(worker_func, time_ranges)
+    
+    # Collect results and report progress
+    successful_batches = 0
+    failed_batches = 0
+    
+    for success, calc_range, error_msg in results:
+        calc_t_from, calc_t_to = calc_range
+        if success:
+            successful_batches += 1
+            print(f"  ✅ Completed batch: {calc_t_from.date()} to {calc_t_to.date()}")
+        else:
+            failed_batches += 1
+            print(f"  ❌ Failed batch: {calc_t_from.date()} to {calc_t_to.date()}: {error_msg}")
+    
+    print(f"\n  Parallel processing summary:")
+    print(f"    Successful batches: {successful_batches}")
+    print(f"    Failed batches: {failed_batches}")
+
+
 def read_from_cache_generic(label: str, params_dir: str = None, 
                            time_range: TimeRange = None,
                            columns: List[str] = None,
@@ -151,6 +191,7 @@ def read_from_cache_generic(label: str, params_dir: str = None,
         return pd.concat(dfs)
     else:
         return pd.DataFrame()
+
 
 def read_multithreaded(read_func: Callable, time_range: TimeRange, max_workers: int = 10):
     t_from, t_to = time_range.to_datetime()
