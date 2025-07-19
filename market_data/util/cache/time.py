@@ -158,8 +158,8 @@ def chop_missing_time_range(
         missing_ranges = missing_range_finder_func(time_range=time_range)
         
         if not missing_ranges:
-            print("  All resampled data already cached - skipping calculation")
-            return
+            print("  All data already cached - skipping calculation")
+            return []
         
         # Group consecutive missing ranges and split into calculation batches
         grouped_ranges = group_consecutive_dates(missing_ranges)

@@ -149,7 +149,7 @@ def cache_multiprocess(cache_func: Callable, time_ranges: List[TimeRange], worke
     failed_batches = 0
     
     for success, calc_range, error_msg in results:
-        calc_t_from, calc_t_to = calc_range
+        calc_t_from, calc_t_to = calc_range.to_datetime()
         if success:
             successful_batches += 1
             print(f"  ✅ Completed batch: {calc_t_from.date()} to {calc_t_to.date()}")
