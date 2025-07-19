@@ -195,7 +195,7 @@ process_data() {
         echo "${action_display} resampled data..."
         while IFS=':' read -r method param; do
             echo "  Processing resample method: $method with params: $param"
-            cmd="python main_resampled_data.py --action $action --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+            cmd="python main_resampled_data.py --action $action --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options} --parallel"
             echo "Running: $cmd"
             eval $cmd
         done < "$temp_file"
