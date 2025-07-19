@@ -15,7 +15,8 @@ from market_data.machine_learning.resample import (
     list_registered_resample_methods
 )
 from market_data.machine_learning.cache_feature_resample import calculate_and_cache_feature_resampled
-from market_data.util.cache.missing_data_finder import check_missing_feature_resampled_data, group_consecutive_dates
+import market_data.util.cache.time
+from market_data.util.cache.missing_data_finder import check_missing_feature_resampled_data
 
 def main():
     parser = argparse.ArgumentParser(
@@ -136,7 +137,7 @@ def main():
                 print(f"  All data for '{feature_label}' is present in the cache.")
             else:
                 # Group consecutive dates
-                grouped_ranges = group_consecutive_dates(missing_ranges)
+                grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
                 
                 total_missing_days = len(missing_ranges)
                 print(f"  Missing data for '{feature_label}': {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
@@ -197,7 +198,7 @@ def main():
                         continue
                     
                     # Group consecutive missing ranges and split into calculation batches
-                    grouped_ranges = group_consecutive_dates(missing_ranges)
+                    grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
                     calculation_ranges = []
                     
                     for grouped_start, grouped_end in grouped_ranges:

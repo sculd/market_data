@@ -8,7 +8,8 @@ in the caching system.
 import datetime
 import pytz
 import logging
-import typing
+from typing import Callable, List, Tuple
+from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ def anchor_to_begin_of_day(t: datetime.datetime) -> datetime.datetime:
 
 def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime, 
                  interval: datetime.timedelta = CACHE_INTERVAL,
-                 warm_up: datetime.timedelta = None) -> typing.List[typing.Tuple[datetime.datetime, datetime.datetime]]:
+                 warm_up: datetime.timedelta = None) -> List[Tuple[datetime.datetime, datetime.datetime]]:
     """
     Split a time range into intervals, with an optional warm-up period for each interval.
     
@@ -83,6 +84,96 @@ def split_t_range(t_from: datetime.datetime, t_to: datetime.datetime,
     ret[-1] = last
     
     return ret
+
+
+def group_consecutive_dates(date_ranges):
+    """
+    Group consecutive date ranges into larger ranges.
+    
+    Args:
+        date_ranges: List of (start_date, end_date) tuples
+        
+    Returns:
+        List of (start_date, end_date) tuples with consecutive dates grouped
+    """
+    if not date_ranges:
+        return []
+    
+    # Sort by start date
+    sorted_ranges = sorted(date_ranges, key=lambda x: x[0])
+    
+    grouped_ranges = []
+    current_start, current_end = sorted_ranges[0]
+    
+    for i in range(1, len(sorted_ranges)):
+        next_start, next_end = sorted_ranges[i]
+        
+        # If next range starts on the same day as current range ends,
+        # they are consecutive
+        if next_start.date() == current_end.date():
+            current_end = next_end
+        else:
+            grouped_ranges.append((current_start, current_end))
+            current_start, current_end = next_start, next_end
+    
+    # Don't forget to add the last range
+    grouped_ranges.append((current_start, current_end))
+    
+    return grouped_ranges
+
+
+def chop_missing_time_range(
+        missing_range_finder_func: Callable, time_range: TimeRange, 
+        overwrite_cache: bool, calculation_batch_days: int = 1) -> List[Tuple[datetime.datetime, datetime.datetime]]:
+    '''
+    Chop a time range into calculation batches.
+    If overwrite_cache is True, process all ranges.
+    If overwrite_cache is False, only process missing ranges.
+
+    Parameters:
+    -----------
+    missing_range_finder_func: Callable
+        A function that returns a list of missing time ranges. Should take a TimeRange as input and return a list of [from, to] tuples.
+    time_range: TimeRange
+        The time range to chop.
+    overwrite_cache: bool
+        If True, process all ranges.
+        If False, only process missing ranges.
+    calculation_batch_days: int
+        The number of days to process in each batch.
+
+    Returns:
+    --------
+    A list of [from, to] tuples.
+    '''
+    calculation_interval = datetime.timedelta(days=calculation_batch_days)
+    # Determine which ranges need to be calculated
+    if overwrite_cache:
+        # If overwriting cache, process all ranges
+        t_from, t_to = time_range.to_datetime()
+        calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval)
+        print(f"  Overwrite cache enabled - processing all {len(calculation_ranges)} ranges")
+    else:
+        # If not overwriting cache, only process missing ranges
+        missing_ranges = missing_range_finder_func(time_range=time_range)
+        
+        if not missing_ranges:
+            print("  All resampled data already cached - skipping calculation")
+            return
+        
+        # Group consecutive missing ranges and split into calculation batches
+        grouped_ranges = group_consecutive_dates(missing_ranges)
+        calculation_ranges = []
+        
+        for grouped_start, grouped_end in grouped_ranges:
+            # Split each grouped range into calculation batches
+            batch_ranges = split_t_range(grouped_start, grouped_end, interval=calculation_interval)
+            calculation_ranges.extend(batch_ranges)
+        
+        print(f"  Found {len(missing_ranges)} missing days, grouped into {len(grouped_ranges)} ranges, "
+                f"split into {len(calculation_ranges)} calculation batches")
+
+    return calculation_ranges
 
 def is_exact_cache_interval(t_from: datetime.datetime, t_to: datetime.datetime) -> bool:
     """Check if time range is exactly one cache interval (day) starting at zero hour"""

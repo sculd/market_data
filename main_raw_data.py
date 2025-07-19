@@ -11,6 +11,7 @@ from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
 import market_data.util.cache.missing_data_finder
+import market_data.util.cache.time
 
 def main():
     parser = argparse.ArgumentParser(
@@ -80,7 +81,7 @@ def main():
             print("\nAll data for the specified range is present in the cache.")
         else:
             # Group consecutive dates
-            grouped_ranges = market_data.util.cache.missing_data_finder.group_consecutive_dates(missing_ranges)
+            grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
             
             total_missing_days = len(missing_ranges)
             print(f"\nMissing data for {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")

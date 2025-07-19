@@ -12,6 +12,7 @@ from market_data.util.cache.time import split_t_range
 from market_data.feature.registry import list_registered_features
 from market_data.feature.cache_writer import cache_feature_cache
 from market_data.feature.util import parse_feature_label_param
+import market_data.util.cache.time
 import market_data.util.cache.missing_data_finder
 
 import market_data.feature.impl  # Import to ensure all features are registered
@@ -121,7 +122,7 @@ def main():
                 print(f"  All data for '{feature_label}' is present in the cache.")
             else:
                 # Group consecutive dates
-                grouped_ranges = market_data.util.cache.missing_data_finder.group_consecutive_dates(missing_ranges)
+                grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
                 
                 total_missing_days = len(missing_ranges)
                 print(f"  Missing data for '{feature_label}': {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
@@ -177,7 +178,7 @@ def main():
                         continue
                     
                     # Group consecutive missing ranges and split into calculation batches
-                    grouped_ranges = market_data.util.cache.missing_data_finder.group_consecutive_dates(missing_ranges)
+                    grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
                     calculation_ranges = []
                     
                     for grouped_start, grouped_end in grouped_ranges:
