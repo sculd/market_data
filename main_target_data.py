@@ -2,6 +2,7 @@ import argparse
 import datetime
 import pandas as pd
 import os
+import multiprocessing
 from pathlib import Path
 from functools import partial
 
@@ -12,6 +13,8 @@ from market_data.util.time import TimeRange
 from market_data.target.target import TargetParamsBatch, TargetParams
 from market_data.target.cache_target import calculate_and_cache_targets
 import market_data.util.cache.time
+import market_data.util.cache.missing_data_finder
+import market_data.util.cache.dataframe
 
 def main():
     parser = argparse.ArgumentParser(
@@ -58,6 +61,13 @@ def main():
     parser.add_argument('--tps', type=str,
                         help='Comma-separated list of target price shifts (e.g., "0.001,0.002,0.003")')
     
+    # Multiprocessing arguments
+    parser.add_argument('--parallel', action='store_true',
+                        help='Enable parallel processing using multiprocessing')
+    
+    parser.add_argument('--workers', type=int, default=None,
+                        help='Number of worker processes (default: number of CPU cores)')
+
     args = parser.parse_args()
     
     # Validate forward_periods and tps are specified together
@@ -142,26 +152,55 @@ def main():
                 calculation_batch_days=args.calculation_batch_days
             )
 
-            # Sequential processing (original behavior)
-            for i, calc_range in enumerate(calculation_ranges):
-                calc_t_from, calc_t_to = calc_range
-                print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+            # Process each calculation range
+            if args.parallel:
+                # Parallel processing
+                if args.workers is None:
+                    workers = multiprocessing.cpu_count()
+                else:
+                    workers = args.workers
                 
-                calc_time_range = TimeRange(calc_t_from, calc_t_to)
-                
-                calculate_and_cache_targets(
+                print(f"  Using parallel processing with {workers} workers")
+
+                cache_func = partial(
+                    calculate_and_cache_targets,
                     dataset_mode=dataset_mode,
                     export_mode=export_mode,
                     aggregation_mode=aggregation_mode,
-                    time_range=calc_time_range,
                     params=target_params,
-                    calculation_batch_days=args.calculation_batch_days,
+                    calculation_batch_days=1,  # Process each range as single batch
                     overwrite_cache=args.overwrite_cache,
                 )
+
+                time_ranges = [TimeRange(t_from=t_from, t_to=t_to) for t_from, t_to in calculation_ranges]
+                market_data.util.cache.dataframe.cache_multiprocess(
+                    cache_func=cache_func,
+                    time_ranges=time_ranges,
+                    workers=workers
+                )
+            else:
+                # Sequential processing (original behavior)
+                for i, calc_range in enumerate(calculation_ranges):
+                    calc_t_from, calc_t_to = calc_range
+                    print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                    
+                    calc_time_range = TimeRange(calc_t_from, calc_t_to)
+                    
+                    calculate_and_cache_targets(
+                        dataset_mode=dataset_mode,
+                        export_mode=export_mode,
+                        aggregation_mode=aggregation_mode,
+                        time_range=calc_time_range,
+                        params=target_params,
+                        calculation_batch_days=args.calculation_batch_days,
+                        overwrite_cache=args.overwrite_cache,
+                    )
 
             print("  Successfully cached target data")
         except Exception as e:
             print(f"  Failed to cache target data: {e}")
 
 if __name__ == "__main__":
+    # Set multiprocessing start method for compatibility
+    multiprocessing.set_start_method('spawn', force=True)
     main()

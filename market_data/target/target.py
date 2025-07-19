@@ -281,10 +281,6 @@ def create_targets(df: pd.DataFrame, params: TargetParamsBatch = None) -> pd.Dat
     Returns:
         DataFrame with target features
     """
-    # Configure Numba threads
-    num_threads = os.cpu_count() or 4
-    nb.set_num_threads(min(num_threads, 8))  # Limit to max 8 threads
-    
     engineer = TargetEngineer(df, params=params)
     # Create a copy to defragment
     return engineer.add_target_features().copy()
