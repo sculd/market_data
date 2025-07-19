@@ -10,7 +10,6 @@ import setup_env # needed for env variables
 
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
-from market_data.util.cache.time import split_t_range, chop_missing_time_range
 from market_data.machine_learning.resample import (
     get_resample_params_class,
     get_resample_function,
@@ -21,31 +20,6 @@ import market_data.util.cache.time
 import market_data.util.cache.missing_data_finder
 import market_data.util.cache.dataframe
 
-def _process_resampled_batch(calc_range, dataset_mode, export_mode, aggregation_mode, 
-                           resample_function, resample_params, overwrite_cache):
-    """
-    Worker function for processing a single resampled data batch.
-    """
-    calc_t_from, calc_t_to = calc_range
-    
-    try:
-        calc_time_range = TimeRange(calc_t_from, calc_t_to)
-        
-        calculate_and_cache_resampled(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            resample_at_events_func=resample_function,
-            params=resample_params,
-            time_range=calc_time_range,
-            calculation_batch_days=1,  # Process each range as single batch
-            overwrite_cache=overwrite_cache
-        )
-        
-        return (True, calc_range, None)
-        
-    except Exception as e:
-        return (False, calc_range, str(e))
 
 def main():
     parser = argparse.ArgumentParser(
@@ -197,7 +171,7 @@ def main():
                 resample_params=resample_params,
                 )
 
-            calculation_ranges = chop_missing_time_range(
+            calculation_ranges = market_data.util.cache.time.chop_missing_time_range(
                 missing_range_finder_func=missing_range_finder_func,
                 time_range=time_range,
                 overwrite_cache=args.overwrite_cache,

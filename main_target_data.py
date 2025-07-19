@@ -3,6 +3,7 @@ import datetime
 import pandas as pd
 import os
 from pathlib import Path
+from functools import partial
 
 import setup_env # needed for env variables
 
@@ -80,22 +81,23 @@ def main():
     if args.forward_periods and args.tps:
         print(f"  Forward Periods: {args.forward_periods}")
         print(f"  Target Price Shifts: {args.tps}")
-    
+
+    target_params: TargetParamsBatch = None
+    if args.forward_periods and args.tps:
+        target_params = TargetParamsBatch(
+            target_params_list=[TargetParams(forward_period=int(period), tp_value=float(tp), sl_value=float(tp)) 
+                for period in args.forward_periods.split(',') 
+                for tp in args.tps.split(',')]
+        )
+
     if args.action == 'check':
         print("\nChecking target data")
-        params: TargetParamsBatch = None
-        if args.forward_periods and args.tps:
-            params = TargetParamsBatch(
-                target_params_list=[TargetParams(forward_period=int(period), tp_value=float(tp), sl_value=float(tp)) 
-                    for period in args.forward_periods.split(',') 
-                    for tp in args.tps.split(',')]
-            )
         missing_ranges = market_data.util.cache.missing_data_finder.check_missing_target_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,
             time_range=time_range,
-            target_params=params,
+            target_params=target_params,
         )
         
         if not missing_ranges:
@@ -125,22 +127,38 @@ def main():
     elif args.action == 'cache':
         print("\nCaching target data")
         try:
-            params: TargetParamsBatch = None
-            if args.forward_periods and args.tps:
-                params = TargetParamsBatch(
-                    target_params_list=[TargetParams(forward_period=int(period), tp_value=float(tp), sl_value=float(tp)) 
-                        for period in args.forward_periods.split(',') 
-                        for tp in args.tps.split(',')]
-                )
-            calculate_and_cache_targets(
+            missing_range_finder_func = partial(
+                market_data.util.cache.missing_data_finder.check_missing_target_data,
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,
+                target_params=target_params,
+                )
+
+            calculation_ranges = market_data.util.cache.time.chop_missing_time_range(
+                missing_range_finder_func=missing_range_finder_func,
                 time_range=time_range,
-                params=params,
-                calculation_batch_days=args.calculation_batch_days,
                 overwrite_cache=args.overwrite_cache,
+                calculation_batch_days=args.calculation_batch_days
             )
+
+            # Sequential processing (original behavior)
+            for i, calc_range in enumerate(calculation_ranges):
+                calc_t_from, calc_t_to = calc_range
+                print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                
+                calc_time_range = TimeRange(calc_t_from, calc_t_to)
+                
+                calculate_and_cache_targets(
+                    dataset_mode=dataset_mode,
+                    export_mode=export_mode,
+                    aggregation_mode=aggregation_mode,
+                    time_range=calc_time_range,
+                    params=target_params,
+                    calculation_batch_days=args.calculation_batch_days,
+                    overwrite_cache=args.overwrite_cache,
+                )
+
             print("  Successfully cached target data")
         except Exception as e:
             print(f"  Failed to cache target data: {e}")
