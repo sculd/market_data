@@ -10,7 +10,7 @@ from typing import Callable
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.ingest.bq.common import get_full_table_id
-from market_data.machine_learning.resample.resample import resample_at_events, ResampleParams
+from market_data.machine_learning.resample.resample import ResampleParams
 from market_data.util.time import TimeRange
 
 from market_data.util.cache.time import (
@@ -183,7 +183,6 @@ def load_cached_resampled_data(
     if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
         dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     
-    # Create worker function that properly handles daily ranges
     def load(d_from, d_to):
         daily_time_range = TimeRange(d_from, d_to)
         df = _read_resampled_data_from_cache(

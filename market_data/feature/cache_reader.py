@@ -15,11 +15,14 @@ from typing import List, Tuple, Dict, Any, Optional, Union
 
 from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
-from market_data.util.cache.dataframe import read_from_cache_generic
 from market_data.util.cache.path import get_cache_base_path
 import market_data.feature.impl # needed to register features
 from market_data.feature.registry import get_feature_by_label
-from market_data.feature.util import _create_default_params, parse_feature_label_params
+from market_data.feature.util import parse_feature_label_params
+from market_data.util.cache.dataframe import (
+    read_from_cache_generic,
+    read_multithreaded,
+)
 
 # Global paths configuration - use configurable base path
 FEATURE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
@@ -33,7 +36,8 @@ def read_multi_feature_cache(
         columns: typing.List[str] = None,
         dataset_mode: DATASET_MODE = None,
         export_mode: EXPORT_MODE = None,
-        aggregation_mode: AGGREGATION_MODE = None
+        aggregation_mode: AGGREGATION_MODE = None,
+        max_workers: int = 10,
     ) -> pd.DataFrame:
     """
     Read cached features for multiple feature types and parameters.
@@ -70,17 +74,29 @@ def read_multi_feature_cache(
         
         # Read from cache
         try:
-            df = read_from_cache_generic(
-                label=feature_label,
-                params_dir=params.get_params_dir(),
+
+
+            def load(d_from, d_to):
+                daily_time_range = TimeRange(d_from, d_to)
+                df = read_from_cache_generic(
+                    label=feature_label,
+                    params_dir=params.get_params_dir(),
+                    time_range=daily_time_range,
+                    columns=columns,
+                    dataset_mode=dataset_mode,
+                    export_mode=export_mode,
+                    aggregation_mode=aggregation_mode,
+                    cache_base_path=cache_path
+                )
+                return d_from, df
+
+
+            df = read_multithreaded(
+                read_func=load,
                 time_range=time_range,
-                columns=columns,
-                dataset_mode=dataset_mode,
-                export_mode=export_mode,
-                aggregation_mode=aggregation_mode,
-                cache_base_path=cache_path
+                max_workers=max_workers
             )
-            
+
             if df is not None and not df.empty:
                 all_dfs.append(df)
                 logger.info(f"Successfully read {len(df)} rows for feature '{feature_label}'")

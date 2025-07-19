@@ -334,7 +334,6 @@ def load_cached_ml_data(
     dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
 
-    # Create worker function that properly handles daily ranges
     def load(d_from, d_to):
         daily_time_range = TimeRange(d_from, d_to)
         return d_from, read_from_cache_generic(
