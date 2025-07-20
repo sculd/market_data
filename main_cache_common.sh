@@ -165,7 +165,7 @@ process_data() {
         echo "Running: $cmd"
         eval $cmd
     elif is_datatype_selected "raw" && [ "$CONFIG" = "stock" ]; then
-        echo "Skipping raw data $(echo "$action" | tr '[:upper:]' '[:lower:]') for stock (separate process)"
+        echo "Skipping raw data caching for stock (separate process)"
     fi
 
     if is_datatype_selected "feature"; then
