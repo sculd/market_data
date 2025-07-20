@@ -103,10 +103,6 @@ def cache_feature_cache(
             raise ValueError(f"Feature module {feature_label} does not have a calculate method")
         return calculate_fn(raw_df, feature_params)
     
-    def missing_data_checker_fn(dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE, aggregation_mode: AGGREGATION_MODE, time_range: TimeRange):
-        return check_missing_feature_data(
-            feature_label, params, dataset_mode, export_mode, aggregation_mode, time_range)
-    
     try:
         # Use core calculation and caching function
         calculate_and_cache_data(
@@ -122,7 +118,6 @@ def cache_feature_cache(
             calculate_batch_fn=calculate_batch_fn,
             cache_base_path=cache_path,
             params_dir=params_dir,
-            missing_data_checker=missing_data_checker_fn,
         )
         logger.info(f"Successfully cached {feature_label} for {time_range}")
         return True

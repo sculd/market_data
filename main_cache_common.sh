@@ -103,6 +103,7 @@ case $CONFIG in
         usage
         ;;
 esac
+parallel_param="--parallel
 
 # Get all registered resample methods from Python
 echo "Discovering resample methods and parameters..."
@@ -160,7 +161,7 @@ process_data() {
 
     if is_datatype_selected "raw" && [ "$CONFIG" != "stock" ]; then
         echo "${action_display} raw data..."
-        cmd="python main_raw_data.py --action $action --from \"$FROM_DATE\" --to \"$TO_DATE\" ${dataset_aggregation_options}"
+        cmd="python main_raw_data.py --action $action --from \"$FROM_DATE\" --to \"$TO_DATE\" ${dataset_aggregation_options} ${parallel_param}"
         echo "Running: $cmd"
         eval $cmd
     elif is_datatype_selected "raw" && [ "$CONFIG" = "stock" ]; then
@@ -169,7 +170,7 @@ process_data() {
 
     if is_datatype_selected "feature"; then
         echo "${action_display} feature data..."
-        cmd="python main_feature_data.py --action $action --feature $feature_type --from \"$FROM_DATE\" --to \"$TO_DATE\" ${dataset_aggregation_options} ${warm_param}"
+        cmd="python main_feature_data.py --action $action --feature $feature_type --from \"$FROM_DATE\" --to \"$TO_DATE\" ${dataset_aggregation_options} ${warm_param} ${parallel_param}"
         echo "Running: $cmd"
         eval $cmd
     fi
@@ -177,7 +178,7 @@ process_data() {
     if is_datatype_selected "target"; then
         if [ -n "$target_arg" ]; then
             echo "${action_display} target data..."
-            cmd="python main_target_data.py --action $action $target_arg --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+            cmd="python main_target_data.py --action $action $target_arg --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options} ${parallel_param}"
             echo "Running: $cmd"
             eval $cmd
         else
@@ -195,7 +196,7 @@ process_data() {
         echo "${action_display} resampled data..."
         while IFS=':' read -r method param; do
             echo "  Processing resample method: $method with params: $param"
-            cmd="python main_resampled_data.py --action $action --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options} --parallel"
+            cmd="python main_resampled_data.py --action $action --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options} ${parallel_param}"
             echo "Running: $cmd"
             eval $cmd
         done < "$temp_file"
@@ -205,7 +206,7 @@ process_data() {
         echo "${action_display} feature_resample data..."
         while IFS=':' read -r method param; do
             echo "  Processing feature_resample for method: $method with params: $param"
-            cmd="python main_feature_resampled_data.py --action $action --feature $feature_type --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
+            cmd="python main_feature_resampled_data.py --action $action --feature $feature_type --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options} ${parallel_param}"
             echo "Running: $cmd"
             eval $cmd
         done < "$temp_file"
@@ -215,15 +216,9 @@ process_data() {
         echo "${action_display} ML data..."
         while IFS=':' read -r method param; do
             echo "  Processing ML data for method: $method with params: $param"
-            if [ -n "$target_arg" ]; then
-                cmd="python main_ml_data.py --action $action --features $feature_type $target_arg --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
-                echo "Running: $cmd"
-                eval $cmd
-            else
-                cmd="python main_ml_data.py --action $action --features $feature_type --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options}"
-                echo "Running: $cmd"
-                eval $cmd
-            fi
+            cmd="python main_ml_data.py --action $action --features $feature_type $target_arg --resample_type_label $method --resample_params \"$param\" --from \"$FROM_DATE\" --to \"$TO_DATE\" ${cache_flags} ${dataset_aggregation_options} ${parallel_param}"
+            echo "Running: $cmd"
+            eval $cmd
         done < "$temp_file"
     fi
 }
