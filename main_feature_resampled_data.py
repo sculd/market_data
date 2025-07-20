@@ -2,6 +2,7 @@ import argparse
 import datetime
 import pandas as pd
 import os
+import multiprocessing
 from pathlib import Path
 from functools import partial
 
@@ -18,6 +19,7 @@ from market_data.machine_learning.resample import (
 from market_data.machine_learning.cache_feature_resample import calculate_and_cache_feature_resampled
 import market_data.util.cache.time
 import market_data.util.cache.missing_data_finder
+import market_data.util.cache.dataframe
 
 def main():
     parser = argparse.ArgumentParser(
@@ -72,6 +74,13 @@ def main():
                              'cumsum: "price_col,threshold" (e.g., "close,0.07") '
                              'reversal: "price_col,threshold,threshold_reversal" (e.g., "close,0.1,0.03")')
     
+    # Multiprocessing arguments
+    parser.add_argument('--parallel', action='store_true',
+                        help='Enable parallel processing using multiprocessing')
+    
+    parser.add_argument('--workers', type=int, default=None,
+                        help='Number of worker processes (default: number of CPU cores)')
+
     args = parser.parse_args()
     
     # Get enum values by name
@@ -123,7 +132,7 @@ def main():
         # Process each feature
         for feature_label in features_to_process:
             print(f"\nChecking feature resampled: {feature_label}")
-            missing_ranges = check_missing_feature_resampled_data(
+            missing_ranges = market_data.util.cache.missing_data_finder.check_missing_feature_resampled_data(
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,
@@ -192,29 +201,63 @@ def main():
                 )
 
                 # Process each calculation range for this feature
-                feature_success = True
-                for i, calc_range in enumerate(calculation_ranges):
-                    calc_t_from, calc_t_to = calc_range
-                    print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                if args.parallel:
+                    # Parallel processing
+                    if args.workers is None:
+                        workers = multiprocessing.cpu_count()
+                    else:
+                        workers = args.workers
                     
-                    calc_time_range = TimeRange(calc_t_from, calc_t_to)
-                    
-                    success = calculate_and_cache_feature_resampled(
+                    print(f"  Using parallel processing with {workers} workers")
+
+                    cache_func = partial(
+                        calculate_and_cache_feature_resampled,
                         dataset_mode=dataset_mode,
                         export_mode=export_mode,
                         aggregation_mode=aggregation_mode,
-                        time_range=calc_time_range,
                         feature_label=feature_label,
                         feature_params=None,
                         resample_params=resample_params,
                         seq_params=None,
                         overwrite_cache=args.overwrite_cache,
                     )
-                    
-                    if not success:
+
+                    time_ranges = [TimeRange(t_from=t_from, t_to=t_to) for t_from, t_to in calculation_ranges]
+                    successful_batches, failed_batches = market_data.util.cache.dataframe.cache_multiprocess(
+                        cache_func=cache_func,
+                        time_ranges=time_ranges,
+                        workers=workers
+                    )
+                    feature_success = True
+                    if failed_batches > 0:
                         feature_success = False
-                        print(f"  Failed to process batch {i+1} for feature: {feature_label}")
-                        break
+                        print(f"  Failed to process feature: {feature_label} with {successful_batches} successful batches and {failed_batches} failed batches")
+            
+                else:
+                    # Sequential processing (original behavior)
+                    feature_success = True
+                    for i, calc_range in enumerate(calculation_ranges):
+                        calc_t_from, calc_t_to = calc_range
+                        print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                        
+                        calc_time_range = TimeRange(calc_t_from, calc_t_to)
+                        
+                        success = calculate_and_cache_feature_resampled(
+                            dataset_mode=dataset_mode,
+                            export_mode=export_mode,
+                            aggregation_mode=aggregation_mode,
+                            time_range=calc_time_range,
+                            feature_label=feature_label,
+                            feature_params=None,
+                            resample_params=resample_params,
+                            seq_params=None,
+                            overwrite_cache=args.overwrite_cache,
+                        )
+                        
+                        if not success:
+                            feature_success = False
+                            print(f"  Failed to process batch {i+1} for feature: {feature_label}")
+                            break
                 
                 if feature_success:
                     successful_features.append(feature_label)
@@ -238,4 +281,6 @@ def main():
                 print(f"  - {feature}")
 
 if __name__ == "__main__":
+    # Set multiprocessing start method for compatibility
+    multiprocessing.set_start_method('spawn', force=True)
     main()

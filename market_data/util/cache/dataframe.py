@@ -161,6 +161,8 @@ def cache_multiprocess(cache_func: Callable, time_ranges: List[TimeRange], worke
     print(f"    Successful batches: {successful_batches}")
     print(f"    Failed batches: {failed_batches}")
 
+    return successful_batches, failed_batches
+
 
 def read_from_cache_generic(label: str, params_dir: str = None, 
                            time_range: TimeRange = None,
