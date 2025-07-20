@@ -160,7 +160,7 @@ def cache_multiprocess(cache_func: Callable, time_ranges: List[TimeRange], worke
     print(f"\n  Parallel processing summary:")
     print(f"    Successful batches: {successful_batches}")
     print(f"    Failed batches: {failed_batches}")
-
+    
     return successful_batches, failed_batches
 
 
