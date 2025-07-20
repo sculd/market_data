@@ -2,6 +2,7 @@ import argparse
 import datetime
 import pandas as pd
 import os
+import multiprocessing
 from pathlib import Path
 from functools import partial
 
@@ -15,6 +16,7 @@ from market_data.feature.cache_writer import cache_feature_cache
 from market_data.feature.util import parse_feature_label_param
 import market_data.util.cache.time
 import market_data.util.cache.missing_data_finder
+import market_data.util.cache.dataframe
 
 import market_data.feature.impl  # Import to ensure all features are registered
 
@@ -62,6 +64,13 @@ def main():
     
     parser.add_argument('--overwrite_cache', action='store_true',
                         help='Overwrite existing cache files')
+    
+    # Multiprocessing arguments
+    parser.add_argument('--parallel', action='store_true',
+                        help='Enable parallel processing using multiprocessing')
+    
+    parser.add_argument('--workers', type=int, default=None,
+                        help='Number of worker processes (default: number of CPU cores)')
     
     args = parser.parse_args()
     
@@ -162,7 +171,6 @@ def main():
                     aggregation_mode=aggregation_mode,
                     feature_label=feature_label,
                     feature_params=None,
-                    export_mode=export_mode,
                     )
 
                 calculation_ranges = market_data.util.cache.time.chop_missing_time_range(
@@ -173,27 +181,60 @@ def main():
                 )
                 
                 # Process each calculation range for this feature
-                feature_success = True
-                for i, calc_range in enumerate(calculation_ranges):
-                    calc_t_from, calc_t_to = calc_range
-                    print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                if args.parallel:
+                    # Parallel processing
+                    if args.workers is None:
+                        workers = multiprocessing.cpu_count()
+                    else:
+                        workers = args.workers
                     
-                    calc_time_range = TimeRange(calc_t_from, calc_t_to)
-                    
-                    success = cache_feature_cache(
+                    print(f"  Using parallel processing with {workers} workers")
+
+                    cache_func = partial(
+                        cache_feature_cache,
                         feature_label_param=feature_label,
                         dataset_mode=dataset_mode,
                         export_mode=export_mode,
                         aggregation_mode=aggregation_mode,
-                        time_range=calc_time_range,
                         calculation_batch_days=1,  # Process each range as single batch
                         warm_up_days=args.warmup_days,
-                        overwrite_cache=args.overwrite_cache
+                        overwrite_cache=args.overwrite_cache,
                     )
-                    
-                    if not success:
+
+                    time_ranges = [TimeRange(t_from=t_from, t_to=t_to) for t_from, t_to in calculation_ranges]
+                    successful_batches, failed_batches = market_data.util.cache.dataframe.cache_multiprocess(
+                        cache_func=cache_func,
+                        time_ranges=time_ranges,
+                        workers=workers
+                    )
+                    feature_success = True
+                    if failed_batches > 0:
                         feature_success = False
-                        print(f"  Failed to process batch {i+1} for feature: {feature_label}")
+                        print(f"  Failed to process feature: {feature_label} with {successful_batches} successful batches and {failed_batches} failed batches")
+
+                else:
+                    # Sequential processing (original behavior)
+                    feature_success = True
+                    for i, calc_range in enumerate(calculation_ranges):
+                        calc_t_from, calc_t_to = calc_range
+                        print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                        
+                        calc_time_range = TimeRange(calc_t_from, calc_t_to)
+                        
+                        success = cache_feature_cache(
+                            feature_label_param=feature_label,
+                            dataset_mode=dataset_mode,
+                            export_mode=export_mode,
+                            aggregation_mode=aggregation_mode,
+                            time_range=calc_time_range,
+                            calculation_batch_days=1,  # Process each range as single batch
+                            warm_up_days=args.warmup_days,
+                            overwrite_cache=args.overwrite_cache
+                        )
+                        
+                        if not success:
+                            feature_success = False
+                            print(f"  Failed to process batch {i+1} for feature: {feature_label}")
                 
                 if feature_success:
                     successful_features.append(feature_label)
@@ -217,4 +258,6 @@ def main():
                 print(f"  - {feature}")
 
 if __name__ == "__main__":
+    # Set multiprocessing start method for compatibility
+    multiprocessing.set_start_method('spawn', force=True)
     main()
