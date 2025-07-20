@@ -201,6 +201,4 @@ def main():
             print(f"  Failed to cache target data: {e}")
 
 if __name__ == "__main__":
-    # Set multiprocessing start method for compatibility
-    multiprocessing.set_start_method('spawn', force=True)
     main()

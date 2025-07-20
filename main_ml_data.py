@@ -315,8 +315,6 @@ def main():
             print(f"\nError caching ML data: {e}")
 
 if __name__ == "__main__":
-    # Set multiprocessing start method for compatibility
-    multiprocessing.set_start_method('spawn', force=True)
     main()
 
 

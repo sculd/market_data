@@ -281,6 +281,4 @@ def main():
                 print(f"  - {feature}")
 
 if __name__ == "__main__":
-    # Set multiprocessing start method for compatibility
-    multiprocessing.set_start_method('spawn', force=True)
     main()

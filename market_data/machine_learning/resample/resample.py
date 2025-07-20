@@ -53,7 +53,7 @@ class ResampleParams:
             parts = param_str.split(',')
             if len(parts) != 2:
                 raise ValueError("Format should be 'price_col,threshold'")
-            
+                
             price_col = parts[0].strip()
             threshold = float(parts[1].strip())
             
