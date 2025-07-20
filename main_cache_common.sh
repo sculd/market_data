@@ -103,7 +103,7 @@ case $CONFIG in
         usage
         ;;
 esac
-parallel_param="--parallel
+parallel_param="--parallel"
 
 # Get all registered resample methods from Python
 echo "Discovering resample methods and parameters..."
@@ -165,7 +165,7 @@ process_data() {
         echo "Running: $cmd"
         eval $cmd
     elif is_datatype_selected "raw" && [ "$CONFIG" = "stock" ]; then
-        echo "Skipping raw data caching for stock (separate process)"
+        echo "Skipping raw data caching for stock - separate process"
     fi
 
     if is_datatype_selected "feature"; then
