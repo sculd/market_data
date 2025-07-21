@@ -71,6 +71,9 @@ main() {
     # Change to script directory
     cd "$SCRIPT_DIR"
     
+    # Log environment info for debugging
+    log_message "Environment info: PPID=$PPID, XPC_SERVICE_NAME=$XPC_SERVICE_NAME, LAUNCHD_SOCKET=$LAUNCHD_SOCKET"
+    
     # Source shell configuration to get environment variables
     if [[ -f "$HOME/.zshrc" ]]; then
         source "$HOME/.zshrc"

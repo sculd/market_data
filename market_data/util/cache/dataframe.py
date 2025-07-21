@@ -140,9 +140,49 @@ def cache_multiprocess(cache_func: Callable, time_ranges: List[TimeRange], worke
         cache_func=cache_func,
     )
 
-    # Process batches in parallel
-    with multiprocessing.Pool(processes=workers) as pool:
+    # Detect if running under launchd (common indicators)
+    is_launchd = (
+        os.getenv('XPC_SERVICE_NAME') is not None or  # Modern launchd
+        os.getenv('LAUNCHD_SOCKET') is not None or    # Legacy launchd
+        os.getppid() == 1 or                          # Parent is init/launchd
+        'launchd' in os.getenv('TERM', '').lower()    # Terminal hint
+    )
+    
+    if is_launchd:
+        print(f"  🔧 Detected launchd environment - using spawn method for robust cleanup")
+    
+    # launchd's restricted environment doesn't properly handle the Pool cleanup, causing semaphore leaks.
+    pool = None
+    try:
+        # Force spawn method for launchd environments to avoid fork issues
+        # Inherits launchd's restricted environment: Signal handlers, process groups, resource limits
+        # Shares file descriptors: Can inherit launchd's special file descriptors and sockets
+        # Memory space contamination: Copies parent's memory state including launchd-specific configurations
+        # Cleanup interference: launchd's process management can interfere with semaphore cleanup
+        if is_launchd:
+            ctx = multiprocessing.get_context('spawn')
+            pool = ctx.Pool(processes=workers)
+        else:
+            # Use default context (fork on Unix, spawn on Windows) 
+            pool = multiprocessing.Pool(processes=workers)
+            
         results = pool.map(worker_func, time_ranges)
+        
+    finally:
+        # Explicit cleanup for launchd environments
+        if pool is not None:
+            pool.close()  # No more tasks
+            
+            # Wait for workers to finish
+            if is_launchd:
+                # More aggressive cleanup for launchd environments
+                try:
+                    pool.join()           # Wait for workers to finish
+                    pool.terminate()      # Ensure all processes are terminated
+                except Exception:
+                    pool.terminate()      # Force terminate if anything goes wrong
+            else:
+                pool.join()  # Standard join for direct execution
     
     # Collect results and report progress
     successful_batches = 0
