@@ -103,7 +103,14 @@ case $CONFIG in
         usage
         ;;
 esac
-parallel_param="--parallel"
+
+# Detect launchd environment and disable parallel processing to avoid resource limits
+if [[ -n "$XPC_SERVICE_NAME" || -n "$LAUNCHD_SOCKET" || "$PPID" == "1" ]]; then
+    echo "🔧 Detected launchd environment - disabling parallel processing to avoid resource limits"
+    parallel_param=""
+else
+    parallel_param="--parallel"
+fi
 
 # Get all registered resample methods from Python
 echo "Discovering resample methods and parameters..."
