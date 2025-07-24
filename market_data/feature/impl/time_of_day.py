@@ -35,7 +35,7 @@ class TimeOfDayParams:
         from market_data.util.cache.path import params_to_dir_name
         
         params_dict = {
-            'tz': self.timezone
+            'tz': self.timezone.replace('/', '_')
         }
         return params_to_dir_name(params_dict)
         
