@@ -32,8 +32,12 @@ def main():
                         help='Action to perform: list features, check missing data, or cache feature data')
     
     # Feature to process
-    parser.add_argument('--feature', type=str, default=None,
-                        help='Specific feature label to process (required for check and cache actions). Use "all" to process all available features. Use "forex" or "crypto" or "stock" to process class specific features.')
+    parser.add_argument('--feature', type=str, default='all',
+                        help='Specific feature label to process (required for check and cache actions). '
+                        'Use "all" to process all available features. '
+                        'Use "forex" or "crypto" or "stock" to process class specific features. '
+                        'Or use a specific feature label such as "bollinger".'
+                        )
     
     # Arguments with defaults
     parser.add_argument('--dataset_mode', type=str, default='OKX', 

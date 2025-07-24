@@ -17,6 +17,7 @@ from market_data.feature.impl import volume
 from market_data.feature.impl import market_regime
 from market_data.feature.impl import btc_features
 from market_data.feature.impl import garch
+from market_data.feature.impl import time_of_day
 
 __all__ = [
     'returns',
@@ -29,5 +30,6 @@ __all__ = [
     'volume',
     'market_regime',
     'btc_features',
-    'garch'
+    'garch',
+    'time_of_day'
 ] 
