@@ -67,9 +67,11 @@ def params_to_dir_name(params: dict) -> str:
             value_hash = hashlib.md5(value_str.encode()).hexdigest()[:8]
             parts.append(f"{key}-{value_hash}")
             
-        # For simple values, use them directly
+        # For simple values, sanitize them for filesystem safety
         else:
-            parts.append(f"{key}-{value}")
+            safe_key = _sanitize_for_path(key)
+            safe_value = _sanitize_for_path(str(value))
+            parts.append(f"{safe_key}-{safe_value}")
     
     if not parts:
         return "default"
