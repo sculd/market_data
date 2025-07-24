@@ -141,8 +141,9 @@ def cache_multiprocess(cache_func: Callable, time_ranges: List[TimeRange], worke
     )
 
     # Detect if running under launchd (common indicators)
+    xpc_service = os.getenv('XPC_SERVICE_NAME', '')
     is_launchd = (
-        os.getenv('XPC_SERVICE_NAME') is not None or  # Modern launchd
+        (xpc_service and xpc_service != '0' and 'com.' in xpc_service) or  # Modern launchd with actual service name
         os.getenv('LAUNCHD_SOCKET') is not None or    # Legacy launchd
         os.getppid() == 1 or                          # Parent is init/launchd
         'launchd' in os.getenv('TERM', '').lower()    # Terminal hint

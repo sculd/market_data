@@ -105,7 +105,7 @@ case $CONFIG in
 esac
 
 # Detect launchd environment and disable parallel processing to avoid resource limits
-if [[ -n "$XPC_SERVICE_NAME" || -n "$LAUNCHD_SOCKET" || "$PPID" == "1" ]]; then
+if [[ -n "$XPC_SERVICE_NAME" && "$XPC_SERVICE_NAME" != "0" && "$XPC_SERVICE_NAME" == *"com."* ]] || [[ -n "$LAUNCHD_SOCKET" ]] || [[ "$PPID" == "1" ]]; then
     echo "🔧 Detected launchd environment - disabling parallel processing to avoid resource limits"
     parallel_param=""
 else
