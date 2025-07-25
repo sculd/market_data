@@ -24,24 +24,29 @@ from market_data.util.cache.time import (
 )
 from market_data.util.cache.dataframe import (
     cache_data_by_day,
-    read_from_cache_generic,
+    read_from_local_cache,
     read_multithreaded,
 )
+from market_data.util.cache.path import get_cache_base_path
 
 logger = logging.getLogger(__name__)
 
 
-def get_cache_base_path():
+def get_local_cache_base_path():
     '''
     For ML data, use separate cache base.
     As the access to external disk via network is slow.
     '''
-    base_path = os.environ.get('ML_DATA_CACHE_BASE', '~/algo_cache')
+    base_path = os.environ.get('ML_DATA_LOCAL_CACHE_BASE', '~/algo_cache')
     return os.path.expanduser(base_path) 
 
 # Global paths configuration - use configurable base path
 CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'ml_data')
 Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
+
+# local cache for ml data
+LOCAL_CACHE_BASE_PATH = os.path.join(get_local_cache_base_path(), 'ml_data')
+Path(LOCAL_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def _write_description_file(
     params_dir: str,
@@ -336,7 +341,7 @@ def load_cached_ml_data(
 
     def load(d_from, d_to):
         daily_time_range = TimeRange(d_from, d_to)
-        return d_from, read_from_cache_generic(
+        return d_from, read_from_local_cache(
             label="ml_data",
             params_dir=params_dir,
             time_range=daily_time_range,
@@ -345,7 +350,8 @@ def load_cached_ml_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,
-            cache_base_path=CACHE_BASE_PATH
+            local_cache_base_path=LOCAL_CACHE_BASE_PATH,
+            global_cache_base_path=CACHE_BASE_PATH,
         )
 
     ml_data_df = read_multithreaded(

@@ -8,6 +8,7 @@ with support for daily caching and parameter-based directory structures.
 import pandas as pd
 import logging
 import os
+import shutil
 import datetime
 from pathlib import Path
 from typing import List, Optional, Callable
@@ -108,13 +109,11 @@ def fetch_from_daily_cache(label: str, t_from: datetime.datetime, t_to: datetime
                           export_mode: EXPORT_MODE = None, aggregation_mode: AGGREGATION_MODE = None,
                           cache_base_path: str = None) -> Optional[pd.DataFrame]:
     """Read a DataFrame that covers one-day range exactly"""
+    assert cache_base_path is not None, "cache_base_path must be provided"
+
     if not is_exact_cache_interval(t_from, t_to):
         logger.info(f"{t_from}-{t_to} does not match {CACHE_INTERVAL=} thus will not be read from cache.")
         return None
-
-    if cache_base_path is None:
-        cache_base_path = get_cache_base_path()
-        Path(cache_base_path).mkdir(parents=True, exist_ok=True)
 
     filename = to_filename(cache_base_path, label, t_from, t_to, params_dir, dataset_id, dataset_mode, export_mode, aggregation_mode)
     if os.path.exists(filename):
@@ -226,6 +225,64 @@ def read_from_cache_generic(label: str, params_dir: str = None,
             dataset_id, dataset_mode, export_mode, aggregation_mode,
             cache_base_path
         )
+        if df is not None:
+            dfs.append(df)
+    
+    # Concatenate all pieces
+    if dfs:
+        return pd.concat(dfs)
+    else:
+        return pd.DataFrame()
+
+
+def read_from_local_cache(label: str, params_dir: str = None, 
+                           time_range: TimeRange = None,
+                           columns: List[str] = None,
+                           dataset_id: str = None, dataset_mode: DATASET_MODE = None, 
+                           export_mode: EXPORT_MODE = None, aggregation_mode: AGGREGATION_MODE = None,
+                           local_cache_base_path: str = None,
+                           global_cache_base_path: str = None,
+                           ) -> pd.DataFrame:
+    """Read cached data from local cache
+
+    If data is not found in the local cache, it will be read from the global cache.
+    In such case the read data will be cached to the local cache.
+    """
+    assert local_cache_base_path is not None, "local_cache_base_path must be provided"
+    assert global_cache_base_path is not None, "global_cache_base_path must be provided"
+    t_from, t_to = time_range.to_datetime() if time_range else (None, None)
+    
+    # Split the range into daily pieces
+    daily_ranges = split_t_range(t_from, t_to, interval=CACHE_INTERVAL)
+    
+    # Read each daily piece
+    dfs = []
+    for d_from, d_to in daily_ranges:
+        df = fetch_from_daily_cache(
+            label, d_from, d_to, params_dir, columns,
+            dataset_id, dataset_mode, export_mode, aggregation_mode,
+            local_cache_base_path
+        )
+        if df is None:
+            df = fetch_from_daily_cache(
+                label, d_from, d_to, params_dir, columns,
+                dataset_id, dataset_mode, export_mode, aggregation_mode,
+                global_cache_base_path
+            )
+            if df is not None:
+                filename_global_cache = to_filename(global_cache_base_path, label, d_from, d_to, params_dir, dataset_id, dataset_mode, export_mode, aggregation_mode)
+                filename_local_cache = to_filename(local_cache_base_path, label, d_from, d_to, params_dir, dataset_id, dataset_mode, export_mode, aggregation_mode)
+                
+                # Copy to local cache with basic error handling
+                try:
+                    # Ensure local cache directory exists
+                    os.makedirs(os.path.dirname(filename_local_cache), exist_ok=True)
+                    shutil.copy(filename_global_cache, filename_local_cache)
+                    logger.info(f"Promoted to local cache: {os.path.basename(filename_local_cache)}")
+                except (OSError, IOError) as e:
+                    logger.warning(f"Failed to copy to local cache: {e}")
+                    # Continue without local caching
+
         if df is not None:
             dfs.append(df)
     
