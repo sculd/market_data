@@ -169,8 +169,9 @@ process_data() {
     if is_datatype_selected "raw" && [ "$CONFIG" != "stock" ]; then
         echo "${action_display} raw data..."
         cmd="python main_raw_data.py --action $action --from \"$FROM_DATE\" --to \"$TO_DATE\" ${dataset_aggregation_options}"
-        echo "Running: $cmd"
-        eval $cmd
+        echo "Now the data is cached directly from the stream, so we don't need to run this script"
+        echo "$(Not) Running: $cmd"
+        #eval $cmd
     elif is_datatype_selected "raw" && [ "$CONFIG" = "stock" ]; then
         echo "Skipping raw data caching for stock (separate process)"
     fi
