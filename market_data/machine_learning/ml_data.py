@@ -13,8 +13,7 @@ from market_data.target.cache_target import load_cached_targets
 from market_data.machine_learning.resample.cache_resample import load_cached_resampled_data
 from market_data.machine_learning.resample.resample import ResampleParams
 from market_data.machine_learning.cache_feature_resample import load_cached_feature_resampled
-from market_data.feature.cache_reader import read_multi_feature_cache
-from market_data.feature.util import _create_default_params, parse_feature_label_param, parse_feature_label_params
+from market_data.feature.util import parse_feature_label_param, parse_feature_label_params
 from market_data.feature.impl.common import SequentialFeatureParam
 
 logger = logging.getLogger(__name__)
@@ -83,10 +82,10 @@ def prepare_ml_data(
     
     # Remove OHLCV columns from resampled data as they'll be added with features
     resampled_df_cleaned = resampled_df.reset_index().set_index(["timestamp", "symbol"])
-    resampled_df_cleaned = resampled_df_cleaned[[]]
+    resampled_df_cleaned = resampled_df_cleaned[["breakout_side"]]
     
     # Initialize the combined feature and resampled DataFrame
-    combined_df = resampled_df_cleaned.reset_index().set_index(["timestamp", "symbol"])
+    combined_df = resampled_df_cleaned.copy()
     
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Loading {data_type} feature_resampled data for {len(feature_label_params)} features")
