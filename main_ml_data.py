@@ -58,7 +58,7 @@ def main():
                         help='End date in YYYY-MM-DD format')
     
     parser.add_argument('--features', type=str, default='all',
-                        help='Features to process: "all", "forex", "crypto", "stock", or comma-separated list')
+                        help='Features to process: "all", "forex", "crypto", "stock", "none", or comma-separated list')
     
     parser.add_argument('--sequential', action='store_true',
                         help='Use sequential features instead of regular features')
@@ -130,6 +130,9 @@ def main():
     elif args.features == "stock":
         features_to_process = list_registered_features(security_type="stock")
         print(f"\nProcessing all {len(features_to_process)} registered stock features")
+    elif args.features == "none":
+        features_to_process = []
+        print(f"\nProcessing none {len(features_to_process)} registered features")
     else:
         features_to_process = [f.strip() for f in args.features.split(",")]
     
