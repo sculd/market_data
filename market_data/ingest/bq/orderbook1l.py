@@ -2,10 +2,10 @@ import pandas as pd
 import datetime
 import logging
 
-from ...util import time as util_time
+import market_data.util.time as util_time
 
-from . import common
-from .common import AGGREGATION_MODE
+import market_data.ingest.bq.common as common
+from market_data.ingest.common import AGGREGATION_MODE
 
 _query_template_take_latest = """
     WITH LATEST AS (

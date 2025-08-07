@@ -1,12 +1,12 @@
 import pandas as pd
 import datetime
 
-from ...util import time as util_time
+import market_data.util.time as util_time
 
-from . import common
-from . import candle
-from . import orderbook1l
-from .common import AGGREGATION_MODE
+import market_data.ingest.bq.common as common
+import market_data.ingest.bq.candle as candle
+import market_data.ingest.bq.orderbook1l as orderbook1l
+from market_data.ingest.common import AGGREGATION_MODE
 
 
 def fetch(
