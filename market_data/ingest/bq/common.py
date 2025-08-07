@@ -4,6 +4,7 @@ import os, datetime , logging
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 import pandas as pd
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE
 
 _client = None
 
@@ -40,9 +41,6 @@ _WRITE_QUEUE_SIZE_THRESHOLD_PER_MINUTE_NO_OVERWRITE = 100
 _WRITE_QUEUE_SIZE_THRESHOLD_LIQUIDITY_IMBALANCE = 100
 _LOCK_TIMEOUT_SECONDS = 10
 
-from enum import Enum
-
-
 def get_big_query_client():
   global _client
   if _client is None:
@@ -77,31 +75,6 @@ def run_query(query_str, timestamp_columnname) -> pd.DataFrame:
 
     return df
 
-
-class EXPORT_MODE(Enum):
-    BY_MINUTE = 1
-    RAW = 2
-    # by update means the bar will be constructed each time
-    # the exchange sends out an update.
-    # by update is not yet implemented.
-    BY_UPDATE = 3
-    ORDERBOOK_LEVEL10 = 13
-    ORDERBOOK = 14
-    ORDERBOOK_LIQUIDITY_IMBALANCE = 15
-    ORDERBOOK_LEVEL1 = 16
-
-class DATASET_MODE(Enum):
-    EQUITY = 1
-    FOREX = 2
-    BINANCE = 3
-    GEMINI = 4
-    OKCOIN = 5
-    KRAKEN = 6
-    OKX = 7
-    CEX = 8
-    BITHUMB = 9
-    FOREX_IBKR = 10
-    STOCK_HIGH_VOLATILITY = 11
 
 def get_full_table_id(dataset_mode, export_mode):
     ds_id = _DATASET_ID_EQUITY
@@ -144,6 +117,3 @@ def get_full_table_id(dataset_mode, export_mode):
     return '{p}.{d}.{t}'.format(p=_PROJECT_ID, d=ds_id, t=t_id)
 
 
-class AGGREGATION_MODE(str, Enum):
-    TAKE_LASTEST = "take_tatest"
-    COLLECT_ALL_UPDATES = "collect_all_updates"

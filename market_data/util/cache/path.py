@@ -13,7 +13,8 @@ from pathlib import Path
 import logging
 import datetime
 
-from market_data.ingest.bq.common import get_full_table_id, DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.bq.common import get_full_table_id
 
 logger = logging.getLogger(__name__)
 

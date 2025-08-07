@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 
 from market_data.target.target import TargetParamsBatch
-from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.target.cache_target import load_cached_targets
 from market_data.machine_learning.resample.cache_resample import load_cached_resampled_data

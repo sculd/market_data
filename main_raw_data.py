@@ -7,7 +7,8 @@ from pathlib import Path
 import setup_env # needed for env variables
 
 from market_data.ingest.bq.cache import query_and_cache, to_filename, _cache_base_path
-from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.bq.common import get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
 import market_data.util.cache.missing_data_finder

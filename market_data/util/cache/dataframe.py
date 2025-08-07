@@ -25,7 +25,7 @@ from market_data.util.cache.time import (
     anchor_to_begin_of_day
 )
 from market_data.util.time import TimeRange
-from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 
 logger = logging.getLogger(__name__)
 

@@ -13,7 +13,7 @@ import os
 from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional, Union
 
-from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.util.cache.path import get_cache_base_path
 import market_data.feature.impl # needed to register features

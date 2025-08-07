@@ -15,7 +15,8 @@ import numpy as np
 import math
 from datetime import timedelta
 
-from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, get_full_table_id
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.bq.common import get_full_table_id
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import (

@@ -25,7 +25,8 @@ if not _PROJECT_ID:
 
 from market_data.feature.impl.common import SequentialFeatureParam
 
-import market_data.ingest.bq.common
+import market_data.ingest.bq.common as bq_common
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 import market_data.ingest.bq.cache
 import market_data.machine_learning.resample.resample
 
@@ -34,7 +35,7 @@ import market_data.util.time
 
 '''
 df = market_data.ingest.bq.cache.query_and_cache(
-    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
     date_str_from='2025-03-01', date_str_to='2025-04-01')
 
 #df = ingest.bq.cache.query_and_cache(ingest.bq.util.DATASET_MODE.BITHUMB, ingest.bq.util.EXPORT_MODE.ORDERBOOK_LEVEL1, date_str_from='2024-03-21', date_str_to='2024-03-22')
@@ -66,9 +67,9 @@ import market_data.feature.cache_reader
 featuers_df = market_data.feature.cache_reader.read_multi_feature_cache(
     feature_labels_params=["returns", "ema"],
     time_range=time_range,
-    dataset_mode=market_data.ingest.bq.common.DATASET_MODE.OKX,
-    export_mode=market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE,
-    aggregation_mode=market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    dataset_mode=DATASET_MODE.OKX,
+    export_mode=EXPORT_MODE.BY_MINUTE,
+    aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
 )
 print(featuers_df)
 #'''
@@ -96,9 +97,9 @@ time_range = market_data.util.time.TimeRange(
 featuers_df = market_data.feature.cache_reader.read_multi_feature_cache(
     feature_labels_params=['returns'],
     time_range=time_range,
-    dataset_mode=market_data.ingest.bq.common.DATASET_MODE.OKX, 
-    export_mode=market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE,
-    aggregation_mode=market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    dataset_mode=DATASET_MODE.OKX, 
+    export_mode=EXPORT_MODE.BY_MINUTE,
+    aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
 )
 print(featuers_df.shape)
 #'''
@@ -126,7 +127,7 @@ for label in sorted(registry.keys()):
         continue
     market_data.feature.cache_writer.cache_feature_cache(
         label,
-        market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+        DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
         time_range=time_range,
     )
 #'''
@@ -141,7 +142,7 @@ for label in sorted(registry.keys()):
         continue
     market_data.feature.cache_writer.cache_seq_feature_cache(
         label,
-        market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+        DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
         time_range=time_range,
     )
 #'''
@@ -156,7 +157,7 @@ for label in sorted(registry.keys()):
         continue
     market_data.feature.cache_writer.cache_feature_cache(
         label,
-        market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+        DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
         time_range=time_range,
     )
 #'''
@@ -167,7 +168,7 @@ time_range = market_data.util.time.TimeRange(
     )
 import market_data.machine_learning.ml_data
 ml_data_df = market_data.machine_learning.ml_data.prepare_sequential_ml_data(
-    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
 )
 print(ml_data_df)
@@ -179,7 +180,7 @@ time_range = market_data.util.time.TimeRange(
     )
 import market_data.machine_learning.cache_ml_data
 market_data.machine_learning.cache_ml_data.calculate_and_cache_sequential_ml_data(
-    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
 )
 #'''
@@ -188,7 +189,7 @@ market_data.machine_learning.cache_ml_data.calculate_and_cache_sequential_ml_dat
 '''
 import market_data.feature.cache_feature
 market_data.feature.cache_feature.calculate_and_cache_features(
-      market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+      DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
       time_range=time_range,
     )
 #'''
@@ -200,7 +201,7 @@ time_range = market_data.util.time.TimeRange(
 
 import market_data.target.cache_target
 market_data.target.cache_target.calculate_and_cache_targets(
-      market_data.ingest.bq.common.DATASET_MODE.FOREX_IBKR, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.COLLECT_ALL_UPDATES,
+      DATASET_MODE.FOREX_IBKR, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.COLLECT_ALL_UPDATES,
       time_range=time_range,
       params = market_data.target.cache_target.TargetParamsBatch(
         target_params_list=[market_data.target.target.TargetParams(forward_period=period, tp_value=tp, sl_value=tp) 
@@ -217,7 +218,7 @@ time_range = market_data.util.time.TimeRange(
 
 import market_data.machine_learning.cache_resample
 market_data.machine_learning.cache_resample.calculate_and_cache_resampled(
-    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
     params=market_data.machine_learning.resample.ResampleParams(price_col = 'close', threshold = 0.07,),
 )
@@ -236,9 +237,9 @@ import market_data.machine_learning.ml_data
 from market_data.target.target import TargetParamsBatch
 
 ml_data_df = market_data.machine_learning.ml_data.prepare_ml_data(
-    dataset_mode=market_data.ingest.bq.common.DATASET_MODE.OKX,
-    export_mode=market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE,
-    aggregation_mode=market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    dataset_mode=DATASET_MODE.OKX,
+    export_mode=EXPORT_MODE.BY_MINUTE,
+    aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
     feature_label_params = feature_labels,
     resample_params = market_data.machine_learning.resample.ResampleParams(
@@ -257,9 +258,9 @@ time_range = market_data.util.time.TimeRange(
 import market_data.util.cache.missing_data_finder
 
 missing = market_data.util.cache.missing_data_finder.check_missing_feature_resampled_data(
-    dataset_mode=market_data.ingest.bq.common.DATASET_MODE.OKX,
-    export_mode=market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE,
-    aggregation_mode=market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    dataset_mode=DATASET_MODE.OKX,
+    export_mode=EXPORT_MODE.BY_MINUTE,
+    aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
     feature_label='returns',
     feature_params=None,
@@ -278,7 +279,7 @@ time_range = market_data.util.time.TimeRange(
 
 import market_data.machine_learning.cache_ml_data
 market_data.machine_learning.cache_ml_data.calculate_and_cache_ml_data(
-    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
     resample_params=market_data.machine_learning.resample.ResampleParams(price_col = 'close', threshold = 0.07,),
 )
@@ -291,7 +292,7 @@ time_range = market_data.util.time.TimeRange(
 
 import market_data.machine_learning.cache_ml_data
 market_data.machine_learning.cache_ml_data.calculate_and_cache_ml_data(
-    market_data.ingest.bq.common.DATASET_MODE.OKX, market_data.ingest.bq.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.bq.common.AGGREGATION_MODE.TAKE_LASTEST,
+    DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
     time_range=time_range,
     seq_params = SequentialFeatureParam(),
 )

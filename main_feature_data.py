@@ -8,7 +8,7 @@ from functools import partial
 
 import setup_env # needed for env variables
 
-from market_data.ingest.bq.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
 from market_data.feature.registry import list_registered_features

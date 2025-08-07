@@ -22,7 +22,7 @@ ENV/
 *.csv
 *.pkl
 *.json
-!credential.json
+credential.json
 
 # OS specific files
 .DS_Store
