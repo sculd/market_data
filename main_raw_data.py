@@ -6,11 +6,9 @@ from pathlib import Path
 
 import setup_env # needed for env variables
 
-from market_data.ingest.bq.cache import query_and_cache, to_filename, _cache_base_path
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
-from market_data.ingest.bq.common import get_full_table_id
 from market_data.util.time import TimeRange
-from market_data.util.cache.time import split_t_range
+import market_data.ingest.gcs.cache
 import market_data.util.cache.missing_data_finder
 import market_data.util.cache.time
 
@@ -105,16 +103,13 @@ def main():
         print(f"  Skip First Day: {args.skip_first_day}")
         
         # Query and cache data
-        result_df = query_and_cache(
+        result_df = market_data.ingest.gcs.cache.query_and_cache(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            t_from=None,
-            t_to=None,
-            date_str_from=args.date_from,
-            date_str_to=args.date_to,
+            time_range=time_range,
             overwirte_cache=args.overwrite_cache,
-            skip_first_day=args.skip_first_day
+            skip_first_day=args.skip_first_day,
+            columns=None,
         )
         
         # Print summary of results
@@ -127,4 +122,14 @@ def main():
             print("\nNo data was returned or cached.")
 
 if __name__ == "__main__":
+    """
+    result_df = market_data.ingest.gcs.cache.query_and_cache(
+        dataset_mode=DATASET_MODE.OKX,
+        export_mode=EXPORT_MODE.RAW,
+        time_range=TimeRange(date_str_from="2024-01-01", date_str_to="2024-01-02"),
+        overwirte_cache=True,
+        skip_first_day=False,
+        columns=None,
+    )
+    #"""
     main()

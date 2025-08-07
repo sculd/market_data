@@ -1,10 +1,9 @@
 import datetime
 import pandas as pd
 import os
-from pathlib import Path
 from typing import Any
 
-from market_data.ingest.bq.cache import to_filename, _cache_base_path
+from market_data.ingest.cache_common import to_local_filename, cache_base_path
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.ingest.bq.common import get_full_table_id
 from market_data.util.time import TimeRange
@@ -39,7 +38,7 @@ def check_missing_raw_data(
         d_from, d_to = d_range
         
         # Check if file exists in cache
-        filename = to_filename(_cache_base_path, "market_data", t_id, aggregation_mode, d_from, d_to)
+        filename = to_local_filename(cache_base_path, "market_data", t_id, aggregation_mode, d_from, d_to)
         if not os.path.exists(filename):
             missing_ranges.append(d_range)
     
