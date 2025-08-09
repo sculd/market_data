@@ -4,9 +4,13 @@ import logging
 import typing
 import os
 
-
+from typing import Callable, TypeVar
 import market_data.ingest.cache_common
-from market_data.util.cache.time import anchor_to_begin_of_day, is_exact_cache_interval
+import market_data.ingest.cache_read
+from market_data.util.cache.time import split_t_range, anchor_to_begin_of_day, is_exact_cache_interval
+from market_data.util.time import TimeRange
+
+logger = logging.getLogger(__name__)
 
 
 def cache_locally_daily_df(
@@ -69,3 +73,54 @@ def cache_locally_df(
         t_end = anchor_to_begin_of_day(t_begin + market_data.ingest.cache_common.cache_interval)
         cache_locally_daily_df(df_daily, folder_path, t_begin, t_end, overwrite=overwrite)
         del df_daily
+
+
+# Type variable for the params
+T = TypeVar('T')
+
+def calculate_and_cache_data(
+    raw_data_folder_path: str,
+    folder_path: str,
+    params: T,
+    time_range: TimeRange,
+    calculation_batch_days: int,
+    warm_up_days: int,
+    overwrite_cache: bool = True,
+    calculate_batch_fn: Callable[[pd.DataFrame, T], pd.DataFrame] = None,
+) -> None:
+    # Resolve time range
+    t_from, t_to = time_range.to_datetime()
+    calculation_interval = datetime.timedelta(days=calculation_batch_days if calculation_batch_days >= 1 else 1)
+    warm_up_period = datetime.timedelta(days=warm_up_days)
+    calculation_ranges = split_t_range(t_from, t_to, interval=calculation_interval, warm_up=warm_up_period)
+ 
+    for calc_range in calculation_ranges:
+        calc_t_from, calc_t_to = calc_range
+        logger.info(f"Processing calculation batch {calc_t_from} to {calc_t_to}")
+        
+        # Calculate data for this batch
+        try:
+            raw_df = market_data.ingest.cache_read.read_from_local_cache(
+                folder_path=raw_data_folder_path,
+                time_range=TimeRange(calc_t_from, calc_t_to),
+            )
+            if raw_df is None or len(raw_df) == 0:
+                logger.warning(f"No raw data available for {calc_t_from} to {calc_t_to}")
+                continue
+
+            result_df = calculate_batch_fn(raw_df, params)
+            if result_df is None or len(result_df) == 0:
+                logger.warning(f"calculation returned empty result for {calc_t_from} to {calc_t_to}")
+                continue
+                
+            cache_locally_daily_df(
+                df=result_df, 
+                folder_path=folder_path, 
+                t_from=calc_t_from + warm_up_period, 
+                t_to=calc_t_to, 
+                overwrite=overwrite_cache,
+            )
+            
+        except Exception as e:
+            logger.error(f"Error calculating for {calc_t_from} to {calc_t_to}: {e}")
+            continue

@@ -7,30 +7,23 @@ This module provides functions for calculating and caching targets.
 import pandas as pd
 import logging
 import os
-import datetime
 from pathlib import Path
-from typing import Optional, List, Union, Tuple
-import numpy as np
-from dataclasses import dataclass, field
+from dataclasses import asdict
+from typing import Optional, List
 
-from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
-from market_data.ingest.bq.common import get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.target.target import create_targets, TargetParamsBatch
-from market_data.util.cache.time import (
-    split_t_range,
-)
 from market_data.util.cache.dataframe import (
-    cache_data_by_day,
-    read_from_cache_generic,
-    cache_daily_df
+    read_multithreaded,
 )
+import market_data.ingest.cache_common
+import market_data.ingest.cache_read
+import market_data.ingest.cache_write
 from market_data.util.cache.path import (
     params_to_dir_name,
     get_cache_base_path
 )
-from market_data.util.cache.core import calculate_and_cache_data
 
 # Global paths configuration - use configurable base path
 TARGET_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
@@ -111,22 +104,20 @@ def calculate_and_cache_targets(
         logger.info(f"Using {warm_up_days} warm-up days for targets")
     
     # Get the params directory name
+    base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
     params_dir = _get_target_params_dir(params)
-    
-    # Use the generic calculate_and_cache_data function
-    calculate_and_cache_data(
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
+    raw_data_folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "market_data", base_label)
+    folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "targets", base_label, params_dir)
+
+    market_data.ingest.cache_write.calculate_and_cache_data(
+        raw_data_folder_path=raw_data_folder_path,
+        folder_path=folder_path,
         params=params,
         time_range=time_range,
         calculation_batch_days=calculation_batch_days,
         warm_up_days=warm_up_days,
         overwrite_cache=overwrite_cache,
-        label="targets",
         calculate_batch_fn=create_targets,
-        cache_base_path=TARGET_CACHE_BASE_PATH,
-        params_dir=params_dir
     )
 
 def load_cached_targets(
@@ -135,7 +126,8 @@ def load_cached_targets(
         columns: List[str] = None,
         dataset_mode: DATASET_MODE = None,
         export_mode: EXPORT_MODE = None,
-        aggregation_mode: AGGREGATION_MODE = None
+        aggregation_mode: AGGREGATION_MODE = None,
+        max_workers: int = 10,
     ) -> pd.DataFrame:
     """
     Load cached targets for a specific time range
@@ -155,8 +147,19 @@ def load_cached_targets(
     aggregation_mode : AGGREGATION_MODE, optional
         Aggregation mode for cache path. If None, uses default aggregation mode.
     """
-    return read_from_cache_generic(
-        'targets', params_dir=_get_target_params_dir(params), time_range=time_range, columns=columns,
-        dataset_mode=dataset_mode, export_mode=export_mode, aggregation_mode=aggregation_mode,
-        cache_base_path=TARGET_CACHE_BASE_PATH
-    ) 
+    def load(d_from, d_to):
+        params_dir = params_to_dir_name(asdict(params or TargetParamsBatch()))
+        base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "targets", base_label, params_dir)
+        df = market_data.ingest.cache_read.read_daily_from_local_cache(
+                folder_path,
+                d_from = d_from,
+                d_to = d_to,
+        )        
+        return d_from, df
+
+    return read_multithreaded(
+        read_func=load,
+        time_range=time_range,
+        max_workers=max_workers
+    )

@@ -20,7 +20,6 @@ import market_data.feature.impl # needed to register features
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.util import parse_feature_label_params
 from market_data.util.cache.dataframe import (
-    read_from_cache_generic,
     read_multithreaded,
 )
 
@@ -69,27 +68,19 @@ def read_multi_feature_cache(
             logger.warning(f"Feature module '{feature_label}' not found, skipping cache read.")
             continue
         
-        # Include feature label in cache path
-        cache_path = f"{FEATURE_CACHE_BASE_PATH}/features"
-        
         # Read from cache
         try:
-
-
             def load(d_from, d_to):
-                daily_time_range = TimeRange(d_from, d_to)
-                df = read_from_cache_generic(
-                    label=feature_label,
-                    params_dir=params.get_params_dir(),
-                    time_range=daily_time_range,
-                    columns=columns,
-                    dataset_mode=dataset_mode,
-                    export_mode=export_mode,
-                    aggregation_mode=aggregation_mode,
-                    cache_base_path=cache_path
-                )
+                params_dir=params.get_params_dir()
+                base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+                folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "features", feature_label, base_label, params_dir)
+                df = market_data.ingest.cache_read.read_daily_from_local_cache(
+                        folder_path,
+                        d_from = d_from,
+                        d_to = d_to,
+                        columns=columns,
+                )        
                 return d_from, df
-
 
             df = read_multithreaded(
                 read_func=load,

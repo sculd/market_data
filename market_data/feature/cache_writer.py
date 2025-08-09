@@ -16,20 +16,18 @@ import math
 from datetime import timedelta
 
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
-from market_data.ingest.bq.common import get_full_table_id
-from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import (
     split_t_range,
 )
-from market_data.util.cache.dataframe import cache_data_by_day, read_from_cache_generic
+import market_data.ingest.cache_common
+import market_data.ingest.cache_read
+import market_data.ingest.cache_write
 from market_data.util.cache.path import get_cache_base_path
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.util import parse_feature_label_param
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.sequential_feature import sequentialize_feature
-from market_data.util.cache.core import calculate_and_cache_data
-from market_data.util.cache.missing_data_finder import check_missing_feature_data
 
 # Global paths configuration - use configurable base path
 FEATURE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
@@ -89,9 +87,6 @@ def cache_feature_cache(
             warm_up_days = 1
             logger.warning(f"Params for {feature_label} does not have get_warm_up_days method, using {warm_up_days} day(s)")
     
-    # Define cache path
-    cache_path = f"{FEATURE_CACHE_BASE_PATH}/features"
-    
     # Get feature module
     feature_module = get_feature_by_label(feature_label)
     if feature_module is None:
@@ -105,20 +100,19 @@ def cache_feature_cache(
         return calculate_fn(raw_df, feature_params)
     
     try:
-        # Use core calculation and caching function
-        calculate_and_cache_data(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
+        base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+        raw_data_folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "market_data", base_label)
+        folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "features", feature_label, base_label, params_dir)
+
+        market_data.ingest.cache_write.calculate_and_cache_data(
+            raw_data_folder_path=raw_data_folder_path,
+            folder_path=folder_path,
             params=params,
             time_range=time_range,
             calculation_batch_days=calculation_batch_days,
             warm_up_days=warm_up_days,
             overwrite_cache=overwrite_cache,
-            label=feature_label,
             calculate_batch_fn=calculate_batch_fn,
-            cache_base_path=cache_path,
-            params_dir=params_dir,
         )
         logger.info(f"Successfully cached {feature_label} for {time_range}")
         return True
@@ -189,17 +183,12 @@ def cache_seq_feature_cache(
             
             # Try to read non-sequential feature cache
             try:
-                # Include feature label in cache path
-                cache_path = f"{FEATURE_CACHE_BASE_PATH}/features"
-                
-                df = read_from_cache_generic(
-                    dataset_mode=dataset_mode,
-                    export_mode=export_mode,
-                    aggregation_mode=aggregation_mode,
-                    time_range=extended_range,
-                    label=feature_label,
-                    cache_base_path=cache_path,
-                    params_dir=params_dir
+                params_dir=params.get_params_dir()
+                base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+                folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "features", feature_label, base_label, params_dir)
+                df = market_data.ingest.cache_read.read_from_local_cache(
+                        folder_path,
+                        time_range=extended_range,
                 )
                 
                 if df is None or df.empty:
@@ -214,16 +203,10 @@ def cache_seq_feature_cache(
                 
                 # Cache sequential features
                 seq_params_dir = f"sequence_window-{seq_params.sequence_window}/{params_dir}"
-                cache_data_by_day(
+                seq_folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "features", feature_label, base_label, seq_params_dir)
+                market_data.ingest.cache_write.cache_locally_df(
                     df=seq_df,
-                    dataset_mode=dataset_mode,
-                    export_mode=export_mode,
-                    aggregation_mode=aggregation_mode,
-                    t_from=t_range[0],
-                    t_to=t_range[1],
-                    label=feature_label,
-                    cache_base_path=cache_path,
-                    params_dir=seq_params_dir,
+                    folder_path=seq_folder_path,
                     overwrite=overwrite_cache,
                     warm_up_period_days=warm_up_days,
                 )

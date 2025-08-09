@@ -19,10 +19,11 @@ from market_data.util.cache.time import (
     anchor_to_begin_of_day
 )
 from market_data.util.cache.dataframe import (
-    cache_data_by_day,
-    read_from_cache_generic,
     read_multithreaded,
 )
+import market_data.ingest.cache_common
+import market_data.ingest.cache_read
+import market_data.ingest.cache_write
 from market_data.util.cache.path import (
     params_to_dir_name,
     get_cache_base_path,
@@ -137,19 +138,15 @@ def _calculate_and_cache_daily_feature_resampled(
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Caching {data_type} feature resampled data for {date}")
     
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
+    base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
     feature_label_params = parse_feature_label_param((feature_label, feature_params))
     params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_params, seq_params)
+    folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "feature_resampled", feature_label, base_label, params_dir)
     
-    cache_data_by_day(
+    market_data.ingest.cache_write.cache_locally_df(
         df=feature_resampled_df,
-        label=feature_label,
-        t_from=t_from,
-        t_to=t_to,
-        params_dir=params_dir,
+        folder_path=folder_path,
         overwrite=overwrite_cache,
-        dataset_id=dataset_id,
-        cache_base_path=CACHE_BASE_PATH,
         warm_up_period_days=0,
     )
     
@@ -252,24 +249,20 @@ def load_cached_feature_resampled(
         or empty DataFrame if no data is available
     """
     resample_params = resample_params or ResampleParams()
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     feature_label_params = parse_feature_label_param((feature_label, feature_params))
     params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_params, seq_params)
     
     # Create worker function that properly handles daily ranges
     def load(d_from, d_to):
-        daily_time_range = TimeRange(d_from, d_to)
-        df = read_from_cache_generic(
-            label=feature_label,
-            params_dir=params_dir,
-            time_range=daily_time_range,
-            columns=columns,
-            dataset_id=dataset_id,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            cache_base_path=CACHE_BASE_PATH
+        base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "feature_resampled", base_label, params_dir)
+        df = market_data.ingest.cache_read.read_daily_from_local_cache(
+                folder_path,
+                d_from = d_from,
+                d_to = d_to,
+                columns=columns,
         )
+        
         return d_from, df
 
     feature_resampled_df = read_multithreaded(

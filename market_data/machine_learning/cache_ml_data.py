@@ -24,10 +24,11 @@ from market_data.util.cache.time import (
     anchor_to_begin_of_day
 )
 from market_data.util.cache.dataframe import (
-    cache_data_by_day,
-    read_from_local_cache,
     read_multithreaded,
 )
+import market_data.ingest.cache_common
+import market_data.ingest.cache_read
+import market_data.ingest.cache_write
 from market_data.util.cache.path import get_cache_base_path
 
 logger = logging.getLogger(__name__)
@@ -149,7 +150,7 @@ def _get_mldata_params_dir(
     # Generate deterministic UUID from all parameters
     params_uuid = _generate_params_uuid(resample_params, feature_label_params, target_params_batch, seq_params)
     
-    # Return just the UUID - dataset_id is handled separately by cache_data_by_day
+    # Return just the UUID - dataset_id is handled separately
     return params_uuid
 
 
@@ -205,20 +206,16 @@ def _calculate_daily_ml_data(
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Caching {data_type} ML data for {date}")
     
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
-    
-    cache_data_by_day(
+    base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+    folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "ml_data", base_label, params_dir)
+    market_data.ingest.cache_write.cache_locally_df(
         df=ml_data_df,
-        label="ml_data",
-        t_from=t_from,
-        t_to=t_to,
-        params_dir=params_dir,
+        folder_path=folder_path,
         overwrite=overwrite_cache,
-        dataset_id=dataset_id,
-        cache_base_path=CACHE_BASE_PATH,
         warm_up_period_days=0,
     )
+    
     
     logger.info(f"Successfully cached {data_type} ML data for {date} with {len(ml_data_df)} rows")
 
@@ -337,22 +334,16 @@ def load_cached_ml_data(
     feature_label_params = parse_feature_label_params(feature_label_params)
     target_params_batch = target_params_batch or TargetParamsBatch()
     resample_params = resample_params or ResampleParams()
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
 
     def load(d_from, d_to):
-        daily_time_range = TimeRange(d_from, d_to)
-        return d_from, read_from_local_cache(
-            label="ml_data",
-            params_dir=params_dir,
-            time_range=daily_time_range,
-            columns=columns,
-            dataset_id=dataset_id,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
-            local_cache_base_path=LOCAL_CACHE_BASE_PATH,
-            global_cache_base_path=CACHE_BASE_PATH,
+        base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "ml_data", base_label, params_dir)
+        return d_from, market_data.ingest.cache_read.read_daily_from_local_cache(
+                folder_path,
+                d_from = d_from,
+                d_to = d_to,
+                columns=columns,
         )
 
     ml_data_df = read_multithreaded(

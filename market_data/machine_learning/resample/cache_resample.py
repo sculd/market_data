@@ -17,44 +17,21 @@ from market_data.util.cache.time import (
     split_t_range,
 )
 from market_data.util.cache.dataframe import (
-    cache_data_by_day,
-    read_from_cache_generic,
     read_multithreaded,
 )
+import market_data.ingest.cache_common
+import market_data.ingest.cache_read
+import market_data.ingest.cache_write
 from market_data.util.cache.path import (
     params_to_dir_name,
     get_cache_base_path,
 )
-from market_data.util.cache.core import calculate_and_cache_data
 
 logger = logging.getLogger(__name__)
 
 # Global paths configuration - use configurable base path
 RESAMPLE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
 Path(RESAMPLE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
-
-def _cache_resampled_data(df: pd.DataFrame, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
-                        params: ResampleParams = None, overwrite=True, dataset_id=None) -> None:
-    """Cache a resampled DataFrame, splitting it into daily pieces"""
-    params_dir = params_to_dir_name(asdict(params or ResampleParams()))
-    return cache_data_by_day(df, label, t_from, t_to, params_dir, overwrite, dataset_id=dataset_id,
-                            cache_base_path=RESAMPLE_CACHE_BASE_PATH, warm_up_period_days=0)
-
-def _read_resampled_data_from_cache(label: str, 
-                                 params: ResampleParams = None,
-                                 time_range: TimeRange = None,
-                                 columns: typing.List[str] = None,
-                                 dataset_id=None) -> pd.DataFrame:
-    """Read cached resampled data for a specified time range"""
-    params_dir = params_to_dir_name(asdict(params or ResampleParams()))
-    return read_from_cache_generic(
-        label,
-        params_dir=params_dir,
-        time_range=time_range,
-        columns=columns,
-        dataset_id=dataset_id,
-        cache_base_path=RESAMPLE_CACHE_BASE_PATH
-    )
 
 
 def calculate_and_cache_resampled(
@@ -137,12 +114,14 @@ def calculate_and_cache_resampled(
                 continue
                 
             # 4. Cache resampled data daily
-            _cache_resampled_data(
-                resampled_df, resample_label, 
-                calc_t_from, calc_t_to,
-                params=params,
+            base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+            params_dir = params_to_dir_name(asdict(params or ResampleParams()))
+            folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "resampled", base_label, params_dir)
+            market_data.ingest.cache_write.cache_locally_df(
+                df=resampled_df,
+                folder_path=folder_path,
                 overwrite=overwrite_cache,
-                dataset_id=dataset_id
+                warm_up_period_days=0,
             )
             
         except Exception as e:
@@ -176,22 +155,17 @@ def load_cached_resampled_data(
     aggregation_mode : AGGREGATION_MODE, optional
         Aggregation mode for cache path. If None, uses default aggregation mode.
     """
-    resample_label = "resampled"
-    
-    # Get dataset ID for cache path if dataset_mode, export_mode, and aggregation_mode are provided
-    dataset_id = None
-    if dataset_mode is not None and export_mode is not None and aggregation_mode is not None:
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
     
     def load(d_from, d_to):
-        daily_time_range = TimeRange(d_from, d_to)
-        df = _read_resampled_data_from_cache(
-            resample_label,
-            params=params,
-            time_range=daily_time_range,
-            columns=columns,
-            dataset_id=dataset_id
-        )
+        params_dir = params_to_dir_name(asdict(params or ResampleParams()))
+        base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "resampled", base_label, params_dir)
+        df = market_data.ingest.cache_read.read_daily_from_local_cache(
+                folder_path,
+                d_from = d_from,
+                d_to = d_to,
+                columns=columns,
+        )        
         return d_from, df
 
     return read_multithreaded(

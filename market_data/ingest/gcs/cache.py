@@ -75,7 +75,7 @@ def query_and_cache(
             continue
 
         local_filename = market_data.ingest.cache_common.to_local_filename(folder_path, t_from, t_to)
-        df_cache = market_data.ingest.cache_read.read_from_local_cache(
+        df_cache = market_data.ingest.cache_read.read_daily_from_local_cache(
             folder_path,
             t_from,
             t_to,
@@ -90,7 +90,7 @@ def query_and_cache(
                 continue
             market_data.ingest.gcs.util.download_gcs_blob(blob_name, local_filename)
 
-            df = market_data.ingest.cache_read.read_from_local_cache(
+            df = market_data.ingest.cache_read.read_daily_from_local_cache(
                 folder_path,
                 t_from,
                 t_to,
@@ -133,7 +133,7 @@ def read_from_local_cache_or_query_and_cache(
 ) -> pd.DataFrame:
     base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
     folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, label, base_label)
-    df = market_data.ingest.cache_read.read_from_cache(
+    df = market_data.ingest.cache_read.read_from_local_cache(
             folder_path,
             resample_interval_str=resample_interval_str,
             time_range = time_range,

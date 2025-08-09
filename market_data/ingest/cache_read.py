@@ -1,6 +1,5 @@
 import pandas as pd
 import datetime
-import pytz
 import logging
 import typing
 import os
@@ -10,7 +9,7 @@ from market_data.util.cache.time import split_t_range, is_exact_cache_interval
 from market_data.util.time import TimeRange
 
 
-def read_from_local_cache(
+def read_daily_from_local_cache(
     folder_path: str,
     t_from: datetime.datetime,
     t_to: datetime.datetime,
@@ -34,14 +33,14 @@ def read_from_local_cache(
         return df[columns]
 
 
-def read_from_cache(
+def read_from_local_cache(
     folder_path: str,
     resample_interval_str = None,
     time_range: TimeRange = None,
     columns: typing.List[str] = None,
 ) -> pd.DataFrame:
     t_from, t_to = time_range.to_datetime()
-    t_ranges = split_t_range(t_from, t_to)
+    t_ranges = split_t_range(t_from, t_to, interval=datetime.timedelta(days=1))
     df_concat: pd.DataFrame = None
     df_list = []
     # concat every 30 minutes to free up memory
@@ -61,7 +60,7 @@ def read_from_cache(
         df_list = []
 
     for t_range in t_ranges:
-        df = read_from_local_cache(folder_path, t_range[0], t_range[1])
+        df = read_daily_from_local_cache(folder_path, t_range[0], t_range[1])
         if df is None:
             continue
         df_list.append(df)
