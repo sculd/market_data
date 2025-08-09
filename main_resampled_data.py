@@ -17,8 +17,8 @@ from market_data.machine_learning.resample import (
 )
 from market_data.machine_learning.resample.cache_resample import calculate_and_cache_resampled
 import market_data.util.cache.time
-import market_data.util.cache.missing_data_finder
-import market_data.util.cache.dataframe
+import market_data.ingest.missing_data_finder
+import market_data.util.cache.parallel_processing
 
 
 def main():
@@ -123,7 +123,7 @@ def main():
 
     if args.action == 'check':
         print("\nChecking resampled data")
-        missing_ranges = market_data.util.cache.missing_data_finder.check_missing_resampled_data(
+        missing_ranges = market_data.ingest.missing_data_finder.check_missing_resampled_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,
@@ -164,7 +164,7 @@ def main():
                 calculation_batch_days = 1
             
             missing_range_finder_func = partial(
-                market_data.util.cache.missing_data_finder.check_missing_resampled_data,
+                market_data.ingest.missing_data_finder.check_missing_resampled_data,
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,
@@ -200,7 +200,7 @@ def main():
                 )
 
                 time_ranges = [TimeRange(t_from=t_from, t_to=t_to) for t_from, t_to in calculation_ranges]
-                market_data.util.cache.dataframe.cache_multiprocess(
+                market_data.util.cache.parallel_processing.cache_multiprocess(
                     cache_func=cache_func,
                     time_ranges=time_ranges,
                     workers=workers

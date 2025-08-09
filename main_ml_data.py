@@ -23,8 +23,8 @@ from market_data.machine_learning.cache_ml_data import (
     load_cached_ml_data,
 )
 import market_data.util.cache.time
-import market_data.util.cache.missing_data_finder
-import market_data.util.cache.dataframe
+import market_data.ingest.missing_data_finder
+import market_data.util.cache.parallel_processing
 
 def main():
     parser = argparse.ArgumentParser(
@@ -177,7 +177,7 @@ def main():
     if args.action == 'check':
         print("\nChecking ml_data")
         # Check which date ranges are missing from the ML data cache
-        missing_ranges = market_data.util.cache.missing_data_finder.check_missing_ml_data(
+        missing_ranges = market_data.ingest.missing_data_finder.check_missing_ml_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,
@@ -225,7 +225,7 @@ def main():
             calculation_batch_days = 1  # Use daily batches for ML data
 
             missing_range_finder_func = partial(
-                market_data.util.cache.missing_data_finder.check_missing_ml_data,
+                market_data.ingest.missing_data_finder.check_missing_ml_data,
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,
@@ -265,7 +265,7 @@ def main():
                 )
 
                 time_ranges = [TimeRange(t_from=t_from, t_to=t_to) for t_from, t_to in calculation_ranges]
-                market_data.util.cache.dataframe.cache_multiprocess(
+                market_data.util.cache.parallel_processing.cache_multiprocess(
                     cache_func=cache_func,
                     time_ranges=time_ranges,
                     workers=workers

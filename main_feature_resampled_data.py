@@ -18,8 +18,8 @@ from market_data.machine_learning.resample import (
 )
 from market_data.machine_learning.cache_feature_resample import calculate_and_cache_feature_resampled
 import market_data.util.cache.time
-import market_data.util.cache.missing_data_finder
-import market_data.util.cache.dataframe
+import market_data.ingest.missing_data_finder
+import market_data.util.cache.parallel_processing
 
 def main():
     parser = argparse.ArgumentParser(
@@ -132,7 +132,7 @@ def main():
         # Process each feature
         for feature_label in features_to_process:
             print(f"\nChecking feature resampled: {feature_label}")
-            missing_ranges = market_data.util.cache.missing_data_finder.check_missing_feature_resampled_data(
+            missing_ranges = market_data.ingest.missing_data_finder.check_missing_feature_resampled_data(
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,
@@ -183,7 +183,7 @@ def main():
                     calculation_batch_days = 1
 
                 missing_range_finder_func = partial(
-                    market_data.util.cache.missing_data_finder.check_missing_feature_resampled_data,
+                    market_data.ingest.missing_data_finder.check_missing_feature_resampled_data,
                     dataset_mode=dataset_mode,
                     export_mode=export_mode,
                     aggregation_mode=aggregation_mode,
@@ -223,7 +223,7 @@ def main():
                     )
 
                     time_ranges = [TimeRange(t_from=t_from, t_to=t_to) for t_from, t_to in calculation_ranges]
-                    successful_batches, failed_batches = market_data.util.cache.dataframe.cache_multiprocess(
+                    successful_batches, failed_batches = market_data.util.cache.parallel_processing.cache_multiprocess(
                         cache_func=cache_func,
                         time_ranges=time_ranges,
                         workers=workers

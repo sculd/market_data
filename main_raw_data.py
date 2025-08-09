@@ -9,7 +9,7 @@ import setup_env # needed for env variables
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 import market_data.ingest.gcs.cache
-import market_data.util.cache.missing_data_finder
+import market_data.ingest.missing_data_finder
 import market_data.util.cache.time
 
 def main():
@@ -69,7 +69,7 @@ def main():
     
     if args.action == 'check':
         # Check which date ranges are missing from the cache
-        missing_ranges = market_data.util.cache.missing_data_finder.check_missing_raw_data(
+        missing_ranges = market_data.ingest.missing_data_finder.check_missing_raw_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,

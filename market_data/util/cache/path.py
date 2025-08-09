@@ -77,61 +77,6 @@ def params_to_dir_name(params: dict) -> str:
         
     return "_".join(parts)
 
-def to_filename(basedir: str, label: str, t_from: datetime.datetime, t_to: datetime.datetime, 
-               params_dir: str = None, dataset_id: str = None, 
-               dataset_mode: DATASET_MODE = None, export_mode: EXPORT_MODE = None, 
-               aggregation_mode: AGGREGATION_MODE = None) -> str:
-    """
-    Generate a filename for the cached data based on time range and parameters.
-    
-    Parameters:
-    -----------
-    basedir : str
-        Base directory for caching
-    label : str
-        Type of data (e.g., "features", "targets")
-    t_from : datetime.datetime
-        Start time of the data
-    t_to : datetime.datetime
-        End time of the data
-    params_dir : str, optional
-        Parameters directory name, generated from params_to_dir_name
-    dataset_id : str, optional
-        Dataset identifier. If provided, this will be included in the path.
-        If not provided but dataset_mode, export_mode, and aggregation_mode are provided,
-        the dataset_id will be generated using get_full_table_id.
-    dataset_mode : DATASET_MODE, optional
-        Dataset mode (LIVE, REPLAY, etc.)
-    export_mode : EXPORT_MODE, optional
-        Export mode (OHLC, TICKS, etc.)
-    aggregation_mode : AGGREGATION_MODE, optional
-        Aggregation mode (MIN_1, MIN_5, etc.)
-    """
-    t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
-    t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
-    
-    # Generate dataset_id if not provided but we have the necessary parameters
-    if dataset_id is None and all(x is not None for x in [dataset_mode, export_mode]):
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
-
-    # Base directory structure with dataset_id if provided
-    if dataset_id:
-        base_dir = os.path.join(basedir, label, dataset_id)
-    else:
-        base_dir = os.path.join(basedir, label)
-    
-    # Include params in the directory structure if provided
-    if params_dir:
-        dir_path = os.path.join(base_dir, params_dir)
-    else:
-        dir_path = base_dir
-        
-    fn = os.path.join(dir_path, f"{t_str_from}_{t_str_to}.parquet")
-    
-    # Ensure directory exists
-    Path(os.path.dirname(fn)).mkdir(parents=True, exist_ok=True)
-    return fn 
-
 def get_cache_base_path():
     """
     Get the base cache path from environment variable ALGO_CACHE_BASE 

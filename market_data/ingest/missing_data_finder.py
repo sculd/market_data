@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from typing import Any
 
-from market_data.ingest.cache_common import to_local_filename, cache_base_path
+from market_data.util.cache.cache_common import to_local_filename
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.ingest.bq.common import get_full_table_id
 from market_data.util.time import TimeRange
@@ -28,7 +28,6 @@ def check_missing_raw_data(
     Returns a list of (start_date, end_date) tuples for missing days.
     """
     t_from, t_to = time_range.to_datetime()
-    t_id = get_full_table_id(dataset_mode, export_mode)
     
     # Split the range into daily intervals
     daily_ranges = split_t_range(t_from, t_to)
@@ -36,9 +35,10 @@ def check_missing_raw_data(
     missing_ranges = []
     for d_range in daily_ranges:
         d_from, d_to = d_range
-        
-        # Check if file exists in cache
-        filename = to_local_filename(cache_base_path, "market_data", t_id, aggregation_mode, d_from, d_to)
+            
+        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "market_data", base_label)
+        filename = to_local_filename(folder_path, d_from, d_to)
         if not os.path.exists(filename):
             missing_ranges.append(d_range)
     
@@ -59,10 +59,6 @@ def check_missing_feature_data(
     
     Returns a list of (start_date, end_date) tuples for missing days.
     """
-    from market_data.feature.cache_feature import FEATURE_CACHE_BASE_PATH
-    from market_data.util.cache.path import to_filename
-    
-    # Parse feature_label to get params
     feature_label, params = parse_feature_label_param((feature_label, feature_params,))
     params_dir = params.get_params_dir()
     
@@ -75,19 +71,10 @@ def check_missing_feature_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Check if file exists in cache
-        cache_path = f"{FEATURE_CACHE_BASE_PATH}/features"
-        filename = to_filename(
-            cache_path, 
-            feature_label, 
-            d_from, 
-            d_to, 
-            params_dir=params_dir,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode
-        )
-        
+        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "features", feature_label, params_dir, base_label)
+        filename = to_local_filename(folder_path, d_from, d_to)
+
         if not os.path.exists(filename):
             missing_ranges.append(d_range)
     
@@ -114,11 +101,8 @@ def check_missing_target_data(
     Returns:
         A list of (start_date, end_date) tuples for missing days
     """
-    from market_data.target.cache_target import TARGET_CACHE_BASE_PATH
-    from market_data.util.cache.path import to_filename, params_to_dir_name
-    from dataclasses import asdict
+    from market_data.util.cache.path import params_to_dir_name
     
-    # Create default params if None
     target_params = target_params or TargetParamsBatch()
     
     # Convert params to directory name
@@ -138,18 +122,10 @@ def check_missing_target_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Check if file exists in cache
-        filename = to_filename(
-            TARGET_CACHE_BASE_PATH, 
-            "targets", 
-            d_from, 
-            d_to, 
-            params_dir=params_dir,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode
-        )
-        
+        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "targets", params_dir, base_label)
+        filename = to_local_filename(folder_path, d_from, d_to)
+
         if not os.path.exists(filename):
             missing_ranges.append(d_range)
     
@@ -168,9 +144,7 @@ def check_missing_resampled_data(
     
     Returns a list of (start_date, end_date) tuples for missing days.
     """
-    from market_data.machine_learning.resample.cache_resample import RESAMPLE_CACHE_BASE_PATH
-    from market_data.util.cache.path import to_filename, params_to_dir_name
-    from market_data.ingest.bq.common import get_full_table_id
+    from market_data.util.cache.path import params_to_dir_name
     from dataclasses import asdict
     
     resample_params = resample_params or ResampleParams()
@@ -185,20 +159,10 @@ def check_missing_resampled_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Check if file exists in cache
-        cache_path = f"{RESAMPLE_CACHE_BASE_PATH}"
-        dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
-        
-        # The resampled data filename pattern
-        filename = to_filename(
-            cache_path, 
-            "resampled", 
-            d_from, 
-            d_to, 
-            params_dir=params_dir,
-            dataset_id=dataset_id
-        )
-        
+        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "resampled", params_dir, base_label)
+        filename = to_local_filename(folder_path, d_from, d_to)
+
         if not os.path.exists(filename):
             missing_ranges.append(d_range)
     
@@ -231,10 +195,7 @@ def check_missing_feature_resampled_data(
     Returns:
         A list of (start_date, end_date) tuples for missing days
     """
-    from market_data.machine_learning.cache_feature_resample import CACHE_BASE_PATH
     from market_data.machine_learning.cache_feature_resample import _get_feature_resampled_params_dir
-    from market_data.util.cache.path import to_filename
-    from market_data.ingest.bq.common import get_full_table_id
     from market_data.feature.util import parse_feature_label_param
     
     # Parse feature parameters
@@ -245,8 +206,6 @@ def check_missing_feature_resampled_data(
     params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_param, seq_params)
     
     t_from, t_to = time_range.to_datetime()
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
-    
     # Split the range into daily intervals
     daily_ranges = split_t_range(t_from, t_to)
     
@@ -254,16 +213,10 @@ def check_missing_feature_resampled_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Check if file exists in cache - use "feature_resampled" as the label
-        filename = to_filename(
-            CACHE_BASE_PATH,
-            feature_label,
-            d_from, 
-            d_to, 
-            params_dir=params_dir,
-            dataset_id=dataset_id
-        )
-        
+        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "feature_resampled", params_dir, base_label)
+        filename = to_local_filename(folder_path, d_from, d_to)
+
         if not os.path.exists(filename):
             missing_ranges.append(d_range)
     
@@ -285,10 +238,7 @@ def check_missing_ml_data(
     
     Returns a list of (start_date, end_date) tuples for missing days.
     """
-    from market_data.machine_learning.cache_feature_resample import CACHE_BASE_PATH
-    from market_data.util.cache.path import to_filename
     from market_data.machine_learning.cache_ml_data import _get_mldata_params_dir
-    from market_data.ingest.bq.common import get_full_table_id
     
     # Normalize parameters
     feature_label_params = parse_feature_label_params(feature_label_params)
@@ -301,25 +251,16 @@ def check_missing_ml_data(
         params_dir = os.path.join(seq_params.get_params_dir(), params_dir)
     
     t_from, t_to = time_range.to_datetime()
-    dataset_id = f"{get_full_table_id(dataset_mode, export_mode)}_{str(aggregation_mode)}"
-    
-    # Split the range into daily intervals
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Check if file exists in cache
-        filename = to_filename(
-            CACHE_BASE_PATH,
-            "ml_data",
-            d_from, 
-            d_to, 
-            params_dir=params_dir,
-            dataset_id=dataset_id
-        )
-        
+        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "ml_data", params_dir, base_label)
+        filename = to_local_filename(folder_path, d_from, d_to)
+
         if not os.path.exists(filename):
             missing_ranges.append(d_range)
     

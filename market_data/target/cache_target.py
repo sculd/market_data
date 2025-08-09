@@ -14,12 +14,12 @@ from typing import Optional, List
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.target.target import create_targets, TargetParamsBatch
-from market_data.util.cache.dataframe import (
+from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
-import market_data.ingest.cache_common
-import market_data.ingest.cache_read
-import market_data.ingest.cache_write
+import market_data.util.cache.cache_common
+import market_data.util.cache.cache_read
+import market_data.util.cache.cache_write
 from market_data.util.cache.path import (
     params_to_dir_name,
     get_cache_base_path
@@ -104,12 +104,12 @@ def calculate_and_cache_targets(
         logger.info(f"Using {warm_up_days} warm-up days for targets")
     
     # Get the params directory name
-    base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
+    base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
     params_dir = _get_target_params_dir(params)
-    raw_data_folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "market_data", base_label)
-    folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "targets", base_label, params_dir)
+    raw_data_folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "market_data", base_label)
+    folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "targets", base_label, params_dir)
 
-    market_data.ingest.cache_write.calculate_and_cache_data(
+    market_data.util.cache.cache_write.calculate_and_cache_data(
         raw_data_folder_path=raw_data_folder_path,
         folder_path=folder_path,
         params=params,
@@ -149,9 +149,9 @@ def load_cached_targets(
     """
     def load(d_from, d_to):
         params_dir = params_to_dir_name(asdict(params or TargetParamsBatch()))
-        base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
-        folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, "feature_data", "targets", base_label, params_dir)
-        df = market_data.ingest.cache_read.read_daily_from_local_cache(
+        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "targets", base_label, params_dir)
+        df = market_data.util.cache.cache_read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,
                 d_to = d_to,

@@ -8,7 +8,6 @@ import os
 
 import urllib.parse as urlparse
 from urllib.parse import urlencode
-from ..util.cache.dataframe import cache_to_disk
 
 polygon_api_key = os.getenv("QUANT_GALORE_POLYGON_API_KEY")
 _POLYGON_V2_BASE_URL = "https://api.polygon.io/v2"
@@ -64,8 +63,6 @@ def get_polygon_quotes_url(ticker, epoch_nano_gte, epoch_nano_lt):
 
 _max_tries = 3
 
-# cached for 3 days.
-@cache_to_disk(10)
 def get_polygon_result_dict(url, tries_remaining=_max_tries):
     try:
         js = requests.get(url).json()

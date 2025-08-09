@@ -13,8 +13,8 @@ from market_data.feature.registry import list_registered_features
 from market_data.feature.cache_writer import cache_feature_cache
 from market_data.feature.util import parse_feature_label_param
 import market_data.util.cache.time
-import market_data.util.cache.missing_data_finder
-import market_data.util.cache.dataframe
+import market_data.ingest.missing_data_finder
+import market_data.util.cache.parallel_processing
 
 import market_data.feature.impl  # Import to ensure all features are registered
 
@@ -121,7 +121,7 @@ def main():
         # Process each feature
         for feature_label in features_to_process:
             print(f"\nChecking feature: {feature_label}")
-            missing_ranges = market_data.util.cache.missing_data_finder.check_missing_feature_data(
+            missing_ranges = market_data.ingest.missing_data_finder.check_missing_feature_data(
                 feature_label=feature_label,
                 feature_params=None,
                 dataset_mode=dataset_mode,
@@ -167,7 +167,7 @@ def main():
                     calculation_batch_days = 1
 
                 missing_range_finder_func = partial(
-                    market_data.util.cache.missing_data_finder.check_missing_feature_data,
+                    market_data.ingest.missing_data_finder.check_missing_feature_data,
                     dataset_mode=dataset_mode,
                     export_mode=export_mode,
                     aggregation_mode=aggregation_mode,
@@ -204,7 +204,7 @@ def main():
                     )
 
                     time_ranges = [TimeRange(t_from=t_from, t_to=t_to) for t_from, t_to in calculation_ranges]
-                    successful_batches, failed_batches = market_data.util.cache.dataframe.cache_multiprocess(
+                    successful_batches, failed_batches = market_data.util.cache.parallel_processing.cache_multiprocess(
                         cache_func=cache_func,
                         time_ranges=time_ranges,
                         workers=workers

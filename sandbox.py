@@ -255,9 +255,9 @@ time_range = market_data.util.time.TimeRange(
     date_str_from='2024-01-01', date_str_to='2024-01-04',
     )
 
-import market_data.util.cache.missing_data_finder
+import market_data.ingest.missing_data_finder
 
-missing = market_data.util.cache.missing_data_finder.check_missing_feature_resampled_data(
+missing = market_data.ingest.missing_data_finder.check_missing_feature_resampled_data(
     dataset_mode=DATASET_MODE.OKX,
     export_mode=EXPORT_MODE.BY_MINUTE,
     aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,

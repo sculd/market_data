@@ -19,7 +19,7 @@ from market_data.util.cache.path import get_cache_base_path
 import market_data.feature.impl # needed to register features
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.util import parse_feature_label_params
-from market_data.util.cache.dataframe import (
+from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
 

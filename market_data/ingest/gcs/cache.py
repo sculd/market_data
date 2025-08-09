@@ -5,8 +5,8 @@ import logging
 import typing
 import os
 
-import market_data.ingest.cache_common
-import market_data.ingest.cache_read
+import market_data.util.cache.cache_common
+import market_data.util.cache.cache_read
 import market_data.ingest.gcs.util
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE
 from market_data.util.cache.time import split_t_range
@@ -48,8 +48,8 @@ def query_and_cache(
     t_from, t_to = time_range.to_datetime()
     t_ranges = split_t_range(t_from, t_to)
 
-    base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
-    folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, label, base_label)
+    base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+    folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, label, base_label)
 
 
     df_concat: pd.DataFrame = None
@@ -74,8 +74,8 @@ def query_and_cache(
         if skip_first_day and i == 0:
             continue
 
-        local_filename = market_data.ingest.cache_common.to_local_filename(folder_path, t_from, t_to)
-        df_cache = market_data.ingest.cache_read.read_daily_from_local_cache(
+        local_filename = market_data.util.cache.cache_common.to_local_filename(folder_path, t_from, t_to)
+        df_cache = market_data.util.cache.cache_read.read_daily_from_local_cache(
             folder_path,
             t_from,
             t_to,
@@ -90,7 +90,7 @@ def query_and_cache(
                 continue
             market_data.ingest.gcs.util.download_gcs_blob(blob_name, local_filename)
 
-            df = market_data.ingest.cache_read.read_daily_from_local_cache(
+            df = market_data.util.cache.cache_read.read_daily_from_local_cache(
                 folder_path,
                 t_from,
                 t_to,
@@ -104,8 +104,8 @@ def query_and_cache(
         if len(df) == 0:
             continue
 
-        if market_data.ingest.cache_common.timestamp_index_name in df.columns:
-            df = df.set_index(market_data.ingest.cache_common.timestamp_index_name)
+        if market_data.util.cache.cache_common.timestamp_index_name in df.columns:
+            df = df.set_index(market_data.util.cache.cache_common.timestamp_index_name)
 
         df_list.append(df)
 
@@ -116,7 +116,7 @@ def query_and_cache(
 
     if df_concat is not None and resample_interval_str is not None:
         df_concat = df_concat.reset_index().groupby('symbol').apply(
-            lambda x: x.set_index(market_data.ingest.cache_common.timestamp_index_name).resample(resample_interval_str).asfreq().ffill()).drop(columns='symbol').reset_index()
+            lambda x: x.set_index(market_data.util.cache.cache_common.timestamp_index_name).resample(resample_interval_str).asfreq().ffill()).drop(columns='symbol').reset_index()
 
     return df_concat
 
@@ -131,9 +131,9 @@ def read_from_local_cache_or_query_and_cache(
     overwirte_cache = False,
     skip_first_day = False,
 ) -> pd.DataFrame:
-    base_label = market_data.ingest.cache_common.get_label(dataset_mode, export_mode)
-    folder_path = os.path.join(market_data.ingest.cache_common.cache_base_path, label, base_label)
-    df = market_data.ingest.cache_read.read_from_local_cache(
+    base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+    folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, label, base_label)
+    df = market_data.util.cache.cache_read.read_from_local_cache(
             folder_path,
             resample_interval_str=resample_interval_str,
             time_range = time_range,

@@ -4,7 +4,7 @@ import os, datetime , logging
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 import pandas as pd
-import market_data.ingest.cache_common
+import market_data.util.cache.cache_common
 
 _client = None
 
@@ -56,7 +56,7 @@ def run_query(query_str, timestamp_columnname) -> pd.DataFrame:
 def get_full_table_id(dataset_mode, export_mode):
     return '{p}.{l}'.format(
         p=_PROJECT_ID, 
-        l=market_data.ingest.cache_common.get_label(dataset_mode, export_mode),
+        l=market_data.util.cache.cache_common.get_label(dataset_mode, export_mode),
         )
 
 

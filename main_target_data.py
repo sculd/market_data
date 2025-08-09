@@ -13,8 +13,8 @@ from market_data.util.time import TimeRange
 from market_data.target.target import TargetParamsBatch, TargetParams
 from market_data.target.cache_target import calculate_and_cache_targets
 import market_data.util.cache.time
-import market_data.util.cache.missing_data_finder
-import market_data.util.cache.dataframe
+import market_data.ingest.missing_data_finder
+import market_data.util.cache.parallel_processing
 
 def main():
     parser = argparse.ArgumentParser(
@@ -102,7 +102,7 @@ def main():
 
     if args.action == 'check':
         print("\nChecking target data")
-        missing_ranges = market_data.util.cache.missing_data_finder.check_missing_target_data(
+        missing_ranges = market_data.ingest.missing_data_finder.check_missing_target_data(
             dataset_mode=dataset_mode,
             export_mode=export_mode,
             aggregation_mode=aggregation_mode,
@@ -138,7 +138,7 @@ def main():
         print("\nCaching target data")
         try:
             missing_range_finder_func = partial(
-                market_data.util.cache.missing_data_finder.check_missing_target_data,
+                market_data.ingest.missing_data_finder.check_missing_target_data,
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 aggregation_mode=aggregation_mode,
@@ -173,7 +173,7 @@ def main():
                 )
 
                 time_ranges = [TimeRange(t_from=t_from, t_to=t_to) for t_from, t_to in calculation_ranges]
-                market_data.util.cache.dataframe.cache_multiprocess(
+                market_data.util.cache.parallel_processing.cache_multiprocess(
                     cache_func=cache_func,
                     time_ranges=time_ranges,
                     workers=workers

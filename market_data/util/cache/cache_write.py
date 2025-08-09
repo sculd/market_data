@@ -5,8 +5,7 @@ import typing
 import os
 
 from typing import Callable, TypeVar
-import market_data.ingest.cache_common
-import market_data.ingest.cache_read
+import market_data.util.cache.cache_common
 from market_data.util.cache.time import split_t_range, anchor_to_begin_of_day, is_exact_cache_interval
 from market_data.util.time import TimeRange
 
@@ -24,14 +23,14 @@ def cache_locally_daily_df(
     Cache a DataFrame that covers one-day range exactly.
     """
     if not is_exact_cache_interval(t_from, t_to):
-        logging.info(f"{t_from}-{t_to} does not match {market_data.ingest.cache_common.cache_interval=} thus will not be cached.")
+        logging.info(f"{t_from}-{t_to} does not match {market_data.util.cache.cache_common.cache_interval=} thus will not be cached.")
         return None
 
     if len(df) == 0:
         logging.info(f"df for {t_from}-{t_to} is empty thus will not be cached.")
         return None
 
-    filename = market_data.ingest.cache_common.to_local_filename(folder_path, t_from, t_to)
+    filename = market_data.util.cache.cache_common.to_local_filename(folder_path, t_from, t_to)
     if os.path.exists(filename):
         logging.info(f"{filename} already exists.")
         if overwrite:
@@ -60,7 +59,7 @@ def cache_locally_df(
         return
 
     def _split_df_by_day() -> typing.List[pd.DataFrame]:
-        dfs = [group[1] for group in df.groupby(df.index.get_level_values(market_data.ingest.cache_common.timestamp_index_name).date)]
+        dfs = [group[1] for group in df.groupby(df.index.get_level_values(market_data.util.cache.cache_common.timestamp_index_name).date)]
         return dfs
 
     df_dailys = _split_df_by_day()
@@ -68,9 +67,9 @@ def cache_locally_df(
         if i < warm_up_period_days:
             continue
 
-        timestamps = df_daily.index.get_level_values(market_data.ingest.cache_common.timestamp_index_name).unique()
+        timestamps = df_daily.index.get_level_values(market_data.util.cache.cache_common.timestamp_index_name).unique()
         t_begin = anchor_to_begin_of_day(timestamps[0])
-        t_end = anchor_to_begin_of_day(t_begin + market_data.ingest.cache_common.cache_interval)
+        t_end = anchor_to_begin_of_day(t_begin + market_data.util.cache.cache_common.cache_interval)
         cache_locally_daily_df(df_daily, folder_path, t_begin, t_end, overwrite=overwrite)
         del df_daily
 
