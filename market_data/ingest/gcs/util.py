@@ -8,14 +8,8 @@ _gcs_bucket_name = "algo_cache"
 _gcs_bucket = _storage_client.bucket(_gcs_bucket_name)
 
 
-def get_gcsblobname(label: str, t_id: str, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
-    t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
-    t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
-    return os.path.join(label, f"{t_id}", f"{t_str_from}_{t_str_to}.parquet")
-
 def if_blob_exist(blob_name: str) -> bool:
     return storage.Blob(bucket=_gcs_bucket, name=blob_name).exists(_storage_client)
-
 
 def download_gcs_blob(source_blob_name, destination_file_name):
     bucket = _storage_client.bucket(_gcs_bucket_name)
@@ -25,7 +19,7 @@ def download_gcs_blob(source_blob_name, destination_file_name):
         f"Downloaded storage object {source_blob_name} from bucket {_gcs_bucket_name} to local file {destination_file_name}."
     )
 
-def upload_file_to_public_gcs_bucket(local_filename, gcs_filename, rewrite=False) -> None:
+def upload_file_to_gcs(local_filename, gcs_filename, rewrite=False) -> None:
     # uoload the file to gcs
     if storage.Blob(bucket=_gcs_bucket, name=gcs_filename).exists(_storage_client):
         if rewrite:

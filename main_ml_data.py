@@ -18,7 +18,7 @@ from market_data.machine_learning.resample import (
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.util import parse_feature_label_params
 from market_data.feature.registry import list_registered_features
-from market_data.machine_learning.cache_ml_data import (
+from market_data.machine_learning.ml_data.cache_ml_data import (
     calculate_and_cache_ml_data,
     load_cached_ml_data,
 )

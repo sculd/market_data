@@ -30,22 +30,22 @@ Target Module
 Machine Learning Module
 -----------------------
 
-.. automodule:: market_data.machine_learning.resample
+.. automodule:: market_data.machine_learning.resample.resample
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: market_data.machine_learning.cache_resample
+.. automodule:: market_data.machine_learning.resample.cache_resample
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: market_data.machine_learning.ml_data
+.. automodule:: market_data.machine_learning.ml_data.ml_data
    :members:
    :undoc-members:
    :show-inheritance:
 
-.. automodule:: market_data.machine_learning.cache_ml_data
+.. automodule:: market_data.machine_learning.ml_data.cache_ml_data
    :members:
    :undoc-members:
    :show-inheritance:

@@ -16,7 +16,7 @@ from market_data.machine_learning.resample import (
     get_resample_params_class,
     list_registered_resample_methods
 )
-from market_data.machine_learning.cache_feature_resample import calculate_and_cache_feature_resampled
+from market_data.machine_learning.feature_resample.cache_feature_resample import calculate_and_cache_feature_resampled
 import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing

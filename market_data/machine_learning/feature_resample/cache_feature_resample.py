@@ -11,9 +11,8 @@ from market_data.feature.util import parse_feature_label_param
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample.resample import ResampleParams
-from market_data.machine_learning.feature_resample import prepare_feature_resampled, prepare_sequential_feature_resampled
+from market_data.machine_learning.feature_resample.feature_resample import prepare_feature_resampled, prepare_sequential_feature_resampled
 from market_data.feature.impl.common import SequentialFeatureParam
-from market_data.feature.sequential_feature import sequentialize_feature
 from market_data.util.cache.time import (
     anchor_to_begin_of_day
 )

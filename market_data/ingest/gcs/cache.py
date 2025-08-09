@@ -1,6 +1,5 @@
 import pandas as pd
 import datetime
-import pytz
 import logging
 import typing
 import os
@@ -12,17 +11,10 @@ from market_data.ingest.common import DATASET_MODE, EXPORT_MODE
 from market_data.util.cache.time import split_t_range
 from market_data.util.time import TimeRange
 
-
-# the cache will be stored per day.
-_cache_interval = datetime.timedelta(days=1)
-
 _label_market_data = "market_data"
 
-# the timezone of dividing range into days.
-_cache_timezone = pytz.timezone('America/New_York')
 
-
-def get_gcsblobname(
+def _get_gcsblobname(
     dataset_mode: DATASET_MODE,
     export_mode: EXPORT_MODE,
     t: datetime.datetime,
@@ -83,7 +75,7 @@ def query_and_cache(
         )
 
         if overwirte_cache or df_cache is None:
-            blob_name = get_gcsblobname(dataset_mode, export_mode, t_from)
+            blob_name = _get_gcsblobname(dataset_mode, export_mode, t_from)
             blob_exist = market_data.ingest.gcs.util.if_blob_exist(blob_name)
             if not blob_exist:
                 logging.info(f"For gcs, {blob_name=} does not exist.")

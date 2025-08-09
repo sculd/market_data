@@ -4,15 +4,13 @@ import pytz
 import logging
 import typing
 import os
-from pathlib import Path
 
 import market_data.ingest.bq.candle as candle
 import market_data.ingest.bq.orderbook1l as orderbook1l
 import market_data.ingest.bq.common as common
 from market_data.ingest.common import AGGREGATION_MODE
 import market_data.util.time as util_time
-from market_data.ingest.gcs.util import get_gcsblobname, download_gcs_blob, upload_file_to_public_gcs_bucket, if_blob_exist
-from google.cloud import storage
+from market_data.ingest.gcs.util import _to_gcsblobname, download_gcs_blob, upload_file_to_gcs, if_blob_exist
 from market_data.util.cache.time import split_t_range, anchor_to_begin_of_day, is_exact_cache_interval
 from market_data.util.cache.path import get_cache_base_path
 
@@ -30,6 +28,12 @@ _label_market_data = "market_data"
 _cache_timezone = pytz.timezone('America/New_York')
 
 _timestamp_index_name = 'timestamp'
+
+
+def _to_gcsblobname(label: str, t_id: str, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
+    t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")
+    t_str_to = t_to.strftime("%Y-%m-%dT%H:%M:%S%z")
+    return os.path.join(label, f"{t_id}", f"{t_str_from}_{t_str_to}.parquet")
 
 
 def to_filename(basedir: str, label: str, t_id: str, aggregation_mode: AGGREGATION_MODE, t_from: datetime.datetime, t_to: datetime.datetime) -> str:
@@ -68,8 +72,8 @@ def _cache_daily_df(df: pd.DataFrame, label: str, aggregation_mode: AGGREGATION_
     else:
         df.to_parquet(filename)
 
-    blob_name = get_gcsblobname(label, t_id, t_from, t_to)
-    upload_file_to_public_gcs_bucket(filename, blob_name, rewrite=overwrite)
+    blob_name = _to_gcsblobname(label, t_id, t_from, t_to)
+    upload_file_to_gcs(filename, blob_name, rewrite=overwrite)
 
 
 def cache_df(
@@ -121,7 +125,7 @@ def _fetch_from_daily_cache(
         return None
     filename = to_filename(_cache_base_path, label, t_id, aggregation_mode, t_from, t_to)
     if not os.path.exists(filename):
-        blob_name = get_gcsblobname(label, t_id, t_from, t_to)
+        blob_name = _to_gcsblobname(label, t_id, t_from, t_to)
         blob_exist = if_blob_exist(blob_name)
         logging.info(f"{filename=} does not exist in local cache. For gcs, {blob_exist=}.")
         if blob_exist:
@@ -355,7 +359,7 @@ def validate_df(
         t_from, t_to = t_range[0], t_range[-1]
         filename = to_filename(_cache_base_path, label, t_id, aggregation_mode, t_from, t_to)
         if not os.path.exists(filename):
-            blob_name = get_gcsblobname(label, t_id, t_from, t_to)
+            blob_name = _to_gcsblobname(label, t_id, t_from, t_to)
             blob_exist = if_blob_exist(blob_name)
             logging.info(f"{filename=} does not exist in local cache. For gcs, {blob_exist=}.")
             if blob_exist:

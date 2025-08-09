@@ -12,7 +12,7 @@ from market_data.util.time import TimeRange
 from market_data.target.cache_target import load_cached_targets
 from market_data.machine_learning.resample.cache_resample import load_cached_resampled_data
 from market_data.machine_learning.resample.resample import ResampleParams
-from market_data.machine_learning.cache_feature_resample import load_cached_feature_resampled
+from market_data.machine_learning.feature_resample.cache_feature_resample import load_cached_feature_resampled
 from market_data.feature.util import parse_feature_label_param, parse_feature_label_params
 from market_data.feature.impl.common import SequentialFeatureParam
 

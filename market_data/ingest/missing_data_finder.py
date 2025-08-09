@@ -195,7 +195,7 @@ def check_missing_feature_resampled_data(
     Returns:
         A list of (start_date, end_date) tuples for missing days
     """
-    from market_data.machine_learning.cache_feature_resample import _get_feature_resampled_params_dir
+    from market_data.machine_learning.feature_resample.cache_feature_resample import _get_feature_resampled_params_dir
     from market_data.feature.util import parse_feature_label_param
     
     # Parse feature parameters
@@ -238,7 +238,7 @@ def check_missing_ml_data(
     
     Returns a list of (start_date, end_date) tuples for missing days.
     """
-    from market_data.machine_learning.cache_ml_data import _get_mldata_params_dir
+    from market_data.machine_learning.ml_data.cache_ml_data import _get_mldata_params_dir
     
     # Normalize parameters
     feature_label_params = parse_feature_label_params(feature_label_params)
