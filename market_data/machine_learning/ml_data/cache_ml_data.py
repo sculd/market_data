@@ -12,7 +12,7 @@ import market_data.target.cache_target
 from market_data.target.target import TargetParamsBatch
 from market_data.feature.util import parse_feature_label_params
 import market_data.ingest.common
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample.resample import ResampleParams
 from market_data.machine_learning.ml_data import prepare_ml_data
@@ -204,8 +204,8 @@ def _calculate_daily_ml_data(
     logger.info(f"Caching {data_type} ML data for {date}")
     
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
-    base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-    folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "ml_data", base_label, params_dir)
+    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
+    folder_path = cache_ctx.get_ml_data_path(params_dir)
     market_data.util.cache.cache_write.cache_locally_df(
         df=ml_data_df,
         folder_path=folder_path,
@@ -258,8 +258,8 @@ def calculate_and_cache_ml_data(
     current_date = t_from
     
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
-    base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-    folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "ml_data", base_label, params_dir)
+    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
+    folder_path = cache_ctx.get_ml_data_path(params_dir)
 
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Starting {data_type} ML data processing for {len(feature_label_params)} features")
@@ -331,8 +331,8 @@ def load_cached_ml_data(
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
 
     def load(d_from, d_to):
-        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "ml_data", base_label, params_dir)
+        cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
+        folder_path = cache_ctx.get_ml_data_path(params_dir)
         return d_from, market_data.util.cache.cache_read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,

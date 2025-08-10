@@ -38,7 +38,10 @@ def get_label(dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE):
 
 
 class CacheContext:
-    def __init__(self, dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE, aggregation_mode: AGGREGATION_MODE):
+    def __init__(self, dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE, aggregation_mode: AGGREGATION_MODE = None):
+        self.dataset_mode = dataset_mode
+        self.export_mode = export_mode  
+        self.aggregation_mode = aggregation_mode
         self.base_label = get_label(dataset_mode, export_mode)
 
     def get_folder_path(self, labels, params_dir=None):
@@ -46,4 +49,28 @@ class CacheContext:
         if params_dir is not None:
             folder_path = os.path.join(folder_path, params_dir)
         return folder_path
+    
+    def get_market_data_path(self):
+        """Get path for raw market data cache"""
+        return self.get_folder_path(["market_data"])
+    
+    def get_feature_path(self, feature_label: str, params_dir: str):
+        """Get path for feature cache with specific feature label and params"""
+        return self.get_folder_path(["feature_data", "features", feature_label], params_dir)
+    
+    def get_target_path(self, params_dir: str):
+        """Get path for target data cache"""
+        return self.get_folder_path(["feature_data", "targets"], params_dir)
+    
+    def get_ml_data_path(self, params_dir: str):
+        """Get path for ML data cache"""
+        return self.get_folder_path(["feature_data", "ml_data"], params_dir)
+    
+    def get_resampled_path(self, params_dir: str):
+        """Get path for resampled data cache"""
+        return self.get_folder_path(["feature_data", "resampled"], params_dir)
+    
+    def get_feature_resampled_path(self, params_dir: str):
+        """Get path for feature resampled data cache"""
+        return self.get_folder_path(["feature_data", "feature_resampled"], params_dir)
 

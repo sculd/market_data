@@ -5,7 +5,7 @@ from typing import Any
 
 from market_data.util.cache.cache_common import to_local_filename
 import market_data.ingest.common
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.ingest.bq.common import get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
@@ -34,11 +34,12 @@ def check_missing_raw_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
+    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
+    
     for d_range in daily_ranges:
         d_from, d_to = d_range
             
-        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "market_data", base_label)
+        folder_path = cache_ctx.get_market_data_path()
         filename = to_local_filename(folder_path, d_from, d_to)
         if not os.path.exists(filename):
             missing_ranges.append(d_range)
@@ -69,11 +70,13 @@ def check_missing_feature_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
+    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
+    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "features", feature_label, params_dir, base_label)
+        # Note: feature cache path structure is different - params_dir then base_label
+        folder_path = cache_ctx.get_folder_path(["feature_data", "features", feature_label, params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -120,11 +123,13 @@ def check_missing_target_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
+    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
+    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "targets", params_dir, base_label)
+        # Note: target cache path structure has params_dir before base_label  
+        folder_path = cache_ctx.get_folder_path(["feature_data", "targets", params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -157,11 +162,13 @@ def check_missing_resampled_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
+    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
+    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "resampled", params_dir, base_label)
+        # Note: resampled cache path structure has params_dir before base_label
+        folder_path = cache_ctx.get_folder_path(["feature_data", "resampled", params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -211,11 +218,13 @@ def check_missing_feature_resampled_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
+    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
+    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "feature_resampled", params_dir, base_label)
+        # Note: feature_resampled cache path structure has params_dir before base_label
+        folder_path = cache_ctx.get_folder_path(["feature_data", "feature_resampled", params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -255,11 +264,13 @@ def check_missing_ml_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
+    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
+    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "ml_data", params_dir, base_label)
+        # Note: ml_data cache path structure has params_dir before base_label
+        folder_path = cache_ctx.get_folder_path(["feature_data", "ml_data", params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
