@@ -3,7 +3,6 @@ import datetime
 import pytz
 import os
 
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE
 from market_data.util.cache.path import get_cache_base_path
 
 
@@ -32,9 +31,3 @@ def to_local_filename(folder_path: str, t_from: datetime.date, t_to: datetime.da
         pass
 
     return fn
-
-
-def get_label(dataset_mode: DATASET_MODE, export_mode: EXPORT_MODE):
-    return os.path.join(dataset_mode.name.lower(), export_mode.name.lower())
-
-

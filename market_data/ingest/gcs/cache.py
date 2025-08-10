@@ -7,6 +7,7 @@ import os
 import market_data.util.cache.cache_common
 import market_data.util.cache.cache_read
 import market_data.ingest.gcs.util
+import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE
 from market_data.util.cache.time import split_t_range
 from market_data.util.time import TimeRange
@@ -40,7 +41,7 @@ def query_and_cache(
     t_from, t_to = time_range.to_datetime()
     t_ranges = split_t_range(t_from, t_to)
 
-    base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+    base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
     folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, label, base_label)
 
 
@@ -123,7 +124,7 @@ def read_from_local_cache_or_query_and_cache(
     overwirte_cache = False,
     skip_first_day = False,
 ) -> pd.DataFrame:
-    base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+    base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
     folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, label, base_label)
     df = market_data.util.cache.cache_read.read_from_local_cache(
             folder_path,

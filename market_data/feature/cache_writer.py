@@ -13,6 +13,7 @@ from typing import List, Optional, Union, Any, Tuple, Dict
 import math
 from datetime import timedelta
 
+import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import (
@@ -96,7 +97,7 @@ def cache_feature_cache(
         return calculate_fn(raw_df, feature_params)
     
     try:
-        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
         raw_data_folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "market_data", base_label)
         folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "features", feature_label, base_label, params_dir)
 
@@ -180,7 +181,7 @@ def cache_seq_feature_cache(
             # Try to read non-sequential feature cache
             try:
                 params_dir=params.get_params_dir()
-                base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+                base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
                 folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "features", feature_label, base_label, params_dir)
                 df = market_data.ingest.cache_read.read_from_local_cache(
                         folder_path,

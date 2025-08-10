@@ -4,6 +4,7 @@ import os
 from typing import Any
 
 from market_data.util.cache.cache_common import to_local_filename
+import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.ingest.bq.common import get_full_table_id
 from market_data.util.time import TimeRange
@@ -36,7 +37,7 @@ def check_missing_raw_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
             
-        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
         folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "market_data", base_label)
         filename = to_local_filename(folder_path, d_from, d_to)
         if not os.path.exists(filename):
@@ -71,7 +72,7 @@ def check_missing_feature_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
         folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "features", feature_label, params_dir, base_label)
         filename = to_local_filename(folder_path, d_from, d_to)
 
@@ -122,7 +123,7 @@ def check_missing_target_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
         folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "targets", params_dir, base_label)
         filename = to_local_filename(folder_path, d_from, d_to)
 
@@ -159,7 +160,7 @@ def check_missing_resampled_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
         folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "resampled", params_dir, base_label)
         filename = to_local_filename(folder_path, d_from, d_to)
 
@@ -213,7 +214,7 @@ def check_missing_feature_resampled_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
         folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "feature_resampled", params_dir, base_label)
         filename = to_local_filename(folder_path, d_from, d_to)
 
@@ -257,7 +258,7 @@ def check_missing_ml_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
         folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "ml_data", params_dir, base_label)
         filename = to_local_filename(folder_path, d_from, d_to)
 

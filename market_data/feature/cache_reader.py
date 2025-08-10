@@ -13,6 +13,7 @@ import os
 from pathlib import Path
 from typing import List, Tuple, Dict, Any, Optional, Union
 
+import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.util.cache.path import get_cache_base_path
@@ -73,7 +74,7 @@ def read_multi_feature_cache(
         try:
             def load(d_from, d_to):
                 params_dir=params.get_params_dir()
-                base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+                base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
                 folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "features", feature_label, base_label, params_dir)
                 df = market_data.ingest.cache_read.read_daily_from_local_cache(
                         folder_path,

@@ -8,6 +8,7 @@ from pathlib import Path
 from dataclasses import asdict
 
 from market_data.feature.util import parse_feature_label_param
+import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample.resample import ResampleParams
@@ -136,7 +137,7 @@ def _calculate_and_cache_daily_feature_resampled(
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Caching {data_type} feature resampled data for {date}")
     
-    base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+    base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
     feature_label_params = parse_feature_label_param((feature_label, feature_params))
     params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_params, seq_params)
     folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "feature_resampled", feature_label, base_label, params_dir)
@@ -252,7 +253,7 @@ def load_cached_feature_resampled(
     
     # Create worker function that properly handles daily ranges
     def load(d_from, d_to):
-        base_label = market_data.util.cache.cache_common.get_label(dataset_mode, export_mode)
+        base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
         folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, "feature_data", "feature_resampled", base_label, params_dir)
         df = market_data.util.cache.cache_read.read_daily_from_local_cache(
                 folder_path,
