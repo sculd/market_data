@@ -15,7 +15,7 @@ import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample.resample import ResampleParams
-from market_data.machine_learning.ml_data import prepare_ml_data
+from market_data.machine_learning.ml_data.ml_data import prepare_ml_data
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.util.cache.time import (
     anchor_to_begin_of_day
@@ -153,9 +153,7 @@ def _get_mldata_params_dir(
 
 def _calculate_daily_ml_data(
     date: datetime.datetime,
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]],
     target_params_batch: TargetParamsBatch,
     resample_params: ResampleParams,
@@ -170,9 +168,7 @@ def _calculate_daily_ml_data(
     
     Args:
         date: The date to calculate ML data for
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         feature_label_params: List of feature labels and their parameters
         target_params_batch: Target calculation parameters
         resample_params: Resampling parameters
@@ -185,9 +181,9 @@ def _calculate_daily_ml_data(
     time_range = TimeRange(t_from, t_to)
     
     ml_data_df = prepare_ml_data(
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
+        dataset_mode=cache_context.dataset_mode,
+        export_mode=cache_context.export_mode,
+        aggregation_mode=cache_context.aggregation_mode,
         time_range=time_range,
         feature_label_params=feature_label_params,
         target_params_batch=target_params_batch,
@@ -204,8 +200,7 @@ def _calculate_daily_ml_data(
     logger.info(f"Caching {data_type} ML data for {date}")
     
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-    folder_path = cache_ctx.get_ml_data_path(params_dir)
+    folder_path = cache_context.get_ml_data_path(params_dir)
     market_data.util.cache.cache_write.cache_locally_df(
         df=ml_data_df,
         folder_path=folder_path,
@@ -218,9 +213,7 @@ def _calculate_daily_ml_data(
 
 
 def calculate_and_cache_ml_data(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     time_range: TimeRange,
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
     target_params_batch: TargetParamsBatch = None,
@@ -241,9 +234,7 @@ def calculate_and_cache_ml_data(
     4. Creates a description.txt file with parameter details for easy debugging
     
     Args:
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
         feature_label_params: List of feature labels and their parameters. If None, uses default parameters.
         target_params_batch: Target calculation parameters. If None, uses default parameters.
@@ -258,8 +249,7 @@ def calculate_and_cache_ml_data(
     current_date = t_from
     
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-    folder_path = cache_ctx.get_ml_data_path(params_dir)
+    folder_path = cache_context.get_ml_data_path(params_dir)
 
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Starting {data_type} ML data processing for {len(feature_label_params)} features")
@@ -278,9 +268,7 @@ def calculate_and_cache_ml_data(
         
         _calculate_daily_ml_data(
             date=current_date,
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
+            cache_context=cache_context,
             feature_label_params=feature_label_params,
             target_params_batch=target_params_batch,
             resample_params=resample_params,
@@ -292,9 +280,7 @@ def calculate_and_cache_ml_data(
 
 
 def load_cached_ml_data(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     time_range: TimeRange,
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
     target_params_batch: TargetParamsBatch = None,
@@ -311,9 +297,7 @@ def load_cached_ml_data(
     Parameter descriptions are stored in description.txt files.
     
     Args:
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
         feature_label_params: List of feature labels and their parameters
         target_params_batch: Target calculation parameters. If None, uses default parameters.
@@ -331,8 +315,7 @@ def load_cached_ml_data(
     params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
 
     def load(d_from, d_to):
-        cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-        folder_path = cache_ctx.get_ml_data_path(params_dir)
+        folder_path = cache_context.get_ml_data_path(params_dir)
         return d_from, market_data.util.cache.cache_read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,

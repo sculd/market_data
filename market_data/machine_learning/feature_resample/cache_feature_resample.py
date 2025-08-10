@@ -8,7 +8,6 @@ from pathlib import Path
 from dataclasses import asdict
 
 from market_data.feature.util import parse_feature_label_param
-import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample.resample import ResampleParams
@@ -20,7 +19,6 @@ from market_data.util.cache.time import (
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
-import market_data.util.cache.cache_common
 import market_data.util.cache.cache_read
 import market_data.util.cache.cache_write
 from market_data.util.cache.path import (
@@ -76,9 +74,7 @@ def _get_feature_resampled_params_dir(
 
 def _calculate_and_cache_daily_feature_resampled(
     date: datetime.datetime,
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     feature_label: str,
     feature_params: Any,
     resample_params: ResampleParams,
@@ -92,9 +88,7 @@ def _calculate_and_cache_daily_feature_resampled(
     
     Args:
         date: The date to calculate data for
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         feature_label: Name of the feature to process
         feature_params: Feature calculation parameters
         resample_params: Resampling parameters
@@ -109,9 +103,9 @@ def _calculate_and_cache_daily_feature_resampled(
     # Prepare feature data for the day (sequential or regular)
     if seq_params is not None:
         feature_resampled_df = prepare_sequential_feature_resampled(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
+            dataset_mode=cache_context.dataset_mode,
+            export_mode=cache_context.export_mode,
+            aggregation_mode=cache_context.aggregation_mode,
             time_range=time_range,
             feature_label=feature_label,
             feature_params=feature_params,
@@ -120,9 +114,9 @@ def _calculate_and_cache_daily_feature_resampled(
         )
     else:
         feature_resampled_df = prepare_feature_resampled(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
+            dataset_mode=cache_context.dataset_mode,
+            export_mode=cache_context.export_mode,
+            aggregation_mode=cache_context.aggregation_mode,
             time_range=time_range,
             feature_label=feature_label,
             feature_params=feature_params,
@@ -137,10 +131,9 @@ def _calculate_and_cache_daily_feature_resampled(
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Caching {data_type} feature resampled data for {date}")
     
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
     feature_label_params = parse_feature_label_param((feature_label, feature_params))
     params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_params, seq_params)
-    folder_path = cache_ctx.get_folder_path(["feature_data", "feature_resampled", feature_label], params_dir)
+    folder_path = cache_context.get_folder_path(["feature_data", "feature_resampled", feature_label], params_dir)
     
     market_data.util.cache.cache_write.cache_locally_df(
         df=feature_resampled_df,
@@ -153,9 +146,7 @@ def _calculate_and_cache_daily_feature_resampled(
 
 
 def calculate_and_cache_feature_resampled(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     time_range: TimeRange,
     feature_label: str,
     feature_params: Any,
@@ -172,9 +163,7 @@ def calculate_and_cache_feature_resampled(
     3. Caches each daily piece separately for sequential vs regular features
     
     Args:
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
         feature_label: Name of the feature to process
         feature_params: Feature calculation parameters. If None, uses default parameters.
@@ -196,9 +185,7 @@ def calculate_and_cache_feature_resampled(
             
             _calculate_and_cache_daily_feature_resampled(
                 date=current_date,
-                dataset_mode=dataset_mode,
-                export_mode=export_mode,
-                aggregation_mode=aggregation_mode,
+                cache_context=cache_context,
                 feature_label=feature_label,
                 feature_params=feature_params,
                 resample_params=resample_params,
@@ -216,9 +203,7 @@ def calculate_and_cache_feature_resampled(
 
 
 def load_cached_feature_resampled(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     time_range: TimeRange,
     feature_label: str,
     feature_params: Any,
@@ -233,9 +218,7 @@ def load_cached_feature_resampled(
     Can load both regular and sequential feature data based on seq_params.
     
     Args:
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
         feature_label: Name of the feature to load
         feature_params: Feature calculation parameters. If None, uses default parameters.
@@ -253,8 +236,7 @@ def load_cached_feature_resampled(
     
     # Create worker function that properly handles daily ranges
     def load(d_from, d_to):
-        cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-        folder_path = cache_ctx.get_feature_resampled_path(params_dir)
+        folder_path = cache_context.get_feature_resampled_path(params_dir)
         df = market_data.util.cache.cache_read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,

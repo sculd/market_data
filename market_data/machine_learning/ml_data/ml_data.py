@@ -7,7 +7,7 @@ import logging
 from pathlib import Path
 
 from market_data.target.target import TargetParamsBatch
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.util.time import TimeRange
 from market_data.target.cache_target import load_cached_targets
 from market_data.machine_learning.resample.cache_resample import load_cached_resampled_data
@@ -19,9 +19,7 @@ from market_data.feature.impl.common import SequentialFeatureParam
 logger = logging.getLogger(__name__)
 
 def prepare_ml_data(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     time_range: TimeRange,
     feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
     target_params_batch: TargetParamsBatch = None,
@@ -42,9 +40,7 @@ def prepare_ml_data(
     * Joins all data to create the final ML dataset
     
     Args:
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
         feature_label_params: List of either:
             - feature labels (str) - will use default parameters
@@ -65,11 +61,9 @@ def prepare_ml_data(
     
     # Ensure resampled data is present
     resampled_df = load_cached_resampled_data(
+        cache_context=cache_context,
         params=resample_params,
-        time_range=time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode
+        time_range=time_range
     )
     
     if resampled_df is None:
@@ -97,9 +91,7 @@ def prepare_ml_data(
         logger.info(f"Processing feature: {feature_label}")
 
         feature_resampled_df = load_cached_feature_resampled(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
+            cache_context=cache_context,
             time_range=time_range,
             feature_label=feature_label,
             feature_params=feature_params,
@@ -120,11 +112,9 @@ def prepare_ml_data(
     
     # Ensure target data is present
     targets_df = load_cached_targets(
+        cache_context=cache_context,
         params=target_params_batch,
         time_range=time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode,
     )
     
     if targets_df is None or len(targets_df) == 0:

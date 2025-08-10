@@ -105,6 +105,9 @@ def main():
     export_mode = getattr(EXPORT_MODE, args.export_mode)
     aggregation_mode = getattr(AGGREGATION_MODE, args.aggregation_mode)
     
+    # Create cache context
+    cache_context = market_data.ingest.common.CacheContext(dataset_mode, export_mode, aggregation_mode)
+    
     # Create TimeRange object
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
     
@@ -178,9 +181,7 @@ def main():
         print("\nChecking ml_data")
         # Check which date ranges are missing from the ML data cache
         missing_ranges = market_data.ingest.missing_data_finder.check_missing_ml_data(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
+            cache_context=cache_context,
             time_range=time_range,
             feature_label_params=feature_label_params,
             target_params_batch=target_params_batch,
@@ -226,9 +227,7 @@ def main():
 
             missing_range_finder_func = partial(
                 market_data.ingest.missing_data_finder.check_missing_ml_data,
-                dataset_mode=dataset_mode,
-                export_mode=export_mode,
-                aggregation_mode=aggregation_mode,
+                cache_context=cache_context,
                 feature_label_params=feature_label_params,
                 target_params_batch=target_params_batch,
                 resample_params=resample_params,
@@ -254,9 +253,7 @@ def main():
 
                 cache_func = partial(
                     calculate_and_cache_ml_data,
-                    dataset_mode=dataset_mode,
-                    export_mode=export_mode,
-                    aggregation_mode=aggregation_mode,
+                    cache_context=cache_context,
                     feature_label_params=feature_label_params,
                     target_params_batch=target_params_batch,
                     resample_params=resample_params,
@@ -280,9 +277,7 @@ def main():
                     calc_time_range = TimeRange(calc_t_from, calc_t_to)
                     
                     calculate_and_cache_ml_data(
-                        dataset_mode=dataset_mode,
-                        export_mode=export_mode,
-                        aggregation_mode=aggregation_mode,
+                        cache_context=cache_context,
                         time_range=calc_time_range,
                         feature_label_params=feature_label_params,
                         target_params_batch=target_params_batch,
@@ -296,9 +291,7 @@ def main():
             # Load a sample to show details
             print("\nLoading sample of cached data to verify...")
             ml_data = load_cached_ml_data(
-                dataset_mode=dataset_mode,
-                export_mode=export_mode,
-                aggregation_mode=aggregation_mode,
+                cache_context=cache_context,
                 time_range=time_range,
                 feature_label_params=feature_label_params,
                 target_params_batch=target_params_batch,

@@ -35,9 +35,7 @@ logger = logging.getLogger(__name__)
 
 def cache_feature_cache(
         feature_label_param: Union[str, Tuple[str, Any]],
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
         time_range: TimeRange = None,
         calculation_batch_days: int = 1,
         warm_up_days: Optional[int] = None,
@@ -55,9 +53,7 @@ def cache_feature_cache(
                              If a tuple is provided, feature_label is a registered feature label and
                              parameters is an instance of the appropriate parameters class or None.
                              If parameters is None, a default parameter instance will be created.
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.) - required
-        export_mode: Export mode (OHLC, TICKS, etc.) - required
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.) - required
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode - required
         time_range: TimeRange object specifying the time range to cache
         calculation_batch_days: Number of days to calculate features for in each batch
         warm_up_days: Number of warm-up days for calculation (if None, auto-calculated)
@@ -97,9 +93,8 @@ def cache_feature_cache(
         return calculate_fn(raw_df, feature_params)
     
     try:
-        cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-        raw_data_folder_path = cache_ctx.get_market_data_path()
-        folder_path = cache_ctx.get_feature_path(feature_label, params_dir)
+        raw_data_folder_path = cache_context.get_market_data_path()
+        folder_path = cache_context.get_feature_path(feature_label, params_dir)
 
         market_data.ingest.cache_write.calculate_and_cache_data(
             raw_data_folder_path=raw_data_folder_path,
@@ -119,9 +114,7 @@ def cache_feature_cache(
 
 def cache_seq_feature_cache(
     feature_label_param: Dict[str, Any],
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     time_range: TimeRange,
     seq_params: SequentialFeatureParam = SequentialFeatureParam(),
     calculation_batch_days: int = 30,
@@ -133,9 +126,7 @@ def cache_seq_feature_cache(
     
     Args:
         feature_label_param: Dictionary containing feature label and parameters
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.) - required
-        export_mode: Export mode (OHLC, TICKS, etc.) - required
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.) - required
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode - required
         time_range: Time range for which to cache the feature
         seq_params: Sequential feature parameters
         calculation_batch_days: Number of days to process in each batch
@@ -181,8 +172,7 @@ def cache_seq_feature_cache(
             # Try to read non-sequential feature cache
             try:
                 params_dir=params.get_params_dir()
-                cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-                folder_path = cache_ctx.get_feature_path(feature_label, params_dir)
+                folder_path = cache_context.get_feature_path(feature_label, params_dir)
                 df = market_data.ingest.cache_read.read_from_local_cache(
                         folder_path,
                         time_range=extended_range,
@@ -200,7 +190,7 @@ def cache_seq_feature_cache(
                 
                 # Cache sequential features
                 seq_params_dir = f"sequence_window-{seq_params.sequence_window}/{params_dir}"
-                seq_folder_path = cache_ctx.get_feature_path(feature_label, seq_params_dir)
+                seq_folder_path = cache_context.get_feature_path(feature_label, seq_params_dir)
                 market_data.ingest.cache_write.cache_locally_df(
                     df=seq_df,
                     folder_path=seq_folder_path,

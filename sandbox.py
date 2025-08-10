@@ -26,6 +26,7 @@ if not _PROJECT_ID:
 from market_data.feature.impl.common import SequentialFeatureParam
 
 import market_data.ingest.bq.common as bq_common
+import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 import market_data.ingest.bq.cache
 import market_data.machine_learning.resample.resample
@@ -257,10 +258,11 @@ time_range = market_data.util.time.TimeRange(
 
 import market_data.ingest.missing_data_finder
 
+cache_context = market_data.ingest.common.CacheContext(
+    DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST
+)
 missing = market_data.ingest.missing_data_finder.check_missing_feature_resampled_data(
-    dataset_mode=DATASET_MODE.OKX,
-    export_mode=EXPORT_MODE.BY_MINUTE,
-    aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
+    cache_context=cache_context,
     time_range=time_range,
     feature_label='returns',
     feature_params=None,

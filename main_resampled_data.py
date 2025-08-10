@@ -8,6 +8,7 @@ from functools import partial
 
 import setup_env # needed for env variables
 
+import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample import (
@@ -84,6 +85,9 @@ def main():
     export_mode = getattr(EXPORT_MODE, args.export_mode)
     aggregation_mode = getattr(AGGREGATION_MODE, args.aggregation_mode)
     
+    # Create cache context
+    cache_context = market_data.ingest.common.CacheContext(dataset_mode, export_mode, aggregation_mode)
+    
     # Create TimeRange object
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
     
@@ -124,9 +128,7 @@ def main():
     if args.action == 'check':
         print("\nChecking resampled data")
         missing_ranges = market_data.ingest.missing_data_finder.check_missing_resampled_data(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
+            cache_context=cache_context,
             time_range=time_range,
             resample_params=resample_params
         )
@@ -165,9 +167,7 @@ def main():
             
             missing_range_finder_func = partial(
                 market_data.ingest.missing_data_finder.check_missing_resampled_data,
-                dataset_mode=dataset_mode,
-                export_mode=export_mode,
-                aggregation_mode=aggregation_mode,
+                cache_context=cache_context,
                 resample_params=resample_params,
                 )
 
@@ -190,9 +190,7 @@ def main():
 
                 cache_func = partial(
                     calculate_and_cache_resampled,
-                    dataset_mode=dataset_mode,
-                    export_mode=export_mode,
-                    aggregation_mode=aggregation_mode,
+                    cache_context=cache_context,
                     resample_at_events_func=resample_function,
                     params=resample_params,
                     calculation_batch_days=1,  # Process each range as single batch
@@ -214,9 +212,7 @@ def main():
                     calc_time_range = TimeRange(calc_t_from, calc_t_to)
                     
                     calculate_and_cache_resampled(
-                        dataset_mode=dataset_mode,
-                        export_mode=export_mode,
-                        aggregation_mode=aggregation_mode,
+                        cache_context=cache_context,
                         resample_at_events_func=resample_function,
                         params=resample_params,
                         time_range=calc_time_range,

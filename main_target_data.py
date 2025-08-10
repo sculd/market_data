@@ -79,6 +79,9 @@ def main():
     export_mode = getattr(EXPORT_MODE, args.export_mode)
     aggregation_mode = getattr(AGGREGATION_MODE, args.aggregation_mode)
     
+    # Create cache context
+    cache_context = market_data.ingest.common.CacheContext(dataset_mode, export_mode, aggregation_mode)
+    
     # Create TimeRange object
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
     
@@ -103,9 +106,7 @@ def main():
     if args.action == 'check':
         print("\nChecking target data")
         missing_ranges = market_data.ingest.missing_data_finder.check_missing_target_data(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
-            aggregation_mode=aggregation_mode,
+            cache_context=cache_context,
             time_range=time_range,
             target_params=target_params,
         )
@@ -139,9 +140,7 @@ def main():
         try:
             missing_range_finder_func = partial(
                 market_data.ingest.missing_data_finder.check_missing_target_data,
-                dataset_mode=dataset_mode,
-                export_mode=export_mode,
-                aggregation_mode=aggregation_mode,
+                cache_context=cache_context,
                 target_params=target_params,
                 )
 
@@ -164,9 +163,7 @@ def main():
 
                 cache_func = partial(
                     calculate_and_cache_targets,
-                    dataset_mode=dataset_mode,
-                    export_mode=export_mode,
-                    aggregation_mode=aggregation_mode,
+                    cache_context=cache_context,
                     params=target_params,
                     calculation_batch_days=1,  # Process each range as single batch
                     overwrite_cache=args.overwrite_cache,
@@ -187,9 +184,7 @@ def main():
                     calc_time_range = TimeRange(calc_t_from, calc_t_to)
                     
                     calculate_and_cache_targets(
-                        dataset_mode=dataset_mode,
-                        export_mode=export_mode,
-                        aggregation_mode=aggregation_mode,
+                        cache_context=cache_context,
                         time_range=calc_time_range,
                         params=target_params,
                         calculation_batch_days=args.calculation_batch_days,

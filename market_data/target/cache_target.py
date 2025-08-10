@@ -65,9 +65,7 @@ def _get_recommended_warm_up_days(params: TargetParamsBatch) -> int:
     return max(3, days_needed)
 
 def calculate_and_cache_targets(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
         params: TargetParamsBatch = None,
         time_range: TimeRange = None,
         calculation_batch_days: int = 1,
@@ -79,12 +77,8 @@ def calculate_and_cache_targets(
     
     Parameters:
     -----------
-    dataset_mode : DATASET_MODE
-        Dataset mode (LIVE, REPLAY, etc.)
-    export_mode : EXPORT_MODE
-        Export mode (OHLC, TICKS, etc.)
-    aggregation_mode : AGGREGATION_MODE
-        Aggregation mode (MIN_1, MIN_5, etc.)
+    cache_context : CacheContext
+        Cache context containing dataset_mode, export_mode, aggregation_mode
     params : TargetParamsBatch, optional
         Target calculation parameters. If None, uses default parameters.
     time_range : TimeRange, optional
@@ -105,10 +99,9 @@ def calculate_and_cache_targets(
         logger.info(f"Using {warm_up_days} warm-up days for targets")
     
     # Get the params directory name
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
     params_dir = _get_target_params_dir(params)
-    raw_data_folder_path = cache_ctx.get_market_data_path()
-    folder_path = cache_ctx.get_target_path(params_dir)
+    raw_data_folder_path = cache_context.get_market_data_path()
+    folder_path = cache_context.get_target_path(params_dir)
 
     market_data.util.cache.cache_write.calculate_and_cache_data(
         raw_data_folder_path=raw_data_folder_path,
@@ -122,12 +115,10 @@ def calculate_and_cache_targets(
     )
 
 def load_cached_targets(
+        cache_context: CacheContext,
         params: TargetParamsBatch = None,
         time_range: TimeRange = None,
         columns: List[str] = None,
-        dataset_mode: DATASET_MODE = None,
-        export_mode: EXPORT_MODE = None,
-        aggregation_mode: AGGREGATION_MODE = None,
         max_workers: int = 10,
     ) -> pd.DataFrame:
     """
@@ -141,17 +132,12 @@ def load_cached_targets(
         Time range for target calculation. If None, must provide individual time parameters.
     columns : List[str], optional
         Columns to load from cache. If None, all columns are loaded.
-    dataset_mode : DATASET_MODE, optional
-        Dataset mode for cache path. If None, uses default dataset mode.
-    export_mode : EXPORT_MODE, optional
-        Export mode for cache path. If None, uses default export mode.
-    aggregation_mode : AGGREGATION_MODE, optional
-        Aggregation mode for cache path. If None, uses default aggregation mode.
+    cache_context : CacheContext
+        Cache context containing dataset_mode, export_mode, aggregation_mode
     """
     def load(d_from, d_to):
         params_dir = params_to_dir_name(asdict(params or TargetParamsBatch()))
-        cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-        folder_path = cache_ctx.get_target_path(params_dir)
+        folder_path = cache_context.get_target_path(params_dir)
         df = market_data.util.cache.cache_read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,

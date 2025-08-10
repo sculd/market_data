@@ -2,7 +2,7 @@ import pandas as pd
 import logging
 from typing import Any, Optional
 
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample.cache_resample import load_cached_resampled_data
 from market_data.machine_learning.resample.resample import ResampleParams
@@ -13,9 +13,7 @@ from market_data.feature.impl.common import SequentialFeatureParam
 logger = logging.getLogger(__name__)
 
 def prepare_feature_resampled(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     time_range: TimeRange,
     feature_label: str,
     feature_params: Any,
@@ -30,9 +28,7 @@ def prepare_feature_resampled(
     * Joins the feature data with resampled data to create a dataset aligned with significant price movements
     
     Args:
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
         feature_label: Name of the feature to load (e.g., 'bollinger_bands', 'rsi')
         feature_params: Parameters for the feature calculation. If None, uses default parameters.
@@ -48,11 +44,9 @@ def prepare_feature_resampled(
     
     # Load resampled data
     resampled_df = load_cached_resampled_data(
+        cache_context=cache_context,
         params=resample_params,
-        time_range=time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode
+        time_range=time_range
     )
     
     if resampled_df is None or len(resampled_df) == 0:
@@ -69,10 +63,8 @@ def prepare_feature_resampled(
     
     feature_df = read_multi_feature_cache(
         feature_labels_params=[feature_label_param],
-        time_range=time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode
+        cache_context=cache_context,
+        time_range=time_range
     )
     
     if feature_df is None or len(feature_df) == 0:
@@ -92,9 +84,7 @@ def prepare_feature_resampled(
 
 
 def prepare_sequential_feature_resampled(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    aggregation_mode: AGGREGATION_MODE,
+    cache_context: CacheContext,
     time_range: TimeRange,
     feature_label: str,
     feature_params: Any,
@@ -112,9 +102,7 @@ def prepare_sequential_feature_resampled(
     This approach creates time-series sequences that can be used for sequential machine learning models.
     
     Args:
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
         feature_label: Name of the feature to load (e.g., 'bollinger_bands', 'rsi')
         feature_params: Parameters for the feature calculation. If None, uses default parameters.
@@ -135,11 +123,9 @@ def prepare_sequential_feature_resampled(
     
     # First, get the resampled data to identify required timestamps and symbols
     resampled_df = load_cached_resampled_data(
+        cache_context=cache_context,
         params=resample_params,
-        time_range=time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode
+        time_range=time_range
     )
     
     if resampled_df is None or len(resampled_df) == 0:
@@ -171,10 +157,8 @@ def prepare_sequential_feature_resampled(
     # Load feature data with extended time range
     feature_df = read_multi_feature_cache(
         feature_labels_params=[feature_label_param],
-        time_range=extended_time_range,
-        dataset_mode=dataset_mode,
-        export_mode=export_mode,
-        aggregation_mode=aggregation_mode
+        cache_context=cache_context,
+        time_range=extended_time_range
     )
     
     if feature_df is None or len(feature_df) == 0:

@@ -18,9 +18,7 @@ import market_data.feature.impl  # Import to ensure all features are registered
 
 
 def check_missing_raw_data(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
         time_range: TimeRange
 ) -> list:
     """
@@ -34,12 +32,10 @@ def check_missing_raw_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-    
     for d_range in daily_ranges:
         d_from, d_to = d_range
             
-        folder_path = cache_ctx.get_market_data_path()
+        folder_path = cache_context.get_market_data_path()
         filename = to_local_filename(folder_path, d_from, d_to)
         if not os.path.exists(filename):
             missing_ranges.append(d_range)
@@ -49,11 +45,9 @@ def check_missing_raw_data(
 
 
 def check_missing_feature_data(
+        cache_context: CacheContext,
         feature_label: str,
         feature_params: Any,
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
         time_range: TimeRange
 ) -> list:
     """
@@ -70,13 +64,11 @@ def check_missing_feature_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
         # Note: feature cache path structure is different - params_dir then base_label
-        folder_path = cache_ctx.get_folder_path(["feature_data", "features", feature_label, params_dir])
+        folder_path = cache_context.get_folder_path(["feature_data", "features", feature_label, params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -86,9 +78,7 @@ def check_missing_feature_data(
 
 
 def check_missing_target_data(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
         time_range: TimeRange,
         target_params: TargetParamsBatch = None
 ) -> list:
@@ -123,13 +113,11 @@ def check_missing_target_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
         # Note: target cache path structure has params_dir before base_label  
-        folder_path = cache_ctx.get_folder_path(["feature_data", "targets", params_dir])
+        folder_path = cache_context.get_folder_path(["feature_data", "targets", params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -139,9 +127,7 @@ def check_missing_target_data(
 
 
 def check_missing_resampled_data(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
         time_range: TimeRange,
         resample_params: ResampleParams = None
 ) -> list:
@@ -162,13 +148,11 @@ def check_missing_resampled_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
         # Note: resampled cache path structure has params_dir before base_label
-        folder_path = cache_ctx.get_folder_path(["feature_data", "resampled", params_dir])
+        folder_path = cache_context.get_folder_path(["feature_data", "resampled", params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -178,9 +162,7 @@ def check_missing_resampled_data(
 
 
 def check_missing_feature_resampled_data(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
         time_range: TimeRange,
         feature_label: str,
         feature_params=None,
@@ -218,13 +200,11 @@ def check_missing_feature_resampled_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
         # Note: feature_resampled cache path structure has params_dir before base_label
-        folder_path = cache_ctx.get_folder_path(["feature_data", "feature_resampled", params_dir])
+        folder_path = cache_context.get_folder_path(["feature_data", "feature_resampled", params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -234,9 +214,7 @@ def check_missing_feature_resampled_data(
 
 
 def check_missing_ml_data(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
         time_range: TimeRange,
         feature_label_params=None,
         target_params_batch=None,
@@ -264,13 +242,11 @@ def check_missing_ml_data(
     daily_ranges = split_t_range(t_from, t_to)
     
     missing_ranges = []
-    cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-    
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
         # Note: ml_data cache path structure has params_dir before base_label
-        folder_path = cache_ctx.get_folder_path(["feature_data", "ml_data", params_dir])
+        folder_path = cache_context.get_folder_path(["feature_data", "ml_data", params_dir])
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):

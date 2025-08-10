@@ -35,9 +35,7 @@ Path(RESAMPLE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 
 def calculate_and_cache_resampled(
-        dataset_mode: DATASET_MODE,
-        export_mode: EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
         resample_at_events_func: Callable = None,
         params: ResampleParams = None,
         time_range: TimeRange = None,
@@ -108,9 +106,8 @@ def calculate_and_cache_resampled(
                 continue
                 
             # 4. Cache resampled data daily
-            cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
             params_dir = params_to_dir_name(asdict(params or ResampleParams()))
-            folder_path = cache_ctx.get_resampled_path(params_dir)
+            folder_path = cache_context.get_resampled_path(params_dir)
             market_data.util.cache.cache_write.cache_locally_df(
                 df=resampled_df,
                 folder_path=folder_path,
@@ -123,12 +120,10 @@ def calculate_and_cache_resampled(
             continue
 
 def load_cached_resampled_data(
+        cache_context: CacheContext,
         params: ResampleParams = None,
         time_range: TimeRange = None,
         columns: typing.List[str] = None,
-        dataset_mode: DATASET_MODE = None,
-        export_mode: EXPORT_MODE = None,
-        aggregation_mode: AGGREGATION_MODE = None,
         max_workers: int = 10,
     ) -> pd.DataFrame:
     """
@@ -152,8 +147,7 @@ def load_cached_resampled_data(
     
     def load(d_from, d_to):
         params_dir = params_to_dir_name(asdict(params or ResampleParams()))
-        cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-        folder_path = cache_ctx.get_resampled_path(params_dir)
+        folder_path = cache_context.get_resampled_path(params_dir)
         df = market_data.util.cache.cache_read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,

@@ -35,9 +35,7 @@ def read_multi_feature_cache(
         feature_labels_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
         time_range: TimeRange = None,
         columns: typing.List[str] = None,
-        dataset_mode: DATASET_MODE = None,
-        export_mode: EXPORT_MODE = None,
-        aggregation_mode: AGGREGATION_MODE = None,
+        cache_context: CacheContext = None,
         max_workers: int = 10,
     ) -> pd.DataFrame:
     """
@@ -49,9 +47,7 @@ def read_multi_feature_cache(
             - (label, params) tuples - will use the provided parameters
         time_range: Time range to fetch data for
         columns: Specific columns to retrieve
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         
     Returns:
         Combined DataFrame with all requested features
@@ -74,8 +70,7 @@ def read_multi_feature_cache(
         try:
             def load(d_from, d_to):
                 params_dir=params.get_params_dir()
-                cache_ctx = CacheContext(dataset_mode, export_mode, aggregation_mode)
-                folder_path = cache_ctx.get_feature_path(feature_label, params_dir)
+                folder_path = cache_context.get_feature_path(feature_label, params_dir)
                 df = market_data.ingest.cache_read.read_daily_from_local_cache(
                         folder_path,
                         d_from = d_from,
