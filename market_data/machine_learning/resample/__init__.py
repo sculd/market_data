@@ -6,7 +6,7 @@ All resample methods are automatically registered when the module is imported.
 """
 
 # Import the registry functions
-from .resample_registry import (
+from market_data.machine_learning.resample.resample_registry import (
     get_resample_params_class,
     get_resample_function,
     get_resample_method,
@@ -18,12 +18,12 @@ from .resample_registry import (
 )
 
 # Import all resample implementations to register them
-from .resample import ResampleParams, resample_at_events
-from .resample_reversal import ResampleReversalParams
+from market_data.machine_learning.resample.resample import ResampleParams, resample_at_events
+from market_data.machine_learning.resample.resample_reversal import ResampleReversalParams
 
 # Also import the adaptive method for completeness
 try:
-    from .resample_adaptive import AdaptiveResampleParams
+    from market_data.machine_learning.resample.resample_adaptive import AdaptiveResampleParams
 except ImportError:
     pass  # Skip if adaptive module has issues
 
