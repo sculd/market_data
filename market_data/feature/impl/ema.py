@@ -11,7 +11,7 @@ import logging
 import datetime
 import numba as nb
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
 from market_data.feature.registry import register_feature
 from market_data.feature.param import FeatureParam
@@ -91,29 +91,6 @@ class EMAParams(FeatureParam):
     def get_warm_up_period(self) -> datetime.timedelta:
         return datetime.timedelta(minutes=max(self.periods))
 
-    def get_warm_up_days(self) -> int:
-        """
-        Calculate the recommended warm-up period based on the maximum EMA period.
-        
-        For EMA calculation, warm-up should be at least 2-3 times the period
-        to allow for proper convergence.
-        
-        Returns:
-            int: Recommended number of warm-up days
-        """
-        import math
-        
-        if not self.periods:
-            return 0
-            
-        # Find the maximum period
-        max_period = max(self.periods)
-        
-        # For proper EMA convergence, we typically need 2-3 times the period length
-        # Convert to days (assuming periods are in minutes for 24/7 markets)
-        days_needed = math.ceil(3 * max_period / (24 * 60))
-        
-        return max(1, days_needed)  # At least 1 day
     
     def to_str(self) -> str:
         """Convert parameters to string format: periods:[5,15,30],price_col:close,include_price_relatives:true"""

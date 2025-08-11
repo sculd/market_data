@@ -10,8 +10,8 @@ import numpy as np
 import logging
 import datetime
 import numba as nb
-from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any, Tuple
+from dataclasses import dataclass
+from typing import Optional
 
 from market_data.feature.registry import register_feature
 from market_data.feature.param import FeatureParam
@@ -276,28 +276,6 @@ class IndicatorsParams(FeatureParam):
         )
         return datetime.timedelta(minutes=max_window)
 
-    def get_warm_up_days(self) -> int:
-        """
-        Calculate the recommended warm-up period based on the maximum window
-        from all indicator parameters.
-        
-        Returns:
-            int: Recommended number of warm-up days
-        """
-        import math
-        
-        # Find the maximum window from all parameters
-        max_window = max(
-            self.rsi_period,
-            self.autocorr_window,
-            self.zscore_window,
-            self.minmax_window
-        )
-        
-        # Convert to days (assuming periods are in minutes for 24/7 markets)
-        days_needed = math.ceil(max_window / (24 * 60))
-        
-        return max(1, days_needed)  # At least 1 day
     
     def to_str(self) -> str:
         """Convert parameters to string format: rsi_period:14,autocorr_lag:1,autocorr_window:14,zscore_window:20,minmax_window:20,price_col:close"""

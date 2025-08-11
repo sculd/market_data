@@ -6,11 +6,10 @@ such as BTC returns for cross-referencing with other assets.
 """
 
 import pandas as pd
-import numpy as np
 import logging
 import datetime
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
 from market_data.feature.registry import register_feature
 from market_data.feature.param import FeatureParam
@@ -30,25 +29,6 @@ class BTCParams(FeatureParam):
     def get_warm_up_period(self) -> datetime.timedelta:
         return datetime.timedelta(minutes=max(self.return_periods))
 
-    def get_warm_up_days(self) -> int:
-        """
-        Calculate the recommended warm-up period based on the maximum return period.
-        
-        Returns:
-            int: Recommended number of warm-up days
-        """
-        import math
-        
-        if not self.return_periods:
-            return 0
-            
-        # Find the maximum period
-        max_period = max(self.return_periods)
-        
-        # Convert to days (assuming periods are in minutes for 24/7 markets)
-        days_needed = math.ceil(max_period / (24 * 60))
-        
-        return max(1, days_needed)  # At least 1 day
     
     def to_str(self) -> str:
         """Convert parameters to string format: return_periods:[1,5,15],price_col:close"""

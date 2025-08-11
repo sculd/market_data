@@ -10,7 +10,7 @@ import logging
 import numba as nb
 import datetime
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import List, Optional
 
 from market_data.feature.registry import register_feature
 from market_data.feature.param import FeatureParam
@@ -74,25 +74,6 @@ class ReturnParams(FeatureParam):
         max_period = 1 if not self.periods else max(self.periods)
         return datetime.timedelta(minutes=max_period)
 
-    def get_warm_up_days(self) -> int:
-        """
-        Calculate the recommended warm-up period based on the maximum return period.
-        
-        Returns:
-            int: Recommended number of warm-up days
-        """
-        import math
-        
-        if not self.periods:
-            return 0
-            
-        # Find the maximum period
-        max_period = max(self.periods)
-        
-        # Convert to days (assuming periods are in minutes for 24/7 markets)
-        days_needed = math.ceil(max_period / (24 * 60))
-        
-        return max(1, days_needed)  # At least 1 day
     
     def to_str(self) -> str:
         """Convert parameters to string format: periods:[1,5,15],price_col:close,log_returns:false"""

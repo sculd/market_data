@@ -10,8 +10,8 @@ import numpy as np
 import logging
 import datetime
 import pytz
-from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from dataclasses import dataclass
+from typing import Optional
 
 from market_data.feature.registry import register_feature
 from market_data.feature.param import FeatureParam
@@ -30,11 +30,6 @@ class TimeOfDayParams(FeatureParam):
         # Time features don't need warm-up
         return datetime.timedelta(minutes=0)
 
-    def get_warm_up_days(self) -> int:
-        """
-        Time features don't require warm-up data. Returns 0.
-        """
-        return 0
     
     def to_str(self) -> str:
         """Convert parameters to string format: timezone:US/Eastern"""

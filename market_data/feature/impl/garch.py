@@ -9,8 +9,8 @@ import numpy as np
 import logging
 import datetime
 import numba as nb
-from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any, Tuple
+from dataclasses import dataclass
+from typing import Optional
 
 from market_data.feature.registry import register_feature
 from market_data.feature.param import FeatureParam
@@ -121,18 +121,6 @@ class GARCHParams(FeatureParam):
         # GARCH models need warm-up data for parameter convergence
         return datetime.timedelta(days=3)
         
-    def get_warm_up_days(self) -> int:
-        """
-        Calculate the recommended warm-up period for GARCH volatility calculation.
-        
-        GARCH models need a warm-up period for parameter convergence.
-        
-        Returns:
-            int: Recommended number of warm-up days
-        """
-        # For GARCH models, we typically need more data for parameter convergence
-        # Recommend at least 3 days of data for warm-up
-        return 3
     
     def to_str(self) -> str:
         """Convert parameters to string format: omega:0.1,alpha:0.1,beta:0.8,price_col:close,annualize:true"""

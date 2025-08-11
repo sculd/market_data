@@ -11,7 +11,7 @@ import logging
 import datetime
 import numba as nb
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any, Tuple
+from typing import List, Optional
 
 from market_data.feature.registry import register_feature
 from market_data.feature.param import FeatureParam
@@ -306,16 +306,6 @@ class MarketRegimeParams(FeatureParam):
         max_window = max(self.volatility_windows) if self.volatility_windows else 240
         return datetime.timedelta(minutes=max_window)
 
-    def get_warm_up_days(self) -> int:
-        """
-        Calculate the recommended warm-up period for market regime calculation.
-        
-        Returns:
-            int: Recommended number of warm-up days
-        """
-        # For market regime calculations, we need at least window size data points
-        max_window = max(self.volatility_windows) if self.volatility_windows else 240
-        return max(1, (max_window // (24 * 60)))  # Convert minutes to days
     
     def to_str(self) -> str:
         """Convert parameters to string format: volatility_windows:[240,1440],price_col:close,include_mean:true,include_variance:true,include_skewness:true,include_kurtosis:true"""

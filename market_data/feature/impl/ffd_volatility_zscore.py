@@ -10,7 +10,7 @@ import logging
 import numba as nb
 import datetime
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import Optional
 
 
 from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams, get_zscored_ffd_series
@@ -38,27 +38,6 @@ class ZscoredFFDVolatilityParams(FeatureParam):
         )
         return datetime.timedelta(minutes=warm_up)
 
-    def get_warm_up_days(self) -> int:
-        """
-        Calculate the recommended warm-up period based on volatility window,
-        FFD requirements, and zscore window.
-        
-        Returns:
-            int: Recommended number of warm-up days
-        """
-        import math
-        
-        # Add requirements for volatility, FFD and zscore
-        total_minutes = max(
-            self.zscored_ffd_params.zscore_window,
-            self.volatility_window,
-            100  # Conservative estimate for FFD weights convergence
-        )
-        
-        # Convert to days (assuming periods are in minutes for 24/7 markets)
-        days_needed = math.ceil(total_minutes / (24 * 60))
-        
-        return max(1, days_needed)  # At least 1 day
     
     def to_str(self) -> str:
         """Convert parameters to string format: price_col:close,volatility_window:20,log_returns:true,d:0.5,threshold:0.01,zscore_window:100"""
