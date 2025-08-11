@@ -22,14 +22,3 @@ class SequentialFeatureParam:
         """
         self.sequence_window = sequence_window
         
-    def get_params_dir(self) -> str:
-        """
-        Get the directory name for caching sequential features.
-        
-        Returns:
-            str: Directory name based on sequence window
-        """
-        params_dict = {
-            'sequence_window': self.sequence_window
-        }
-        return params_to_dir_name(params_dict) 

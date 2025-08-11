@@ -18,7 +18,7 @@ from market_data.machine_learning.resample.resample_registry import (
 )
 
 # Import all resample implementations to register them
-from market_data.machine_learning.resample.calc import ResampleParams, resample_at_events
+from market_data.machine_learning.resample.calc import CumSumResampleParams, resample_at_events
 from market_data.machine_learning.resample.calc_reversal import ResampleReversalParams
 
 # Also import the adaptive method for completeness
@@ -39,7 +39,7 @@ __all__ = [
     'get_resample_method_info',
     
     # Parameter classes
-    'ResampleParams',
+    'CumSumResampleParams',
     'ResampleReversalParams',
     
     # Functions (for backward compatibility)

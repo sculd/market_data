@@ -88,24 +88,6 @@ class EMAParams(FeatureParam):
     price_col: str = "close"
     include_price_relatives: bool = True
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        periods_str = '_'.join(str(p) for p in self.periods)
-        
-        params_dict = {
-            'periods': self.periods,
-            'price': self.price_col,
-            'rel': self.include_price_relatives
-        }
-        return params_to_dir_name(params_dict)
-        
     def get_warm_up_period(self) -> datetime.timedelta:
         return datetime.timedelta(minutes=max(self.periods))
 

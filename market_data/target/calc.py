@@ -5,6 +5,8 @@ import logging
 import numba as nb
 from dataclasses import dataclass, field
 
+from market_data.util.param import Param
+
 logger = logging.getLogger(__name__)
 
 # Default values for target parameters
@@ -12,10 +14,29 @@ DEFAULT_FORWARD_PERIODS = [5, 10, 30]
 DEFAULT_TP_VALUES = [0.015, 0.03, 0.05]
 
 @dataclass
-class TargetParams:
+class TargetParams(Param):
     forward_period: int = 30
     tp_value: float = 0.03
     sl_value: float = 0.03
+    
+    @classmethod
+    def from_str(cls, param_str: str) -> 'TargetParams':
+        """Parse parameters from string format: forward_period:30,tp_value:0.03,sl_value:0.03"""
+        params = {}
+        for pair in param_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'forward_period':
+                    params['forward_period'] = int(value)
+                elif key == 'tp_value':
+                    params['tp_value'] = float(value)
+                elif key == 'sl_value':
+                    params['sl_value'] = float(value)
+        return cls(**params)
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: forward_period:30,tp_value:0.03,sl_value:0.03"""
+        return f"forward_period:{self.forward_period},tp_value:{self.tp_value},sl_value:{self.sl_value}"
     
     def __repr__(self) -> str:
         """String representation of the parameters."""

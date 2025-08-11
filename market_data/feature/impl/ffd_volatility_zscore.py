@@ -30,19 +30,6 @@ class ZscoredFFDVolatilityParams(FeatureParam):
     volatility_window: int = 20  # Window for volatility calculation
     log_returns: bool = True  # Use log returns vs simple returns
     
-    def get_params_dir(self) -> str:
-        from market_data.util.cache.path import params_to_dir_name
-        
-        params_dict = {
-            'price_col': self.price_col,
-            'volatility_window': self.volatility_window,
-            'log_returns': self.log_returns,
-            'd': self.zscored_ffd_params.ffd_params.d,
-            'threshold': self.zscored_ffd_params.ffd_params.threshold,
-            'zscore_window': self.zscored_ffd_params.zscore_window
-        }
-        return params_to_dir_name(params_dict)
-        
     def get_warm_up_period(self) -> datetime.timedelta:
         warm_up = max(
             self.zscored_ffd_params.zscore_window,

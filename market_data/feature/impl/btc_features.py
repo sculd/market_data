@@ -27,23 +27,6 @@ class BTCParams(FeatureParam):
     price_col: str = "close"
     btc_symbol_patterns: List[str] = field(default_factory=lambda: ["BTC", "BTCUSDT", "BTC-USDT"])
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        periods_str = '_'.join(str(p) for p in self.return_periods)
-        
-        params_dict = {
-            'periods': self.return_periods,
-            'price': self.price_col
-        }
-        return params_to_dir_name(params_dict)
-        
     def get_warm_up_period(self) -> datetime.timedelta:
         return datetime.timedelta(minutes=max(self.return_periods))
 

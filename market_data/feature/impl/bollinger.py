@@ -111,22 +111,7 @@ class BollingerParams(FeatureParam):
     std_dev: float = 2.0
     price_col: str = "close"
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        params_dict = {
-            'period': self.period,
-            'std_dev': self.std_dev,
-            'price': self.price_col
-        }
-        return params_to_dir_name(params_dict)
-        
+    
     def get_warm_up_period(self) -> datetime.timedelta:
         return datetime.timedelta(minutes=self.period)
 

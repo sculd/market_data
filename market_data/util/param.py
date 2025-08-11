@@ -9,15 +9,17 @@ class Param(abc.ABC):
     and caching directory generation.
     """
     
-    @abc.abstractmethod
     def get_params_dir(self) -> str:
         """
         Generate a directory name string from parameters for caching purposes.
         
+        Uses the to_str() method to ensure perfect consistency between
+        serialization format and directory naming.
+        
         Returns:
             str: Directory name string that uniquely identifies these parameters
         """
-        pass
+        return self.to_str()
     
     @classmethod
     @abc.abstractmethod

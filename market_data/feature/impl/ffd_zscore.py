@@ -29,17 +29,6 @@ class ZscoredFFDParams(FeatureParam):
     zscored_ffd_params: BaseZscoredFFDParams = field(default_factory=BaseZscoredFFDParams)
     cols: List[str] = field(default_factory=lambda: ["close", "volume"])
     
-    def get_params_dir(self) -> str:
-        from market_data.util.cache.path import params_to_dir_name
-        
-        params_dict = {
-            'cols': self.cols,
-            'd': self.zscored_ffd_params.ffd_params.d,
-            'threshold': self.zscored_ffd_params.ffd_params.threshold,
-            'zscore_window': self.zscored_ffd_params.zscore_window
-        }
-        return params_to_dir_name(params_dict)
-        
     def get_warm_up_period(self) -> datetime.timedelta:
         warm_up = max(
             self.zscored_ffd_params.zscore_window,

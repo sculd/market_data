@@ -126,24 +126,6 @@ class VolumeParams(FeatureParam):
     price_col: str = "close"
     zscored_ffd_params: BaseZscoredFFDParams = field(default_factory=BaseZscoredFFDParams)
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        params_dict = {
-            'ratio_period': self.ratio_period,
-            'price': self.price_col,
-            'd': self.zscored_ffd_params.ffd_params.d,
-            'threshold': self.zscored_ffd_params.ffd_params.threshold,
-            'zscore_window': self.zscored_ffd_params.zscore_window
-        }
-        return params_to_dir_name(params_dict)
-        
     def _get_warm_up_len(self) -> int:
         max_window = self.zscored_ffd_params.zscore_window + 100  # 100 is the warm-up period for ffd
         return max(max_window, self.ratio_period)

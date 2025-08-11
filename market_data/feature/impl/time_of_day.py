@@ -26,20 +26,6 @@ class TimeOfDayParams(FeatureParam):
     """Parameters for time of day feature calculations."""
     timezone: str = "US/Eastern"  # US stock market timezone
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        params_dict = {
-            'tz': self.timezone.replace('/', '_')
-        }
-        return params_to_dir_name(params_dict)
-        
     def get_warm_up_period(self) -> datetime.timedelta:
         # Time features don't need warm-up
         return datetime.timedelta(minutes=0)

@@ -70,25 +70,6 @@ class ReturnParams(FeatureParam):
     price_col: str = "close"
     log_returns: bool = False
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        periods_str = '_'.join(str(p) for p in self.periods)
-        log_str = 'log' if self.log_returns else 'simple'
-        
-        params_dict = {
-            'periods': self.periods,
-            'price': self.price_col,
-            'type': log_str
-        }
-        return params_to_dir_name(params_dict)
-        
     def get_warm_up_period(self) -> datetime.timedelta:
         max_period = 1 if not self.periods else max(self.periods)
         return datetime.timedelta(minutes=max_period)

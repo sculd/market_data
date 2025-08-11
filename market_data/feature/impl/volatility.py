@@ -52,25 +52,6 @@ class VolatilityParams(FeatureParam):
     annualize: bool = True
     trading_periods_per_year: int = 252 * 24 * 60  # Minutes in a trading year for crypto (24/7)
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        windows_str = '_'.join(str(w) for w in self.windows)
-        annualize_str = 'ann' if self.annualize else 'raw'
-        
-        params_dict = {
-            'windows': self.windows,
-            'price': self.price_col,
-            'type': annualize_str
-        }
-        return params_to_dir_name(params_dict)
-    
     def get_warm_up_period(self) -> datetime.timedelta:
         max_period = 1 if not self.windows else max(self.windows)
         return datetime.timedelta(minutes=max_period)

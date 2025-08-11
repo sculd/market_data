@@ -267,25 +267,6 @@ class IndicatorsParams(FeatureParam):
     minmax_window: int = 20
     price_col: str = "close"
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        params_dict = {
-            'rsi_period': self.rsi_period,
-            'autocorr_lag': self.autocorr_lag,
-            'autocorr_window': self.autocorr_window,
-            'zscore_window': self.zscore_window,
-            'minmax_window': self.minmax_window,
-            'price': self.price_col
-        }
-        return params_to_dir_name(params_dict)
-        
     def get_warm_up_period(self) -> datetime.timedelta:
         max_window = max(
             self.rsi_period,

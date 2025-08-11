@@ -11,17 +11,6 @@ class AdaptiveResampleParams(ResampleParam):
     k: float = 2.0  # Sensitivity multiplier for the volatility
     vol_lookback: int = 60
     
-    def get_params_dir(self) -> str:
-        """Generate directory name for caching."""
-        from market_data.util.cache.path import params_to_dir_name
-        params_dict = {
-            'price_col': self.price_col,
-            'threshold': self.threshold,
-            'k': self.k,
-            'vol_lookback': self.vol_lookback
-        }
-        return params_to_dir_name(params_dict)
-    
     def get_target_frequency(self) -> str:
         """Get target frequency - adaptive for volatility-based resampling."""
         return "adaptive"

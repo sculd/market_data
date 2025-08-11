@@ -117,26 +117,6 @@ class GARCHParams(FeatureParam):
     annualize: bool = True
     trading_periods_per_year: int = 252 * 24 * 60  # Minutes in a trading year for crypto (24/7)
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        annualize_str = 'ann' if self.annualize else 'raw'
-        
-        params_dict = {
-            'omega': self.omega,
-            'alpha': self.alpha,
-            'beta': self.beta,
-            'price': self.price_col,
-            'type': annualize_str
-        }
-        return params_to_dir_name(params_dict)
-    
     def get_warm_up_period(self) -> datetime.timedelta:
         # GARCH models need warm-up data for parameter convergence
         return datetime.timedelta(days=3)

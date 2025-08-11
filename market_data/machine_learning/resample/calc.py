@@ -58,15 +58,6 @@ class CumSumResampleParams(ResampleParam):
         else:
             raise ValueError(f"Unknown config name: {config_name}")
 
-    def get_params_dir(self) -> str:
-        """Generate directory name for caching."""
-        from market_data.util.cache.path import params_to_dir_name
-        params_dict = {
-            'price_col': self.price_col,
-            'threshold': self.threshold
-        }
-        return params_to_dir_name(params_dict)
-    
     def get_target_frequency(self) -> str:
         """Get target frequency - adaptive for event-based resampling."""
         return "adaptive"

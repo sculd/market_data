@@ -302,35 +302,6 @@ class MarketRegimeParams(FeatureParam):
     include_skewness: bool = True
     include_kurtosis: bool = True
     
-    def get_params_dir(self) -> str:
-        """
-        Generate a directory name string from parameters.
-        
-        Returns:
-            Directory name string for caching
-        """
-        from market_data.util.cache.path import params_to_dir_name
-        
-        # Generate string indicators for included statistics
-        stats = []
-        if self.include_mean:
-            stats.append('mean')
-        if self.include_variance:
-            stats.append('var')
-        if self.include_skewness:
-            stats.append('skew')
-        if self.include_kurtosis:
-            stats.append('kurt')
-        
-        stats_str = '_'.join(stats)
-        
-        params_dict = {
-            'windows': self.volatility_windows,
-            'price': self.price_col,
-            'stats': stats_str
-        }
-        return params_to_dir_name(params_dict)
-      
     def get_warm_up_period(self) -> datetime.timedelta:
         max_window = max(self.volatility_windows) if self.volatility_windows else 240
         return datetime.timedelta(minutes=max_window)
