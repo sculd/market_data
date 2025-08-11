@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +82,7 @@ def _calculate_price_to_ema_ratio_numba(prices, ema):
     return ratio
 
 @dataclass
-class EMAParams:
+class EMAParams(FeatureParam):
     """Parameters for EMA feature calculations."""
     periods: List[int] = field(default_factory=lambda: [5, 15, 30, 60, 120])
     price_col: str = "close"
@@ -131,6 +132,29 @@ class EMAParams:
         days_needed = math.ceil(3 * max_period / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: periods:[5,15,30],price_col:close,include_price_relatives:true"""
+        periods_str = '[' + ','.join(str(p) for p in self.periods) + ']'
+        return f"periods:{periods_str},price_col:{self.price_col},include_price_relatives:{str(self.include_price_relatives).lower()}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'EMAParams':
+        """Parse EMA parameters from JSON-like format: periods:[5,15,30],price_col:close,include_price_relatives:true"""
+        params = {}
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'periods':
+                    # Parse [5,15,30] format
+                    if value.startswith('[') and value.endswith(']'):
+                        periods_str = value[1:-1]
+                        params['periods'] = [int(p.strip()) for p in periods_str.split(',') if p.strip()]
+                elif key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'include_price_relatives':
+                    params['include_price_relatives'] = value.lower() == 'true'
+        return cls(**params)
 
 @register_feature(FEATURE_LABEL)
 class EMAFeature:

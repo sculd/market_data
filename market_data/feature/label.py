@@ -24,6 +24,10 @@ class FeatureParam(abc.ABC):
     def from_str(cls, feature_label_str: str):
         pass
 
+    @abc.abstractmethod
+    def to_str(self) -> str:
+        pass
+
 
 def _find_param_class(feature_label: str) -> Optional[Any]:
     try:
@@ -80,7 +84,6 @@ class FeatureLabel:
 
 
 class FeatureLabelCollection:
-    feature_label_delim = ','
     def __init__(self):
         self.feature_labels: List[FeatureLabel] = []
 
@@ -91,7 +94,7 @@ class FeatureLabelCollection:
     @classmethod
     def from_str(cls, feature_label_collection_str: str) -> 'FeatureLabelCollection':
         ret = cls()
-        for feature_label_str in feature_label_collection_str.split(cls.feature_label_delim):
+        for feature_label_str in feature_label_collection_str.split():
             feature_label = FeatureLabel.from_str(feature_label_str)
             ret = ret.with_feature_label(feature_label)
         return ret

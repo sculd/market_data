@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 
 logger = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ def _calculate_log_returns_numba(prices, period):
     return returns
 
 @dataclass
-class ReturnParams:
+class ReturnParams(FeatureParam):
     """Parameters for return feature calculations."""
     periods: List[int] = field(default_factory=lambda: [1, 5, 15, 30, 60, 120])
     price_col: str = "close"
@@ -111,6 +112,29 @@ class ReturnParams:
         days_needed = math.ceil(max_period / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: periods:[1,5,15],price_col:close,log_returns:false"""
+        periods_str = '[' + ','.join(str(p) for p in self.periods) + ']'
+        return f"periods:{periods_str},price_col:{self.price_col},log_returns:{str(self.log_returns).lower()}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'ReturnParams':
+        """Parse Return parameters from JSON-like format: periods:[1,5,15],price_col:close,log_returns:false"""
+        params = {}
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'periods':
+                    # Parse [1,5,15] format
+                    if value.startswith('[') and value.endswith(']'):
+                        periods_str = value[1:-1]
+                        params['periods'] = [int(p.strip()) for p in periods_str.split(',') if p.strip()]
+                elif key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'log_returns':
+                    params['log_returns'] = value.lower() == 'true'
+        return cls(**params)
 
 @register_feature(FEATURE_LABEL)
 class ReturnsFeature:

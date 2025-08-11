@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 FEATURE_LABEL = "btc_features"
 
 @dataclass
-class BTCParams:
+class BTCParams(FeatureParam):
     """Parameters for Bitcoin feature calculations."""
     return_periods: List[int] = field(default_factory=lambda: [1, 5, 15, 30, 60, 120])
     price_col: str = "close"
@@ -65,6 +66,33 @@ class BTCParams:
         days_needed = math.ceil(max_period / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: return_periods:[1,5,15],price_col:close"""
+        periods_str = '[' + ','.join(str(p) for p in self.return_periods) + ']'
+        patterns_str = '[' + ','.join(self.btc_symbol_patterns) + ']'
+        return f"return_periods:{periods_str},price_col:{self.price_col},btc_symbol_patterns:{patterns_str}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'BTCParams':
+        """Parse BTC parameters from JSON-like format: return_periods:[1,5,15],price_col:close"""
+        params = {}
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'return_periods':
+                    # Parse [1,5,15] format
+                    if value.startswith('[') and value.endswith(']'):
+                        periods_str = value[1:-1]
+                        params['return_periods'] = [int(p.strip()) for p in periods_str.split(',') if p.strip()]
+                elif key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'btc_symbol_patterns':
+                    # Parse [BTC,BTCUSDT] format
+                    if value.startswith('[') and value.endswith(']'):
+                        patterns_str = value[1:-1]
+                        params['btc_symbol_patterns'] = [p.strip() for p in patterns_str.split(',') if p.strip()]
+        return cls(**params)
 
 @register_feature(FEATURE_LABEL)
 class BTCFeature:

@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams, get_zscored_ffd_series
 from market_data.feature.impl.common_calc import _calculate_rolling_mean_numba
 
@@ -119,7 +120,7 @@ def _calculate_log_numba(values):
 
 
 @dataclass
-class VolumeParams:
+class VolumeParams(FeatureParam):
     """Parameters for volume indicator calculations."""
     ratio_period: int = 100
     price_col: str = "close"
@@ -166,6 +167,33 @@ class VolumeParams:
         days_needed = math.ceil(max_window / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: ratio_period:100,price_col:close,d:0.5,threshold:0.01,zscore_window:100"""
+        return f"ratio_period:{self.ratio_period},price_col:{self.price_col},d:{self.zscored_ffd_params.ffd_params.d},threshold:{self.zscored_ffd_params.ffd_params.threshold},zscore_window:{self.zscored_ffd_params.zscore_window}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'VolumeParams':
+        """Parse Volume parameters from JSON-like format: ratio_period:100,price_col:close,d:0.5,threshold:0.01,zscore_window:100"""
+        params = {}
+        base_params = BaseZscoredFFDParams()
+        
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'ratio_period':
+                    params['ratio_period'] = int(value)
+                elif key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'd':
+                    base_params.ffd_params.d = float(value)
+                elif key == 'threshold':
+                    base_params.ffd_params.threshold = float(value)
+                elif key == 'zscore_window':
+                    base_params.zscore_window = int(value)
+        
+        params['zscored_ffd_params'] = base_params
+        return cls(**params)
 
 @register_feature(FEATURE_LABEL)
 class VolumeFeature:

@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
 
 logger = logging.getLogger(__name__)
@@ -257,7 +258,7 @@ def _calculate_zscore_numba(values, mean, std):
     return result
 
 @dataclass
-class IndicatorsParams:
+class IndicatorsParams(FeatureParam):
     """Parameters for technical indicators calculations."""
     rsi_period: int = 14
     autocorr_lag: int = 1
@@ -316,6 +317,31 @@ class IndicatorsParams:
         days_needed = math.ceil(max_window / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: rsi_period:14,autocorr_lag:1,autocorr_window:14,zscore_window:20,minmax_window:20,price_col:close"""
+        return f"rsi_period:{self.rsi_period},autocorr_lag:{self.autocorr_lag},autocorr_window:{self.autocorr_window},zscore_window:{self.zscore_window},minmax_window:{self.minmax_window},price_col:{self.price_col}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'IndicatorsParams':
+        """Parse Indicators parameters from JSON-like format: rsi_period:14,autocorr_lag:1,autocorr_window:14,zscore_window:20,minmax_window:20,price_col:close"""
+        params = {}
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'rsi_period':
+                    params['rsi_period'] = int(value)
+                elif key == 'autocorr_lag':
+                    params['autocorr_lag'] = int(value)
+                elif key == 'autocorr_window':
+                    params['autocorr_window'] = int(value)
+                elif key == 'zscore_window':
+                    params['zscore_window'] = int(value)
+                elif key == 'minmax_window':
+                    params['minmax_window'] = int(value)
+                elif key == 'price_col':
+                    params['price_col'] = value
+        return cls(**params)
 
 @register_feature(FEATURE_LABEL)
 class IndicatorsFeature:

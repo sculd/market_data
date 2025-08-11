@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 from market_data.feature.impl.returns import _calculate_simple_returns_numba
 
 logger = logging.getLogger(__name__)
@@ -107,7 +108,7 @@ def _annualize_volatility_numba(volatility, annualization_factor):
     return result
 
 @dataclass
-class GARCHParams:
+class GARCHParams(FeatureParam):
     """Parameters for GARCH volatility calculations."""
     omega: float = 0.1
     alpha: float = 0.1
@@ -135,6 +136,10 @@ class GARCHParams:
             'type': annualize_str
         }
         return params_to_dir_name(params_dict)
+    
+    def get_warm_up_period(self) -> datetime.timedelta:
+        # GARCH models need warm-up data for parameter convergence
+        return datetime.timedelta(days=3)
         
     def get_warm_up_days(self) -> int:
         """
@@ -148,6 +153,31 @@ class GARCHParams:
         # For GARCH models, we typically need more data for parameter convergence
         # Recommend at least 3 days of data for warm-up
         return 3
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: omega:0.1,alpha:0.1,beta:0.8,price_col:close,annualize:true"""
+        return f"omega:{self.omega},alpha:{self.alpha},beta:{self.beta},price_col:{self.price_col},annualize:{str(self.annualize).lower()},trading_periods_per_year:{self.trading_periods_per_year}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'GARCHParams':
+        """Parse GARCH parameters from JSON-like format: omega:0.1,alpha:0.1,beta:0.8,price_col:close,annualize:true"""
+        params = {}
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'omega':
+                    params['omega'] = float(value)
+                elif key == 'alpha':
+                    params['alpha'] = float(value)
+                elif key == 'beta':
+                    params['beta'] = float(value)
+                elif key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'annualize':
+                    params['annualize'] = value.lower() == 'true'
+                elif key == 'trading_periods_per_year':
+                    params['trading_periods_per_year'] = int(value)
+        return cls(**params)
 
 @register_feature(FEATURE_LABEL)
 class GARCHFeature:

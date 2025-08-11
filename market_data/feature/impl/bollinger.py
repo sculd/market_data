@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ def _calculate_bb_width_numba(upper_band, middle_band, lower_band):
     return width
 
 @dataclass
-class BollingerParams:
+class BollingerParams(FeatureParam):
     """Parameters for Bollinger Bands calculations."""
     period: int = 20
     std_dev: float = 2.0
@@ -144,6 +145,25 @@ class BollingerParams:
         days_needed = math.ceil(self.period / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: period:20,std_dev:2.0,price_col:close"""
+        return f"period:{self.period},std_dev:{self.std_dev},price_col:{self.price_col}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'BollingerParams':
+        """Parse Bollinger parameters from JSON-like format: period:20,std_dev:2.0,price_col:close"""
+        params = {}
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'period':
+                    params['period'] = int(value)
+                elif key == 'std_dev':
+                    params['std_dev'] = float(value)
+                elif key == 'price_col':
+                    params['price_col'] = value
+        return cls(**params)
 
 @register_feature(FEATURE_LABEL)
 class BollingerFeature:

@@ -15,6 +15,7 @@ from typing import List, Optional, Dict, Any
 
 from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams, get_zscored_ffd_series
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ logger = logging.getLogger(__name__)
 FEATURE_LABEL = "ffd_volatility_zscore"
 
 @dataclass
-class ZscoredFFDVolatilityParams:
+class ZscoredFFDVolatilityParams(FeatureParam):
     """Parameters for FFD volatility zscore feature calculations."""
     zscored_ffd_params: BaseZscoredFFDParams = field(default_factory=BaseZscoredFFDParams)
     price_col: str = "close"
@@ -71,6 +72,35 @@ class ZscoredFFDVolatilityParams:
         days_needed = math.ceil(total_minutes / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: price_col:close,volatility_window:20,log_returns:true,d:0.5,threshold:0.01,zscore_window:100"""
+        return f"price_col:{self.price_col},volatility_window:{self.volatility_window},log_returns:{str(self.log_returns).lower()},d:{self.zscored_ffd_params.ffd_params.d},threshold:{self.zscored_ffd_params.ffd_params.threshold},zscore_window:{self.zscored_ffd_params.zscore_window}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'ZscoredFFDVolatilityParams':
+        """Parse FFD volatility zscore parameters from JSON-like format: price_col:close,volatility_window:20,log_returns:true,d:0.5,threshold:0.01,zscore_window:100"""
+        params = {}
+        base_params = BaseZscoredFFDParams()
+        
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'volatility_window':
+                    params['volatility_window'] = int(value)
+                elif key == 'log_returns':
+                    params['log_returns'] = value.lower() == 'true'
+                elif key == 'd':
+                    base_params.ffd_params.d = float(value)
+                elif key == 'threshold':
+                    base_params.ffd_params.threshold = float(value)
+                elif key == 'zscore_window':
+                    base_params.zscore_window = int(value)
+        
+        params['zscored_ffd_params'] = base_params
+        return cls(**params)
 
 
 @register_feature(FEATURE_LABEL)

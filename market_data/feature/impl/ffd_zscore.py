@@ -16,6 +16,7 @@ from typing import List, Optional, Dict, Any
 from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams, get_zscored_ffd_series
 from market_data.feature.impl.returns import _calculate_log_returns_numba, _calculate_simple_returns_numba
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,7 @@ logger = logging.getLogger(__name__)
 FEATURE_LABEL = "ffd_zscore"
 
 @dataclass
-class ZscoredFFDParams:
+class ZscoredFFDParams(FeatureParam):
     """Parameters for FFD zscore feature calculations."""
     zscored_ffd_params: BaseZscoredFFDParams = field(default_factory=BaseZscoredFFDParams)
     cols: List[str] = field(default_factory=lambda: ["close", "volume"])
@@ -66,6 +67,35 @@ class ZscoredFFDParams:
         days_needed = math.ceil(total_minutes / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: cols:[close,volume],d:0.5,threshold:0.01,zscore_window:100"""
+        cols_str = '[' + ','.join(self.cols) + ']'
+        return f"cols:{cols_str},d:{self.zscored_ffd_params.ffd_params.d},threshold:{self.zscored_ffd_params.ffd_params.threshold},zscore_window:{self.zscored_ffd_params.zscore_window}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'ZscoredFFDParams':
+        """Parse FFD zscore parameters from JSON-like format: cols:[close,volume],d:0.5,threshold:0.01,zscore_window:100"""
+        params = {}
+        base_params = BaseZscoredFFDParams()
+        
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'cols':
+                    # Parse [close,volume] format
+                    if value.startswith('[') and value.endswith(']'):
+                        cols_str = value[1:-1]
+                        params['cols'] = [c.strip() for c in cols_str.split(',') if c.strip()]
+                elif key == 'd':
+                    base_params.ffd_params.d = float(value)
+                elif key == 'threshold':
+                    base_params.ffd_params.threshold = float(value)
+                elif key == 'zscore_window':
+                    base_params.zscore_window = int(value)
+        
+        params['zscored_ffd_params'] = base_params
+        return cls(**params)
 
 
 @register_feature(FEATURE_LABEL)

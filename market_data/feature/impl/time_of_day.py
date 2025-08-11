@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 FEATURE_LABEL = "time_of_day"
 
 @dataclass
-class TimeOfDayParams:
+class TimeOfDayParams(FeatureParam):
     """Parameters for time of day feature calculations."""
     timezone: str = "US/Eastern"  # US stock market timezone
     
@@ -45,9 +46,24 @@ class TimeOfDayParams:
 
     def get_warm_up_days(self) -> int:
         """
-        Time features don't require warm-up data. Returns 0.x
+        Time features don't require warm-up data. Returns 0.
         """
         return 0
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: timezone:US/Eastern"""
+        return f"timezone:{self.timezone}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'TimeOfDayParams':
+        """Parse TimeOfDay parameters from JSON-like format: timezone:US/Eastern"""
+        params = {}
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'timezone':
+                    params['timezone'] = value
+        return cls(**params)
 
 def _get_time_bin_vectorized(dt_series: pd.Series) -> pd.Series:
     """

@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 from market_data.feature.impl.returns import _calculate_simple_returns_numba
 from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
 from market_data.feature.impl.indicators import _calculate_zscore_numba
@@ -292,7 +293,7 @@ def _calculate_rolling_kurtosis_numba(values, window, mean=None, variance=None):
     return kurtosis
 
 @dataclass
-class MarketRegimeParams:
+class MarketRegimeParams(FeatureParam):
     """Parameters for market regime calculations."""
     volatility_windows: List[int] = field(default_factory=lambda: [240, 1440, 4320])  # 4h, 1d, 3d
     price_col: str = "close"
@@ -344,6 +345,35 @@ class MarketRegimeParams:
         # For market regime calculations, we need at least window size data points
         max_window = max(self.volatility_windows) if self.volatility_windows else 240
         return max(1, (max_window // (24 * 60)))  # Convert minutes to days
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: volatility_windows:[240,1440],price_col:close,include_mean:true,include_variance:true,include_skewness:true,include_kurtosis:true"""
+        windows_str = '[' + ','.join(str(w) for w in self.volatility_windows) + ']'
+        return f"volatility_windows:{windows_str},price_col:{self.price_col},include_mean:{str(self.include_mean).lower()},include_variance:{str(self.include_variance).lower()},include_skewness:{str(self.include_skewness).lower()},include_kurtosis:{str(self.include_kurtosis).lower()}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'MarketRegimeParams':
+        """Parse Market Regime parameters from JSON-like format: volatility_windows:[240,1440],price_col:close,include_mean:true,include_variance:true"""
+        params = {}
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'volatility_windows':
+                    # Parse [240,1440] format
+                    if value.startswith('[') and value.endswith(']'):
+                        windows_str = value[1:-1]
+                        params['volatility_windows'] = [int(w.strip()) for w in windows_str.split(',') if w.strip()]
+                elif key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'include_mean':
+                    params['include_mean'] = value.lower() == 'true'
+                elif key == 'include_variance':
+                    params['include_variance'] = value.lower() == 'true'
+                elif key == 'include_skewness':
+                    params['include_skewness'] = value.lower() == 'true'
+                elif key == 'include_kurtosis':
+                    params['include_kurtosis'] = value.lower() == 'true'
+        return cls(**params)
 
 # disable for now
 #@register_feature(FEATURE_LABEL)

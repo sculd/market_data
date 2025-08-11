@@ -13,6 +13,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any
 
 from market_data.feature.registry import register_feature
+from market_data.feature.label import FeatureParam
 from market_data.feature.impl.returns import _calculate_simple_returns_numba
 from market_data.feature.impl.common_calc import _calculate_rolling_std_numba
 
@@ -44,7 +45,7 @@ def _annualize_volatility_numba(volatility, trading_periods):
     return result
 
 @dataclass
-class VolatilityParams:
+class VolatilityParams(FeatureParam):
     """Parameters for volatility feature calculations."""
     windows: List[int] = field(default_factory=lambda: [5, 10, 20, 30, 60])
     price_col: str = "close"
@@ -93,6 +94,31 @@ class VolatilityParams:
         days_needed = math.ceil(max_window / (24 * 60))
         
         return max(1, days_needed)  # At least 1 day
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: windows:[5,10,20],price_col:close,annualize:true"""
+        windows_str = '[' + ','.join(str(w) for w in self.windows) + ']'
+        return f"windows:{windows_str},price_col:{self.price_col},annualize:{str(self.annualize).lower()},trading_periods_per_year:{self.trading_periods_per_year}"
+    
+    @classmethod
+    def from_str(cls, feature_label_str: str) -> 'VolatilityParams':
+        """Parse Volatility parameters from JSON-like format: windows:[5,10,20],price_col:close,annualize:true"""
+        params = {}
+        for pair in feature_label_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'windows':
+                    # Parse [5,10,20] format
+                    if value.startswith('[') and value.endswith(']'):
+                        windows_str = value[1:-1]
+                        params['windows'] = [int(w.strip()) for w in windows_str.split(',') if w.strip()]
+                elif key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'annualize':
+                    params['annualize'] = value.lower() == 'true'
+                elif key == 'trading_periods_per_year':
+                    params['trading_periods_per_year'] = int(value)
+        return cls(**params)
 
 @register_feature(FEATURE_LABEL)
 class VolatilityFeature:
