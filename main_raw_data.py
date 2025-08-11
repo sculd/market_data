@@ -1,8 +1,5 @@
 import argparse
 import datetime
-import pandas as pd
-import os
-from pathlib import Path
 
 import setup_env # needed for env variables
 
@@ -106,8 +103,7 @@ def main():
         
         # Query and cache data
         result_df = market_data.ingest.gcs.cache.query_and_cache(
-            dataset_mode=dataset_mode,
-            export_mode=export_mode,
+            cache_context=cache_context,
             time_range=time_range,
             overwirte_cache=args.overwrite_cache,
             skip_first_day=args.skip_first_day,

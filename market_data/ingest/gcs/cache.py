@@ -7,8 +7,7 @@ import os
 import market_data.util.cache.common
 import market_data.util.cache.read
 import market_data.ingest.gcs.util
-import market_data.ingest.common
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE
+from market_data.ingest.common import CacheContext
 from market_data.util.cache.time import split_t_range
 from market_data.util.time import TimeRange
 
@@ -16,22 +15,19 @@ _label_market_data = "market_data"
 
 
 def _get_gcsblobname(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
+    cache_context: CacheContext,
     t: datetime.datetime,
 ) -> str:
     t_str = t.strftime("%Y-%m-%d")
     return os.path.join(
         _label_market_data, 
-        dataset_mode.name.lower(), 
-        export_mode.name.lower(), 
+        cache_context.dataset_mode.name.lower(), 
+        cache_context.export_mode.name.lower(), 
         f"{t_str}.parquet")
 
 
 def query_and_cache(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    label: str = _label_market_data,
+    cache_context: CacheContext,
     resample_interval_str = None,
     time_range: TimeRange = None,
     overwirte_cache = False,
@@ -41,9 +37,7 @@ def query_and_cache(
     t_from, t_to = time_range.to_datetime()
     t_ranges = split_t_range(t_from, t_to)
 
-    base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-    folder_path = os.path.join(market_data.util.cache.common.cache_base_path, label, base_label)
-
+    folder_path = cache_context.get_market_data_path()
 
     df_concat: pd.DataFrame = None
     df_list = []
@@ -76,7 +70,7 @@ def query_and_cache(
         )
 
         if overwirte_cache or df_cache is None:
-            blob_name = _get_gcsblobname(dataset_mode, export_mode, t_from)
+            blob_name = _get_gcsblobname(cache_context, t_from)
             blob_exist = market_data.ingest.gcs.util.if_blob_exist(blob_name)
             if not blob_exist:
                 logging.info(f"For gcs, {blob_name=} does not exist.")
@@ -115,31 +109,26 @@ def query_and_cache(
 
 
 def read_from_local_cache_or_query_and_cache(
-    dataset_mode: DATASET_MODE,
-    export_mode: EXPORT_MODE,
-    label: str = _label_market_data,
+    cache_context: CacheContext,
     resample_interval_str = None,
     time_range: TimeRange = None,
     columns: typing.List[str] = None,
     overwirte_cache = False,
     skip_first_day = False,
 ) -> pd.DataFrame:
-    base_label = market_data.ingest.common.get_label(dataset_mode, export_mode)
-    folder_path = os.path.join(market_data.util.cache.common.cache_base_path, label, base_label)
+    folder_path = cache_context.get_market_data_path()
     df = market_data.util.cache.read.read_from_local_cache(
-            folder_path,
-            resample_interval_str=resample_interval_str,
-            time_range = time_range,
+        folder_path,
+        resample_interval_str=resample_interval_str,
+        time_range = time_range,
     )
     if df is not None:
         return df
 
     return query_and_cache(
-            dataset_mode,
-            export_mode,
-            label = label,
-            resample_interval_str=resample_interval_str,
-            time_range = time_range,
-            columns=columns,
+        cache_context,
+        resample_interval_str=resample_interval_str,
+        time_range = time_range,
+        columns=columns,
     )
 

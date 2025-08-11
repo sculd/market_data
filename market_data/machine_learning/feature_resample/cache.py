@@ -103,9 +103,7 @@ def _calculate_and_cache_daily_feature_resampled(
     # Prepare feature data for the day (sequential or regular)
     if seq_params is not None:
         feature_resampled_df = prepare_sequential_feature_resampled(
-            dataset_mode=cache_context.dataset_mode,
-            export_mode=cache_context.export_mode,
-            aggregation_mode=cache_context.aggregation_mode,
+            cache_context=cache_context,
             time_range=time_range,
             feature_label=feature_label,
             feature_params=feature_params,
@@ -114,9 +112,7 @@ def _calculate_and_cache_daily_feature_resampled(
         )
     else:
         feature_resampled_df = prepare_feature_resampled(
-            dataset_mode=cache_context.dataset_mode,
-            export_mode=cache_context.export_mode,
-            aggregation_mode=cache_context.aggregation_mode,
+            cache_context=cache_context,
             time_range=time_range,
             feature_label=feature_label,
             feature_params=feature_params,

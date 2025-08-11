@@ -11,7 +11,7 @@ import logging
 import typing
 import os
 from pathlib import Path
-from typing import List, Tuple, Dict, Any, Optional, Union
+from typing import List, Tuple, Any, Optional, Union
 
 from market_data.ingest.common import CacheContext
 from market_data.util.time import TimeRange

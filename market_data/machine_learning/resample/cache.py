@@ -7,7 +7,8 @@ from pathlib import Path
 from dataclasses import asdict
 from typing import Callable
 
-from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
+#from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
+from market_data.ingest.gcs.cache import read_from_local_cache_or_query_and_cache
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.resample.calc import ResampleParams
 from market_data.util.time import TimeRange
@@ -34,13 +35,13 @@ Path(RESAMPLE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 
 def calculate_and_cache_resampled(
-        cache_context: CacheContext,
-        resample_at_events_func: Callable = None,
-        params: ResampleParams = None,
-        time_range: TimeRange = None,
-        calculation_batch_days: int = 1,
-        overwrite_cache: bool = True,
-    ) -> None:
+    cache_context: CacheContext,
+    resample_at_events_func: Callable = None,
+    params: ResampleParams = None,
+    time_range: TimeRange = None,
+    calculation_batch_days: int = 1,
+    overwrite_cache: bool = True,
+) -> None:
     """
     Resample and cache data for a specified time range.
     
@@ -48,23 +49,6 @@ def calculate_and_cache_resampled(
     2. Caches raw data if not present
     3. Resamples data in batches
     4. Caches resampled results daily
-    
-    Parameters:
-    -----------
-    dataset_mode : DATASET_MODE, optional
-        Dataset mode for cache path. If None, uses default dataset mode.
-    export_mode : EXPORT_MODE, optional
-        Export mode for cache path. If None, uses default export mode.
-    aggregation_mode : AGGREGATION_MODE, optional
-        Aggregation mode for cache path. If None, uses default aggregation mode.
-    params : ResampleParams, optional
-        Resampling parameters. If None, uses default parameters.
-    time_range : TimeRange, optional
-        Time range for resampling. If None, must provide individual time parameters.
-    calculation_batch_days : int, optional
-        Number of days to calculate resampled data for in each batch.
-    overwrite_cache : bool, optional
-        If True, overwrite existing cache files. If False, skip cache files that already exist.
     """
     assert resample_at_events_func is not None, "resample_at_events_func must be provided"
     
@@ -88,8 +72,8 @@ def calculate_and_cache_resampled(
         # 3. Resample data for this batch
         try:
             # 1 & 2. Get raw data (fetch and cache if not present)
-            raw_df = read_from_cache_or_query_and_cache(
-                dataset_mode, export_mode, aggregation_mode,
+            raw_df = read_from_local_cache_or_query_and_cache(
+                cache_context,
                 t_from=calc_t_from, t_to=calc_t_to,
                 overwirte_cache=overwrite_cache
             )
@@ -119,29 +103,14 @@ def calculate_and_cache_resampled(
             continue
 
 def load_cached_resampled_data(
-        cache_context: CacheContext,
-        params: ResampleParams = None,
-        time_range: TimeRange = None,
-        columns: typing.List[str] = None,
-        max_workers: int = 10,
-    ) -> pd.DataFrame:
+    cache_context: CacheContext,
+    params: ResampleParams = None,
+    time_range: TimeRange = None,
+    columns: typing.List[str] = None,
+    max_workers: int = 10,
+) -> pd.DataFrame:
     """
     Load cached resampled data for a specific time range
-
-    Parameters:
-    -----------
-    params : ResampleParams, optional
-        Resampling parameters. If None, uses default parameters.
-    time_range : TimeRange, optional
-        Time range for resampling. If None, must provide individual time parameters.
-    columns : typing.List[str], optional
-        Columns to load from cache. If None, all columns are loaded.
-    dataset_mode : DATASET_MODE, optional
-        Dataset mode for cache path. If None, uses default dataset mode.
-    export_mode : EXPORT_MODE, optional
-        Export mode for cache path. If None, uses default export mode.
-    aggregation_mode : AGGREGATION_MODE, optional
-        Aggregation mode for cache path. If None, uses default aggregation mode.
     """
     
     def load(d_from, d_to):

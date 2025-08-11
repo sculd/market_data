@@ -180,9 +180,7 @@ def _calculate_daily_ml_data(
     time_range = TimeRange(t_from, t_to)
     
     ml_data_df = prepare_ml_data(
-        dataset_mode=cache_context.dataset_mode,
-        export_mode=cache_context.export_mode,
-        aggregation_mode=cache_context.aggregation_mode,
+        cache_context=cache_context,
         time_range=time_range,
         feature_label_params=feature_label_params,
         target_params_batch=target_params_batch,

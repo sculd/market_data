@@ -34,6 +34,9 @@ import market_data.machine_learning.resample.calc
 import market_data.util
 import market_data.util.time
 
+cache_context = market_data.ingest.common.CacheContext(
+    DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST)
+
 '''
 df = market_data.ingest.bq.cache.query_and_cache(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
@@ -68,9 +71,7 @@ import market_data.feature.cache_reader
 featuers_df = market_data.feature.cache_reader.read_multi_feature_cache(
     feature_labels_params=["returns", "ema"],
     time_range=time_range,
-    dataset_mode=DATASET_MODE.OKX,
-    export_mode=EXPORT_MODE.BY_MINUTE,
-    aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
+    cache_context,
 )
 print(featuers_df)
 #'''
@@ -98,9 +99,7 @@ time_range = market_data.util.time.TimeRange(
 featuers_df = market_data.feature.cache_reader.read_multi_feature_cache(
     feature_labels_params=['returns'],
     time_range=time_range,
-    dataset_mode=DATASET_MODE.OKX, 
-    export_mode=EXPORT_MODE.BY_MINUTE,
-    aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
+    cache_context,
 )
 print(featuers_df.shape)
 #'''
@@ -238,9 +237,7 @@ import market_data.machine_learning.ml_data
 from market_data.target.calc import TargetParamsBatch
 
 ml_data_df = market_data.machine_learning.ml_data.prepare_ml_data(
-    dataset_mode=DATASET_MODE.OKX,
-    export_mode=EXPORT_MODE.BY_MINUTE,
-    aggregation_mode=AGGREGATION_MODE.TAKE_LASTEST,
+    cache_context,
     time_range=time_range,
     feature_label_params = feature_labels,
     resample_params = market_data.machine_learning.resample.calc.ResampleParams(
