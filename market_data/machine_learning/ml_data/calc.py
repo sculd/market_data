@@ -6,13 +6,13 @@ from typing import List, Dict, Tuple, Optional, Union, Any
 import logging
 from pathlib import Path
 
-from market_data.target.target import TargetParamsBatch
+from market_data.target.calc import TargetParamsBatch
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.util.time import TimeRange
-from market_data.target.cache_target import load_cached_targets
-from market_data.machine_learning.resample.cache_resample import load_cached_resampled_data
-from market_data.machine_learning.resample.resample import ResampleParams
-from market_data.machine_learning.feature_resample.cache_feature_resample import load_cached_feature_resampled
+from market_data.target.cache import load_cached_targets
+from market_data.machine_learning.resample.cache import load_cached_resampled_data
+from market_data.machine_learning.resample.calc import ResampleParams
+from market_data.machine_learning.feature_resample.cache import load_cached_feature_resampled
 from market_data.feature.util import parse_feature_label_param, parse_feature_label_params
 from market_data.feature.impl.common import SequentialFeatureParam
 

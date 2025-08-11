@@ -14,7 +14,7 @@ from typing import Optional, List
 import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.util.time import TimeRange
-from market_data.target.target import create_targets, TargetParamsBatch
+from market_data.target.calc import create_targets, TargetParamsBatch
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )

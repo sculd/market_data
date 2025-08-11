@@ -18,12 +18,12 @@ from market_data.machine_learning.resample.resample_registry import (
 )
 
 # Import all resample implementations to register them
-from market_data.machine_learning.resample.resample import ResampleParams, resample_at_events
-from market_data.machine_learning.resample.resample_reversal import ResampleReversalParams
+from market_data.machine_learning.resample.calc import ResampleParams, resample_at_events
+from market_data.machine_learning.resample.calc_reversal import ResampleReversalParams
 
 # Also import the adaptive method for completeness
 try:
-    from market_data.machine_learning.resample.resample_adaptive import AdaptiveResampleParams
+    from market_data.machine_learning.resample.calc_adaptive import AdaptiveResampleParams
 except ImportError:
     pass  # Skip if adaptive module has issues
 

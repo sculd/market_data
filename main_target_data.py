@@ -10,8 +10,8 @@ import setup_env # needed for env variables
 
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
-from market_data.target.target import TargetParamsBatch, TargetParams
-from market_data.target.cache_target import calculate_and_cache_targets
+from market_data.target.calc import TargetParamsBatch, TargetParams
+from market_data.target.cache import calculate_and_cache_targets
 import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing

@@ -7,14 +7,14 @@ from argparse import ArgumentParser, Namespace
 from functools import partial
 
 from cli.base import BaseCommand, handle_common_errors
-from market_data.target.target import TargetParamsBatch, TargetParams
+from market_data.target.calc import TargetParamsBatch, TargetParams
 from market_data.machine_learning.resample import (
     get_resample_params_class,
     list_registered_resample_methods
 )
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
-from market_data.machine_learning.ml_data.cache_ml_data import (
+from market_data.machine_learning.ml_data.cache import (
     calculate_and_cache_ml_data,
     load_cached_ml_data,
 )

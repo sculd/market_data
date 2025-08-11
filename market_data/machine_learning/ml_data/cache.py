@@ -8,14 +8,14 @@ from dataclasses import asdict
 import hashlib
 import json
 
-import market_data.target.cache_target
-from market_data.target.target import TargetParamsBatch
+import market_data.target.cache
+from market_data.target.calc import TargetParamsBatch
 from market_data.feature.util import parse_feature_label_params
 import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.util.time import TimeRange
-from market_data.machine_learning.resample.resample import ResampleParams
-from market_data.machine_learning.ml_data.ml_data import prepare_ml_data
+from market_data.machine_learning.resample.calc import ResampleParams
+from market_data.machine_learning.ml_data.calc import prepare_ml_data
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.util.cache.time import (
     anchor_to_begin_of_day
@@ -70,7 +70,7 @@ def _write_description_file(
     
     # Target parameters
     lines.append("Target Parameters:")
-    lines.append(f"{market_data.target.cache_target._get_target_params_dir(target_params_batch)}")
+    lines.append(f"{market_data.target.cache._get_target_params_dir(target_params_batch)}")
     lines.append("")
     
     # Sequential parameters
@@ -110,7 +110,7 @@ def _generate_params_uuid(
     # Create a consistent dictionary for all parameters
     params_dict = {
         'resample': asdict(resample_params),
-        'target': market_data.target.cache_target._get_target_params_dir(target_params_batch),
+        'target': market_data.target.cache._get_target_params_dir(target_params_batch),
         'features': [],
         'sequential': None
     }

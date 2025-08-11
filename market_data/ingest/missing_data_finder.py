@@ -9,8 +9,8 @@ from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MOD
 from market_data.ingest.bq.common import get_full_table_id
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range
-from market_data.target.target import TargetParamsBatch
-from market_data.machine_learning.resample.resample import ResampleParams
+from market_data.target.calc import TargetParamsBatch
+from market_data.machine_learning.resample.calc import ResampleParams
 from market_data.feature.util import parse_feature_label_param, parse_feature_label_params
 
 
@@ -185,7 +185,7 @@ def check_missing_feature_resampled_data(
     Returns:
         A list of (start_date, end_date) tuples for missing days
     """
-    from market_data.machine_learning.feature_resample.cache_feature_resample import _get_feature_resampled_params_dir
+    from market_data.machine_learning.feature_resample.cache import _get_feature_resampled_params_dir
     from market_data.feature.util import parse_feature_label_param
     
     # Parse feature parameters

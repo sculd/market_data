@@ -10,7 +10,7 @@ from typing import Callable
 from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
-from market_data.machine_learning.resample.resample import ResampleParams
+from market_data.machine_learning.resample.calc import ResampleParams
 from market_data.util.time import TimeRange
 
 from market_data.util.cache.time import (
