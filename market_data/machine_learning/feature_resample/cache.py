@@ -20,7 +20,7 @@ from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
 import market_data.util.cache.cache_read
-import market_data.util.cache.cache_write
+import market_data.util.cache.write
 from market_data.util.cache.path import (
     params_to_dir_name,
     get_cache_base_path,
@@ -135,7 +135,7 @@ def _calculate_and_cache_daily_feature_resampled(
     params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_params, seq_params)
     folder_path = cache_context.get_folder_path(["feature_data", "feature_resampled", feature_label], params_dir)
     
-    market_data.util.cache.cache_write.cache_locally_df(
+    market_data.util.cache.write.cache_locally_df(
         df=feature_resampled_df,
         folder_path=folder_path,
         overwrite=overwrite_cache,

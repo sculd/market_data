@@ -1,6 +1,6 @@
 from enum import Enum
 import os
-import market_data.util.cache.cache_common
+import market_data.util.cache.common
 
 
 class EXPORT_MODE(Enum):
@@ -45,7 +45,7 @@ class CacheContext:
         self.base_label = get_label(dataset_mode, export_mode)
 
     def get_folder_path(self, labels, params_dir=None):
-        folder_path = os.path.join(market_data.util.cache.cache_common.cache_base_path, *labels, self.base_label)
+        folder_path = os.path.join(market_data.util.cache.common.cache_base_path, *labels, self.base_label)
         if params_dir is not None:
             folder_path = os.path.join(folder_path, params_dir)
         return folder_path

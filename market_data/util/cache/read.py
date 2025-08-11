@@ -4,7 +4,7 @@ import logging
 import typing
 import os
 
-import market_data.util.cache.cache_common
+import market_data.util.cache.common
 from market_data.util.cache.time import split_t_range, is_exact_cache_interval
 from market_data.util.time import TimeRange
 
@@ -16,9 +16,9 @@ def read_daily_from_local_cache(
     columns: typing.List[str] = None,
 ) -> typing.Optional[pd.DataFrame]:
     if not is_exact_cache_interval(t_from, t_to):
-        logging.info(f"{t_from} to {t_to} does not match {market_data.util.cache.cache_common.cache_interval=} thus not read from cache.")
+        logging.info(f"{t_from} to {t_to} does not match {market_data.util.cache.common.cache_interval=} thus not read from cache.")
         return None
-    filename = market_data.util.cache.cache_common.to_local_filename(folder_path, t_from, t_to)
+    filename = market_data.util.cache.common.to_local_filename(folder_path, t_from, t_to)
     if not os.path.exists(filename):
         return None
 
@@ -72,6 +72,6 @@ def read_from_local_cache(
 
     if df_concat is not None and resample_interval_str is not None:
         df_concat = df_concat.reset_index().groupby('symbol').apply(
-            lambda x: x.set_index(market_data.util.cache.cache_common.timestamp_index_name).resample(resample_interval_str).asfreq().ffill()).drop(columns='symbol').reset_index()
+            lambda x: x.set_index(market_data.util.cache.common.timestamp_index_name).resample(resample_interval_str).asfreq().ffill()).drop(columns='symbol').reset_index()
 
     return df_concat if columns is None else df_concat[columns]

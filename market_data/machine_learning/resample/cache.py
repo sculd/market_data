@@ -18,9 +18,9 @@ from market_data.util.cache.time import (
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
-import market_data.util.cache.cache_common
-import market_data.util.cache.cache_read
-import market_data.util.cache.cache_write
+import market_data.util.cache.common
+import market_data.util.cache.read
+import market_data.util.cache.write
 from market_data.util.cache.path import (
     params_to_dir_name,
     get_cache_base_path,
@@ -107,7 +107,7 @@ def calculate_and_cache_resampled(
             # 4. Cache resampled data daily
             params_dir = params_to_dir_name(asdict(params or ResampleParams()))
             folder_path = cache_context.get_resampled_path(params_dir)
-            market_data.util.cache.cache_write.cache_locally_df(
+            market_data.util.cache.write.cache_locally_df(
                 df=resampled_df,
                 folder_path=folder_path,
                 overwrite=overwrite_cache,
@@ -147,7 +147,7 @@ def load_cached_resampled_data(
     def load(d_from, d_to):
         params_dir = params_to_dir_name(asdict(params or ResampleParams()))
         folder_path = cache_context.get_resampled_path(params_dir)
-        df = market_data.util.cache.cache_read.read_daily_from_local_cache(
+        df = market_data.util.cache.read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,
                 d_to = d_to,

@@ -69,7 +69,7 @@ def read_multi_feature_cache(
             def load(d_from, d_to):
                 params_dir=params.get_params_dir()
                 folder_path = cache_context.get_feature_path(feature_label, params_dir)
-                df = market_data.ingest.cache_read.read_daily_from_local_cache(
+                df = market_data.util.cache.read.read_daily_from_local_cache(
                         folder_path,
                         d_from = d_from,
                         d_to = d_to,

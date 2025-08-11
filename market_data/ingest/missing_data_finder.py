@@ -1,7 +1,7 @@
 import os
 from typing import Any
 
-from market_data.util.cache.cache_common import to_local_filename
+from market_data.util.cache.common import to_local_filename
 from market_data.ingest.common import CacheContext
 from market_data.util.time import TimeRange
 from market_data.util.cache.time import split_t_range

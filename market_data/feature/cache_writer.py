@@ -94,7 +94,7 @@ def cache_feature_cache(
         raw_data_folder_path = cache_context.get_market_data_path()
         folder_path = cache_context.get_feature_path(feature_label, params_dir)
 
-        market_data.ingest.cache_write.calculate_and_cache_data(
+        market_data.util.cache.write.calculate_and_cache_data(
             raw_data_folder_path=raw_data_folder_path,
             folder_path=folder_path,
             params=params,
@@ -189,7 +189,7 @@ def cache_seq_feature_cache(
                 # Cache sequential features
                 seq_params_dir = f"sequence_window-{seq_params.sequence_window}/{params_dir}"
                 seq_folder_path = cache_context.get_feature_path(feature_label, seq_params_dir)
-                market_data.ingest.cache_write.cache_locally_df(
+                market_data.util.cache.write.cache_locally_df(
                     df=seq_df,
                     folder_path=seq_folder_path,
                     overwrite=overwrite_cache,

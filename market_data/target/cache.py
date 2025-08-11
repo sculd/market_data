@@ -17,9 +17,9 @@ from market_data.target.calc import create_targets, TargetParamsBatch
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
-import market_data.util.cache.cache_common
-import market_data.util.cache.cache_read
-import market_data.util.cache.cache_write
+import market_data.util.cache.common
+import market_data.util.cache.read
+import market_data.util.cache.write
 from market_data.util.cache.path import (
     params_to_dir_name,
     get_cache_base_path
@@ -102,7 +102,7 @@ def calculate_and_cache_targets(
     raw_data_folder_path = cache_context.get_market_data_path()
     folder_path = cache_context.get_target_path(params_dir)
 
-    market_data.util.cache.cache_write.calculate_and_cache_data(
+    market_data.util.cache.write.calculate_and_cache_data(
         raw_data_folder_path=raw_data_folder_path,
         folder_path=folder_path,
         params=params,
@@ -137,7 +137,7 @@ def load_cached_targets(
     def load(d_from, d_to):
         params_dir = params_to_dir_name(asdict(params or TargetParamsBatch()))
         folder_path = cache_context.get_target_path(params_dir)
-        df = market_data.util.cache.cache_read.read_daily_from_local_cache(
+        df = market_data.util.cache.read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,
                 d_to = d_to,
