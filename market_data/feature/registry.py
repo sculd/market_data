@@ -30,11 +30,11 @@ def register_feature(label: str):
     Returns:
         Decorator function that registers the module
     """
-    def decorator(module):
+    def decorator(cl):
         if label in _FEATURE_REGISTRY:
             logger.warning(f"Feature label '{label}' is already registered. Overwriting previous registration.")
-        _FEATURE_REGISTRY[label] = module
-        return module
+        _FEATURE_REGISTRY[label] = cl
+        return cl
     return decorator
 
 def get_feature_by_label(label: str) -> Optional[Any]:

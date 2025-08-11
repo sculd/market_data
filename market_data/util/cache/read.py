@@ -43,21 +43,33 @@ def read_from_local_cache(
     t_ranges = split_t_range(t_from, t_to, interval=datetime.timedelta(days=1))
     df_concat: pd.DataFrame = None
     df_list = []
-    # concat every 30 minutes to free up memory
-    concat_interval = 30
+    # concat every 10 files to free up memory more frequently
+    concat_interval = 10
 
     def concat_batch():
         nonlocal df_concat, df_list
         if len(df_list) == 0:
             return
-        df_batch = pd.concat(df_list)
+        
+        # Memory-efficient concatenation: avoid creating intermediate copies
         if df_concat is None:
-            df_concat = df_batch
+            # First batch - just concatenate the list
+            df_concat = pd.concat(df_list, ignore_index=True, copy=False)
         else:
-            df_concat = pd.concat([df_concat, df_batch])
+            # Subsequent batches - use list concatenation to minimize copies
+            df_batch = pd.concat(df_list, ignore_index=True, copy=False)
+            df_concat = pd.concat([df_concat, df_batch], ignore_index=True, copy=False)
+            # Explicitly delete the batch to free memory immediately
+            del df_batch
+        
+        # Clear the list and explicitly delete references
         for df in df_list:
             del df
-        df_list = []
+        df_list.clear()  # More explicit than df_list = []
+        
+        # Force garbage collection for large datasets
+        import gc
+        gc.collect()
 
     for t_range in t_ranges:
         df = read_daily_from_local_cache(folder_path, t_range[0], t_range[1])
