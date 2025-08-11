@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Dict, Any, Tuple
 
 from market_data.feature.registry import register_feature
-from market_data.feature.label import FeatureParam
+from market_data.feature.param import FeatureParam
 from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
 
 logger = logging.getLogger(__name__)

@@ -16,7 +16,7 @@ from typing import List, Optional, Dict, Any
 from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams, get_zscored_ffd_series
 from market_data.feature.impl.returns import _calculate_log_returns_numba, _calculate_simple_returns_numba
 from market_data.feature.registry import register_feature
-from market_data.feature.label import FeatureParam
+from market_data.feature.param import FeatureParam
 
 logger = logging.getLogger(__name__)
 

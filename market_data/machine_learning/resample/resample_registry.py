@@ -21,7 +21,7 @@ ResampleFunction = Callable[[pd.DataFrame, P], pd.DataFrame]
 _RESAMPLE_PARAMS_REGISTRY: Dict[str, Type] = {}
 _RESAMPLE_FUNCTIONS_REGISTRY: Dict[str, ResampleFunction] = {}
 
-def register_resample(label: str):
+def register_resample_param(label: str):
     """
     Decorator to register a resample parameter class with a specific label.
     """

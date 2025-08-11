@@ -3,9 +3,9 @@ import numpy as np
 from typing import List
 from dataclasses import dataclass
 
-from market_data.machine_learning.resample.resample_registry import register_resample, register_resample_function
+from market_data.machine_learning.resample.resample_registry import register_resample_param, register_resample_function
 
-@register_resample("cumsum")
+@register_resample_param("cumsum")
 @dataclass
 class ResampleParams:
     """Parameters for resampling data at significant price movements using López de Prado's CUMSUM filter."""

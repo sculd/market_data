@@ -1,9 +1,9 @@
 import pandas as pd
 from dataclasses import dataclass
 
-from market_data.machine_learning.resample.resample_registry import register_resample, register_resample_function
+from market_data.machine_learning.resample.resample_registry import register_resample_param, register_resample_function
 
-@register_resample("reversal")
+@register_resample_param("reversal")
 @dataclass
 class ResampleReversalParams:
     """Parameters for reversal-based resampling at significant price movements.

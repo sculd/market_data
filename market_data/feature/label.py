@@ -2,31 +2,10 @@ import logging
 import inspect
 import importlib
 import datetime
-import abc
-from typing import Optional, Any, Union, Tuple, List
-from market_data.feature.registry import get_feature_by_label, list_registered_features
+from typing import Optional, Any, List
 
-import logging
 logger = logging.getLogger(__name__)
 
-
-class FeatureParam(abc.ABC):
-    @abc.abstractmethod
-    def get_params_dir(self) -> str:
-        pass
-    
-    @abc.abstractmethod
-    def get_warm_up_period(self) -> datetime.timedelta:
-        pass
-
-    @classmethod
-    @abc.abstractmethod
-    def from_str(cls, feature_label_str: str):
-        pass
-
-    @abc.abstractmethod
-    def to_str(self) -> str:
-        pass
 
 
 def _find_param_class(feature_label: str) -> Optional[Any]:
