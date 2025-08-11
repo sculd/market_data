@@ -23,6 +23,7 @@ from market_data.feature.registry import get_feature_by_label
 from market_data.feature.util import parse_feature_label_param
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.sequential_feature import sequentialize_feature
+import market_data.util.cache.write
 
 # Global paths configuration - use configurable base path
 FEATURE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
