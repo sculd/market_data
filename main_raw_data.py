@@ -102,30 +102,21 @@ def main():
         print(f"  Skip First Day: {args.skip_first_day}")
         
         # Query and cache data
-        result_df = market_data.ingest.gcs.cache.query_and_cache(
+        market_data.ingest.gcs.cache.query_and_cache(
             cache_context=cache_context,
             time_range=time_range,
             overwirte_cache=args.overwrite_cache,
             skip_first_day=args.skip_first_day,
             columns=None,
         )
-        
-        # Print summary of results
-        if result_df is not None and not result_df.empty:
-            print(f"\nSuccessfully cached {len(result_df)} rows of data")
-            print(f"Data spans from {result_df.index.min()} to {result_df.index.max()}")
-            print(f"Columns: {result_df.columns.tolist()}")
-            print(f"Number of unique symbols: {result_df['symbol'].nunique()}")
-        else:
-            print("\nNo data was returned or cached.")
 
 if __name__ == "__main__":
-    """
-    result_df = market_data.ingest.gcs.cache.query_and_cache(
-        dataset_mode=DATASET_MODE.OKX,
-        export_mode=EXPORT_MODE.RAW,
-        time_range=TimeRange(date_str_from="2024-01-01", date_str_to="2024-01-02"),
-        overwirte_cache=True,
+    #"""
+    cache_context = market_data.ingest.common.CacheContext(DATASET_MODE.OKX, EXPORT_MODE.RAW, AGGREGATION_MODE.TAKE_LASTEST)
+    market_data.ingest.gcs.cache.query_and_cache(
+        cache_context,
+        time_range=TimeRange(date_str_from="2025-07-01", date_str_to="2025-07-03"),
+        overwirte_cache=False,
         skip_first_day=False,
         columns=None,
     )

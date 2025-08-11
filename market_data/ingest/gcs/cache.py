@@ -7,7 +7,7 @@ import os
 import market_data.util.cache.common
 import market_data.util.cache.read
 import market_data.ingest.gcs.util
-from market_data.ingest.common import CacheContext
+from market_data.ingest.common import CacheContext, EXPORT_MODE
 from market_data.util.cache.time import split_t_range
 from market_data.util.time import TimeRange
 
@@ -26,6 +26,26 @@ def _get_gcsblobname(
         f"{t_str}.parquet")
 
 
+def _convert_raw_to_by_minute(raw_df: pd.DataFrame) -> pd.DataFrame:
+    raw_sorted_df = raw_df
+    if 'timestamp' in raw_sorted_df.index.names:
+        raw_sorted_df = raw_sorted_df.reset_index()
+    raw_sorted_df = raw_sorted_df.sort_values(['symbol', 'timestamp', 'ingestion_timestamp'], ascending=[True, True, False])
+    
+    columns_to_drop = []
+    if 'timestamp_seconds' in raw_sorted_df.columns:
+        columns_to_drop.append('timestamp_seconds')
+    if 'ingestion_timestamp' in raw_sorted_df.columns:
+        columns_to_drop.append('ingestion_timestamp')
+    # Keep only the latest row per (symbol, timestamp)
+    minute_df = raw_sorted_df.drop_duplicates(subset=['symbol', 'timestamp'], keep='first') \
+                  .sort_values(['timestamp', 'symbol']) \
+                  .drop(columns=columns_to_drop) \
+                  .set_index(['timestamp'])
+
+    return minute_df
+
+
 def query_and_cache(
     cache_context: CacheContext,
     resample_interval_str = None,
@@ -38,6 +58,7 @@ def query_and_cache(
     t_ranges = split_t_range(t_from, t_to)
 
     folder_path = cache_context.get_market_data_path()
+    by_minute_folder_path = cache_context.with_params({"export_mode": EXPORT_MODE.BY_MINUTE}).get_market_data_path()
 
     df_concat: pd.DataFrame = None
     df_list = []
@@ -62,14 +83,7 @@ def query_and_cache(
             continue
 
         local_filename = market_data.util.cache.common.to_local_filename(folder_path, t_from, t_to)
-        df_cache = market_data.util.cache.read.read_daily_from_local_cache(
-            folder_path,
-            t_from,
-            t_to,
-            columns=columns,
-        )
-
-        if overwirte_cache or df_cache is None:
+        if overwirte_cache or not os.path.exists(local_filename):
             blob_name = _get_gcsblobname(cache_context, t_from)
             blob_exist = market_data.ingest.gcs.util.if_blob_exist(blob_name)
             if not blob_exist:
@@ -84,7 +98,20 @@ def query_and_cache(
                 columns=columns,
             )
         else:
-            df = df_cache
+            logging.info(f"For local cache, {local_filename=} exists.")
+            df = market_data.util.cache.read.read_daily_from_local_cache(
+                folder_path,
+                t_from,
+                t_to,
+                columns=columns,
+            )
+
+        by_minute_local_filename = market_data.util.cache.common.to_local_filename(by_minute_folder_path, t_from, t_to)
+        if overwirte_cache or not os.path.exists(by_minute_local_filename):
+            by_minute_df = _convert_raw_to_by_minute(df)
+            by_minute_df.to_parquet(by_minute_local_filename)
+        else:
+            logging.info(f"For local cache, {by_minute_local_filename=} exists.")
 
         if df is None:
             continue

@@ -53,11 +53,6 @@ time_range = market_data.util.time.TimeRange(
     date_str_from='2025-01-01', date_str_to='2025-01-03',
     )
 
-import market_data.feature.feature
-t1 = time.time()
-df_feature = market_data.feature.feature.create_features(df)
-t2 = time.time()
-print(f'time: {t2 - t1}')
 #'''
 
 

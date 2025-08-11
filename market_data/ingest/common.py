@@ -1,6 +1,7 @@
 from enum import Enum
 import os
 import market_data.util.cache.common
+from typing import Dict
 
 
 class EXPORT_MODE(Enum):
@@ -43,6 +44,12 @@ class CacheContext:
         self.export_mode = export_mode  
         self.aggregation_mode = aggregation_mode
         self.base_label = get_label(dataset_mode, export_mode)
+
+    def with_params(self, params: Dict) -> "CacheContext":
+        dataset_mode = params.get("dataset_mode", self.dataset_mode)
+        export_mode = params.get("export_mode", self.export_mode)
+        aggregation_mode = params.get("aggregation_mode", self.aggregation_mode)
+        return CacheContext(dataset_mode, export_mode, aggregation_mode)
 
     def get_folder_path(self, labels, params_dir=None):
         folder_path = os.path.join(market_data.util.cache.common.cache_base_path, *labels, self.base_label)
