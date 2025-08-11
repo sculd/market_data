@@ -1,13 +1,15 @@
 import pandas as pd
 import numpy as np
+import datetime
 from typing import List
 from dataclasses import dataclass
 
 from market_data.machine_learning.resample.resample_registry import register_resample_param, register_resample_function
+from market_data.machine_learning.resample.param import ResampleParam
 
 @register_resample_param("cumsum")
 @dataclass
-class ResampleParams:
+class CumSumResampleParams(ResampleParam):
     """Parameters for resampling data at significant price movements using López de Prado's CUMSUM filter."""
     price_col: str = 'close'
     threshold: float = 0.05
@@ -21,45 +23,70 @@ class ResampleParams:
             config_name: Configuration name ('stock', 'forex', 'crypto', 'default')
             
         Returns:
-            List of parameter strings in format 'price_col,threshold'
+            List of parameter strings in standardized format using to_str()
         """
         if config_name == 'stock':
-            return ["close,0.03", "close,0.05", "close,0.07", "close,0.1", "close,0.15"]
+            return [
+                CumSumResampleParams(price_col='close', threshold=0.03).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.05).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.07).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.1).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.15).to_str()
+            ]
         elif config_name == 'forex':
-            return ["close,0.0025", "close,0.005", "close,0.01"]
+            return [
+                CumSumResampleParams(price_col='close', threshold=0.0025).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.005).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.01).to_str()
+            ]
         elif config_name == 'crypto':
-            return ["close,0.03", "close,0.05", "close,0.07", "close,0.1", "close,0.15"]
+            return [
+                CumSumResampleParams(price_col='close', threshold=0.03).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.05).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.07).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.1).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.15).to_str()
+            ]
         elif config_name == 'default':
-            return ["close,0.03", "close,0.05", "close,0.07", "close,0.1", "close,0.15"]
+            return [
+                CumSumResampleParams(price_col='close', threshold=0.03).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.05).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.07).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.1).to_str(),
+                CumSumResampleParams(price_col='close', threshold=0.15).to_str()
+            ]
         else:
             raise ValueError(f"Unknown config name: {config_name}")
 
-    @staticmethod
-    def parse_resample_params(param_str):
-        """
-        Parse a string in the format 'price_col,threshold' into ResampleParams.
-        Example: 'close,0.07' -> ResampleParams(price_col='close', threshold=0.07)
-        
-        Args:
-            param_str: String in format 'price_col,threshold'
-            
-        Returns:
-            ResampleParams instance
-        """
-        if not param_str:
-            return ResampleParams()
-            
-        try:
-            parts = param_str.split(',')
-            if len(parts) != 2:
-                raise ValueError("Format should be 'price_col,threshold'")
-                
-            price_col = parts[0].strip()
-            threshold = float(parts[1].strip())
-            
-            return ResampleParams(price_col=price_col, threshold=threshold)
-        except Exception as e:
-            raise ValueError(f"Invalid resample_params format: {e}. Format should be 'price_col,threshold' (e.g. 'close,0.07')")
+    def get_params_dir(self) -> str:
+        """Generate directory name for caching."""
+        from market_data.util.cache.path import params_to_dir_name
+        params_dict = {
+            'price_col': self.price_col,
+            'threshold': self.threshold
+        }
+        return params_to_dir_name(params_dict)
+    
+    def get_target_frequency(self) -> str:
+        """Get target frequency - adaptive for event-based resampling."""
+        return "adaptive"
+    
+    @classmethod
+    def from_str(cls, param_str: str) -> 'CumSumResampleParams':
+        """Parse parameters from string format: price_col:close,threshold:0.05"""
+        params = {}
+        for pair in param_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'threshold':
+                    params['threshold'] = float(value)
+        return cls(**params)
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: price_col:close,threshold:0.05"""
+        return f"price_col:{self.price_col},threshold:{self.threshold}"
 
 def _get_events_t_arr(values: np.ndarray, threshold: float = 0.05) -> np.ndarray:
     t_events = []
@@ -80,14 +107,14 @@ def _get_events_t_arr(values: np.ndarray, threshold: float = 0.05) -> np.ndarray
 
 def _get_events_t(
         df: pd.DataFrame,
-        params: ResampleParams,
+        params: CumSumResampleParams,
     ) -> pd.DataFrame:
     """
     Get time index from a DataFrame where the target column cumulatively changes by more than threshold.
     
     Args:
         df: DataFrame with timestamp index and target column
-        params: ResampleParams object containing resampling parameters
+        params: CumSumResampleParams object containing resampling parameters
         
     Returns:
         DataFrame with columns: timestamp (index), breakout_side
@@ -126,7 +153,7 @@ def _get_events_t(
 
 def _get_events_t_multi(
         df: pd.DataFrame,
-        params: ResampleParams,
+        params: CumSumResampleParams,
     ) -> pd.DataFrame:
     """
     Get time index from a DataFrame with multiple symbols where the target column cumulatively 
@@ -134,7 +161,7 @@ def _get_events_t_multi(
     
     Args:
         df: DataFrame with timestamp index and target column, must contain 'symbol' column
-        params: ResampleParams object containing resampling parameters. If None, uses default parameters.
+        params: CumSumResampleParams object containing resampling parameters. If None, uses default parameters.
         
     Returns:
         DataFrame with columns: timestamp (index), symbol, breakout_side
@@ -182,7 +209,7 @@ def _get_events_t_multi(
 @register_resample_function("cumsum")
 def resample_at_events(
     df: pd.DataFrame, 
-    params: ResampleParams = None,
+    params: CumSumResampleParams = None,
 ) -> pd.DataFrame:
     """
     Generic function to resample a DataFrame at significant price movement events.
@@ -195,14 +222,14 @@ def resample_at_events(
     
     Args:
         df: DataFrame with timestamp index, 'symbol' column, and price columns
-        params: ResampleParams object containing resampling parameters. If None, uses default parameters.
+        params: CumSumResampleParams object containing resampling parameters. If None, uses default parameters.
         
     Returns:
         Filtered DataFrame containing only rows at significant price movement timestamps,
         with additional column: breakout_side (+1 for positive breakout, -1 for negative breakout)
     """
     # Use default parameters if none provided
-    params = params or ResampleParams()
+    params = params or CumSumResampleParams()
     
     # Ensure required columns exist
     if params.price_col not in df.columns:

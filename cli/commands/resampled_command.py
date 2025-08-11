@@ -73,7 +73,7 @@ class ResampledCommand(BaseCommand):
         
         resample_params = None
         if args.resample_params:
-            resample_params = resample_params_class.parse_resample_params(args.resample_params)
+            resample_params = resample_params_class.from_str(args.resample_params)
         
         return resample_params, resample_function
     

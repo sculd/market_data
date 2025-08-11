@@ -109,7 +109,7 @@ class MLDataCommand(BaseCommand):
         
         # Resample parameters
         resample_params_class = get_resample_params_class(args.resample_type_label)
-        resample_params = resample_params_class.parse_resample_params(args.resample_params)
+        resample_params = resample_params_class.from_str(args.resample_params)
         
         # Sequential parameters
         seq_params = None

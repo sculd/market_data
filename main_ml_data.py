@@ -149,7 +149,7 @@ def main():
         )
     
     # Parse resample parameters
-    resample_params = resample_params_class.parse_resample_params(args.resample_params)
+    resample_params = resample_params_class.from_str(args.resample_params)
     
     # Create sequential parameters if needed
     seq_params = None

@@ -1,11 +1,14 @@
 import pandas as pd
+import datetime
 from dataclasses import dataclass
+from typing import List
 
 from market_data.machine_learning.resample.resample_registry import register_resample_param, register_resample_function
+from market_data.machine_learning.resample.param import ResampleParam
 
 @register_resample_param("reversal")
 @dataclass
-class ResampleReversalParams:
+class ResampleReversalParams(ResampleParam):
     """Parameters for reversal-based resampling at significant price movements.
     
     This implements a two-threshold approach:
@@ -18,37 +21,6 @@ class ResampleReversalParams:
     threshold: float = 0.1
     threshold_reversal: float = 0.03
 
-    @staticmethod
-    def parse_resample_params(param_str):
-        """
-        Parse a string in the format 'price_col,threshold,threshold_reversal' into ResampleReversalParams.
-        Example: 'close,0.1,0.03' -> ResampleReversalParams(price_col='close', threshold=0.1, threshold_reversal=0.03)
-        
-        Args:
-            param_str: String in format 'price_col,threshold,threshold_reversal'
-            
-        Returns:
-            ResampleReversalParams instance
-        """
-        if not param_str:
-            return ResampleReversalParams()
-
-        try:
-            parts = param_str.split(',')
-            if len(parts) != 3:
-                raise ValueError("Format should be 'price_col,threshold,threshold_reversal'")
-                
-            price_col = parts[0].strip()
-            threshold = float(parts[1].strip())
-            threshold_reversal = float(parts[2].strip())
-            
-            return ResampleReversalParams(
-                price_col=price_col, 
-                threshold=threshold,
-                threshold_reversal=threshold_reversal,
-            )
-        except Exception as e:
-            raise ValueError(f"Invalid resample_params format: {e}. Format should be 'price_col,threshold,threshold_reversal' (e.g. 'close,0.1,0.03')")
 
     @staticmethod
     def get_default_params_for_config(config_name: str) -> List[str]:
@@ -59,34 +31,63 @@ class ResampleReversalParams:
             config_name: Configuration name ('stock', 'forex', 'crypto', 'default')
             
         Returns:
-            List of parameter strings in format 'price_col,threshold,threshold_reversal'
+            List of parameter strings in standardized format using to_str()
         """
         if config_name == 'stock':
-            # For stock: threshold_reversal = 40% of threshold
             return [
-                "close,0.07,0.02", 
-                "close,0.1,0.02", 
-                "close,0.15,0.03"
+                ResampleReversalParams(price_col='close', threshold=0.07, threshold_reversal=0.02).to_str(),
+                ResampleReversalParams(price_col='close', threshold=0.1, threshold_reversal=0.02).to_str(),
+                ResampleReversalParams(price_col='close', threshold=0.15, threshold_reversal=0.03).to_str()
             ]
         elif config_name == 'forex':
-            # For forex: threshold_reversal = 40% of threshold
             return [
-                "close,0.0025,0.005", 
+                ResampleReversalParams(price_col='close', threshold=0.0025, threshold_reversal=0.005).to_str()
             ]
         elif config_name == 'crypto':
-            # For crypto: threshold_reversal = 40% of threshold
             return [
-                "close,0.07,0.02", 
-                "close,0.1,0.02", 
-                "close,0.15,0.03"
+                ResampleReversalParams(price_col='close', threshold=0.07, threshold_reversal=0.02).to_str(),
+                ResampleReversalParams(price_col='close', threshold=0.1, threshold_reversal=0.02).to_str(),
+                ResampleReversalParams(price_col='close', threshold=0.15, threshold_reversal=0.03).to_str()
             ]
         elif config_name == 'default':
-            # For default: threshold_reversal = 40% of threshold
             return [
-                "close,0.1,0.02", 
+                ResampleReversalParams(price_col='close', threshold=0.1, threshold_reversal=0.02).to_str()
             ]
         else:
             raise ValueError(f"Unknown config name: {config_name}")
+
+    def get_params_dir(self) -> str:
+        """Generate directory name for caching."""
+        from market_data.util.cache.path import params_to_dir_name
+        params_dict = {
+            'price_col': self.price_col,
+            'threshold': self.threshold,
+            'threshold_reversal': self.threshold_reversal
+        }
+        return params_to_dir_name(params_dict)
+    
+    def get_target_frequency(self) -> str:
+        """Get target frequency - adaptive for event-based resampling."""
+        return "adaptive"
+    
+    @classmethod
+    def from_str(cls, param_str: str) -> 'ResampleReversalParams':
+        """Parse parameters from string format: price_col:close,threshold:0.1,threshold_reversal:0.03"""
+        params = {}
+        for pair in param_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'threshold':
+                    params['threshold'] = float(value)
+                elif key == 'threshold_reversal':
+                    params['threshold_reversal'] = float(value)
+        return cls(**params)
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: price_col:close,threshold:0.1,threshold_reversal:0.03"""
+        return f"price_col:{self.price_col},threshold:{self.threshold},threshold_reversal:{self.threshold_reversal}"
 
             
 def _get_events_t(

@@ -1,13 +1,51 @@
 import pandas as pd
 from dataclasses import dataclass
 
+from market_data.machine_learning.resample.param import ResampleParam
+
 @dataclass
-class AdaptiveResampleParams:
+class AdaptiveResampleParams(ResampleParam):
     """Parameters for resampling data at significant price movements."""
     price_col: str = 'close'
     threshold: float = 0.05
     k: float = 2.0  # Sensitivity multiplier for the volatility
     vol_lookback: int = 60
+    
+    def get_params_dir(self) -> str:
+        """Generate directory name for caching."""
+        from market_data.util.cache.path import params_to_dir_name
+        params_dict = {
+            'price_col': self.price_col,
+            'threshold': self.threshold,
+            'k': self.k,
+            'vol_lookback': self.vol_lookback
+        }
+        return params_to_dir_name(params_dict)
+    
+    def get_target_frequency(self) -> str:
+        """Get target frequency - adaptive for volatility-based resampling."""
+        return "adaptive"
+    
+    @classmethod
+    def from_str(cls, param_str: str) -> 'AdaptiveResampleParams':
+        """Parse parameters from string format: price_col:close,threshold:0.05,k:2.0,vol_lookback:60"""
+        params = {}
+        for pair in param_str.split(','):
+            if ':' in pair:
+                key, value = pair.split(':', 1)
+                if key == 'price_col':
+                    params['price_col'] = value
+                elif key == 'threshold':
+                    params['threshold'] = float(value)
+                elif key == 'k':
+                    params['k'] = float(value)
+                elif key == 'vol_lookback':
+                    params['vol_lookback'] = int(value)
+        return cls(**params)
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: price_col:close,threshold:0.05,k:2.0,vol_lookback:60"""
+        return f"price_col:{self.price_col},threshold:{self.threshold},k:{self.k},vol_lookback:{self.vol_lookback}"
 
 def _get_adaptive_events_t(
         df: pd.DataFrame,
