@@ -9,7 +9,7 @@ import pandas as pd
 import logging
 import os
 from pathlib import Path
-from typing import List, Optional, Union, Any, Tuple, Dict
+from typing import Optional, Union, Any, Tuple, Dict
 import math
 from datetime import timedelta
 

@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-from typing import List, Optional, Union, Tuple
 from dataclasses import dataclass
 
 from market_data.machine_learning.resample.resample_registry import register_resample, register_resample_function

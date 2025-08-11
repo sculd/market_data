@@ -102,23 +102,25 @@ def main():
         print(f"  Skip First Day: {args.skip_first_day}")
         
         # Query and cache data
-        market_data.ingest.gcs.cache.query_and_cache(
+        market_data.ingest.gcs.cache.cache(
             cache_context=cache_context,
             time_range=time_range,
             overwirte_cache=args.overwrite_cache,
             skip_first_day=args.skip_first_day,
-            columns=None,
         )
+        
+        # Force garbage collection
+        import gc
+        gc.collect()
 
 if __name__ == "__main__":
     #"""
     cache_context = market_data.ingest.common.CacheContext(DATASET_MODE.OKX, EXPORT_MODE.RAW, AGGREGATION_MODE.TAKE_LASTEST)
-    market_data.ingest.gcs.cache.query_and_cache(
+    market_data.ingest.gcs.cache.cache(
         cache_context,
         time_range=TimeRange(date_str_from="2025-07-01", date_str_to="2025-07-03"),
         overwirte_cache=False,
         skip_first_day=False,
-        columns=None,
     )
     #"""
     main()

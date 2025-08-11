@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-from typing import List, Optional, Union, Tuple
 from dataclasses import dataclass
 
 @dataclass

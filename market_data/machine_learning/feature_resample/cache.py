@@ -1,9 +1,8 @@
 import pandas as pd
 import logging
-from typing import Optional, List, Any, Tuple, Union
+from typing import Optional, List, Any, Tuple
 import os
 import datetime
-import math
 from pathlib import Path
 from dataclasses import asdict
 
@@ -19,7 +18,7 @@ from market_data.util.cache.time import (
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
-import market_data.util.cache.cache_read
+import market_data.util.cache.read
 import market_data.util.cache.write
 from market_data.util.cache.path import (
     params_to_dir_name,
@@ -233,7 +232,7 @@ def load_cached_feature_resampled(
     # Create worker function that properly handles daily ranges
     def load(d_from, d_to):
         folder_path = cache_context.get_feature_resampled_path(params_dir)
-        df = market_data.util.cache.cache_read.read_daily_from_local_cache(
+        df = market_data.util.cache.read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,
                 d_to = d_to,

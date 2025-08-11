@@ -17,7 +17,6 @@ from market_data.target.calc import create_targets, TargetParamsBatch
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
-import market_data.util.cache.common
 import market_data.util.cache.read
 import market_data.util.cache.write
 from market_data.util.cache.path import (

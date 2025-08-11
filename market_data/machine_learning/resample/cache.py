@@ -7,7 +7,6 @@ from pathlib import Path
 from dataclasses import asdict
 from typing import Callable
 
-#from market_data.ingest.bq.cache import read_from_cache_or_query_and_cache
 from market_data.ingest.gcs.cache import read_from_local_cache_or_query_and_cache
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.resample.calc import ResampleParams
@@ -19,7 +18,6 @@ from market_data.util.cache.time import (
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
-import market_data.util.cache.common
 import market_data.util.cache.read
 import market_data.util.cache.write
 from market_data.util.cache.path import (
