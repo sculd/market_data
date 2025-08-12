@@ -2,7 +2,7 @@ import datetime
 import pytz
 import typing
 from dataclasses import dataclass
-from typing import Optional, Union, Tuple
+from typing import Optional, Tuple
 
 @dataclass
 class TimeRange:

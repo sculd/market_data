@@ -21,6 +21,7 @@ from market_data.feature.label import FeatureLabelCollection
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
+import market_data.util.cache.read
 
 # Global paths configuration - use configurable base path
 FEATURE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
@@ -55,9 +56,9 @@ def read_multi_feature_cache(
         logger.info(f"Reading cached feature: {feature_label}")
         
         # Get the feature module
-        feature_module = get_feature_by_label(feature_label)
-        if feature_module is None:
-            logger.warning(f"Feature module '{feature_label}' not found, skipping cache read.")
+        feature_cls = get_feature_by_label(feature_label)
+        if feature_cls is None:
+            logger.warning(f"Feature class '{feature_label}' not found, skipping cache read.")
             continue
         
         # Read from cache

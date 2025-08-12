@@ -22,13 +22,13 @@ _FEATURE_REGISTRY: Dict[str, Any] = {}
 
 def register_feature(label: str):
     """
-    Decorator to register a feature module with a specific label.
+    Decorator to register a feature class with a specific label.
     
     Args:
-        label: Unique identifier for the feature module
+        label: Unique identifier for the feature class
         
     Returns:
-        Decorator function that registers the module
+        Decorator function that registers the class
     """
     def decorator(cl):
         if label in _FEATURE_REGISTRY:
@@ -39,18 +39,18 @@ def register_feature(label: str):
 
 def get_feature_by_label(label: str) -> Optional[Any]:
     """
-    Get a feature module by its label.
+    Get a feature class by its label.
     
     Args:
-        label: The unique identifier for the feature module
+        label: The unique identifier for the feature class
         
     Returns:
-        The feature module or None if not found
+        The feature class or None if not found
     """
-    module = _FEATURE_REGISTRY.get(label)
-    if module is None:
-        logger.warning(f"Feature module with label '{label}' not found in registry.")
-    return module
+    cl = _FEATURE_REGISTRY.get(label)
+    if cl is None:
+        logger.warning(f"Feature class with label '{label}' not found in registry.")
+    return cl
 
 def list_registered_features(security_type: str = "all") -> List[str]:
     """

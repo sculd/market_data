@@ -189,8 +189,7 @@ def main():
                 missing_range_finder_func = partial(
                     market_data.ingest.missing_data_finder.check_missing_feature_resampled_data,
                     cache_context=cache_context,
-                    feature_label=feature_label,
-                    feature_params=None,
+                    feature_label=feature_label_obj,
                     resample_params=resample_params,
                     seq_params=None,
                     )

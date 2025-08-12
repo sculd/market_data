@@ -9,7 +9,7 @@ import pandas as pd
 import logging
 import os
 from pathlib import Path
-from typing import Optional, Union, Any, Tuple, Dict
+from typing import Optional, Any
 import math
 from datetime import timedelta
 
@@ -24,6 +24,7 @@ from market_data.feature.label import FeatureLabel
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.sequential_feature import sequentialize_feature
 import market_data.util.cache.write
+import market_data.util.cache.read
 
 # Global paths configuration - use configurable base path
 FEATURE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
@@ -76,13 +77,13 @@ def cache_feature_cache(
             logger.warning(f"Params for {feature_label} does not have get_warm_up_days method, using {warm_up_days} day(s)")
     
     # Get feature module
-    feature_module = get_feature_by_label(feature_label)
-    if feature_module is None:
-        raise ValueError(f"Feature module '{feature_label}' not found in registry")
+    feature_cls = get_feature_by_label(feature_label)
+    if feature_cls is None:
+        raise ValueError(f"Feature class '{feature_label}' not found in registry")
     
     # Create calculation function
     def calculate_batch_fn(raw_df: pd.DataFrame, feature_params: Any) -> pd.DataFrame:
-        calculate_fn = getattr(feature_module, 'calculate', None)
+        calculate_fn = getattr(feature_cls, 'calculate', None)
         if calculate_fn is None:
             raise ValueError(f"Feature module {feature_label} does not have a calculate method")
         return calculate_fn(raw_df, feature_params)
@@ -134,10 +135,10 @@ def cache_seq_feature_cache(
     try:
         feature_label, params = feature_label_obj.feature_label, feature_label_obj.params
 
-        # Get feature module
-        feature_module = get_feature_by_label(feature_label)
-        if not feature_module:
-            logger.error(f"Feature module not found for label: {feature_label}")
+        # Get feature class
+        feature_cls = get_feature_by_label(feature_label)
+        if not feature_cls:
+            logger.error(f"Feature class not found for label: {feature_label}")
             return False
             
         params_dir = params.get_params_dir()
@@ -168,7 +169,7 @@ def cache_seq_feature_cache(
             try:
                 params_dir=params.get_params_dir()
                 folder_path = cache_context.get_feature_path(feature_label, params_dir)
-                df = market_data.ingest.cache_read.read_from_local_cache(
+                df = market_data.util.cache.read.read_from_local_cache(
                         folder_path,
                         time_range=extended_range,
                 )
