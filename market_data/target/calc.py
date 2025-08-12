@@ -204,6 +204,10 @@ class TargetEngineer:
             # Create a single DataFrame from all targets at once
             symbol_targets = pd.DataFrame(target_data, index=group.index)
             
+            # Convert all numeric columns to float32 to reduce memory usage and file size
+            numeric_cols = symbol_targets.select_dtypes(include=[np.number]).columns
+            symbol_targets[numeric_cols] = symbol_targets[numeric_cols].astype(np.float32)
+            
             # Append to the list of targets
             all_targets.append(symbol_targets)
         
@@ -245,6 +249,12 @@ def create_targets(df: pd.DataFrame, params: TargetParamsBatch = None) -> pd.Dat
         DataFrame with target features
     """
     engineer = TargetEngineer(df, params=params)
-    # Create a copy to defragment
-    return engineer.add_target_features().copy()
+    # Create a copy to defragment  
+    result = engineer.add_target_features().copy()
+    
+    # Ensure float32 optimization is applied at the final level too
+    numeric_cols = result.select_dtypes(include=[np.number]).columns
+    result[numeric_cols] = result[numeric_cols].astype(np.float32)
+    
+    return result
 
