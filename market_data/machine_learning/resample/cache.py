@@ -9,7 +9,7 @@ from typing import Callable
 
 from market_data.ingest.gcs.cache import read_from_local_cache_or_query_and_cache
 from market_data.ingest.common import CacheContext
-from market_data.machine_learning.resample.calc import ResampleParams
+from market_data.machine_learning.resample.param import ResampleParam
 from market_data.util.time import TimeRange
 
 from market_data.util.cache.time import (
@@ -35,7 +35,7 @@ Path(RESAMPLE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 def calculate_and_cache_resampled(
     cache_context: CacheContext,
     resample_at_events_func: Callable = None,
-    params: ResampleParams = None,
+    params: ResampleParam = None,
     time_range: TimeRange = None,
     calculation_batch_days: int = 1,
     overwrite_cache: bool = True,
@@ -50,7 +50,7 @@ def calculate_and_cache_resampled(
     """
     assert resample_at_events_func is not None, "resample_at_events_func must be provided"
     
-    params = params or ResampleParams()
+    params = params or ResampleParam()
     
     # Resolve time range
     t_from, t_to = time_range.to_datetime() if time_range else (None, None)
@@ -87,7 +87,7 @@ def calculate_and_cache_resampled(
                 continue
                 
             # 4. Cache resampled data daily
-            params_dir = params_to_dir_name(asdict(params or ResampleParams()))
+            params_dir = params_to_dir_name(asdict(params or ResampleParam()))
             folder_path = cache_context.get_resampled_path(params_dir)
             market_data.util.cache.write.cache_locally_df(
                 df=resampled_df,
@@ -102,7 +102,7 @@ def calculate_and_cache_resampled(
 
 def load_cached_resampled_data(
     cache_context: CacheContext,
-    params: ResampleParams = None,
+    params: ResampleParam = None,
     time_range: TimeRange = None,
     columns: typing.List[str] = None,
     max_workers: int = 10,
@@ -112,7 +112,7 @@ def load_cached_resampled_data(
     """
     
     def load(d_from, d_to):
-        params_dir = params_to_dir_name(asdict(params or ResampleParams()))
+        params_dir = params_to_dir_name(asdict(params or ResampleParam()))
         folder_path = cache_context.get_resampled_path(params_dir)
         df = market_data.util.cache.read.read_daily_from_local_cache(
                 folder_path,

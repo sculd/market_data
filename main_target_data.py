@@ -8,7 +8,7 @@ from functools import partial
 
 import setup_env # needed for env variables
 
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE, CacheContext
 from market_data.util.time import TimeRange
 from market_data.target.calc import TargetParamsBatch, TargetParams
 from market_data.target.cache import calculate_and_cache_targets
@@ -80,7 +80,7 @@ def main():
     aggregation_mode = getattr(AGGREGATION_MODE, args.aggregation_mode)
     
     # Create cache context
-    cache_context = market_data.ingest.common.CacheContext(dataset_mode, export_mode, aggregation_mode)
+    cache_context = CacheContext(dataset_mode, export_mode, aggregation_mode)
     
     # Create TimeRange object
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)

@@ -9,7 +9,7 @@ from dataclasses import asdict
 from market_data.feature.label import FeatureLabel
 from market_data.ingest.common import CacheContext
 from market_data.util.time import TimeRange
-from market_data.machine_learning.resample.calc import ResampleParams
+from market_data.machine_learning.resample.param import ResampleParam
 from market_data.machine_learning.feature_resample.calc import prepare_feature_resampled, prepare_sequential_feature_resampled
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.util.cache.time import (
@@ -32,7 +32,7 @@ CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data', 'feature_r
 Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def _get_feature_resampled_params_dir(
-    resample_params: ResampleParams,
+    resample_params: ResampleParam,
     feature_label_params: Tuple[str, Any],
     seq_params: Optional[SequentialFeatureParam] = None,
 ) -> str:
@@ -75,7 +75,7 @@ def _calculate_and_cache_daily_feature_resampled(
     date: datetime.datetime,
     cache_context: CacheContext,
     feature_label_obj: FeatureLabel,
-    resample_params: ResampleParams,
+    resample_params: ResampleParam,
     seq_params: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
 ) -> None:
@@ -140,7 +140,7 @@ def calculate_and_cache_feature_resampled(
     cache_context: CacheContext,
     time_range: TimeRange,
     feature_label_obj: FeatureLabel,
-    resample_params: ResampleParams = None,
+    resample_params: ResampleParam = None,
     seq_params: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
 ) -> None:
@@ -160,7 +160,7 @@ def calculate_and_cache_feature_resampled(
         seq_params: Sequential feature parameters. If provided, creates sequential features.
         overwrite_cache: Whether to overwrite existing cache files
     """
-    resample_params = resample_params or ResampleParams()
+    resample_params = resample_params or ResampleParam()
     t_from, t_to = time_range.to_datetime()
     current_date = t_from
     
@@ -194,7 +194,7 @@ def load_cached_feature_resampled(
     cache_context: CacheContext,
     time_range: TimeRange,
     feature_label_obj: FeatureLabel,
-    resample_params: ResampleParams = None,
+    resample_params: ResampleParam = None,
     seq_params: Optional[SequentialFeatureParam] = None,
     columns: Optional[List[str]] = None,
         max_workers: int = 10,
@@ -216,7 +216,7 @@ def load_cached_feature_resampled(
         DataFrame with feature resampled data (regular or sequential based on seq_params),
         or empty DataFrame if no data is available
     """
-    resample_params = resample_params or ResampleParams()
+    resample_params = resample_params or ResampleParam()
     feature_label_params = (feature_label_obj.feature_label, feature_label_obj.params)
     params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_params, seq_params)
     

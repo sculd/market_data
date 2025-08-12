@@ -5,7 +5,7 @@ from typing import Any, Optional
 from market_data.ingest.common import CacheContext
 from market_data.util.time import TimeRange
 from market_data.machine_learning.resample.cache import load_cached_resampled_data
-from market_data.machine_learning.resample.calc import ResampleParams
+from market_data.machine_learning.resample.param import ResampleParam
 from market_data.feature.cache_reader import read_multi_feature_cache
 from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.impl.common import SequentialFeatureParam
@@ -16,7 +16,7 @@ def prepare_feature_resampled(
     cache_context: CacheContext,
     time_range: TimeRange,
     feature_label_obj: FeatureLabel,
-    resample_params: ResampleParams = None,
+    resample_params: ResampleParam = None,
 ) -> pd.DataFrame:
     """
     Prepare feature data by joining a single feature with resampled data.
@@ -36,7 +36,7 @@ def prepare_feature_resampled(
         DataFrame with the feature joined with resampled data, indexed by [timestamp, symbol].
         Returns empty DataFrame if resampled data or feature data is not available.
     """
-    resample_params = resample_params or ResampleParams()
+    resample_params = resample_params or ResampleParam()
     
     # Load resampled data
     resampled_df = load_cached_resampled_data(
@@ -84,7 +84,7 @@ def prepare_sequential_feature_resampled(
     cache_context: CacheContext,
     time_range: TimeRange,
     feature_label_obj: FeatureLabel,
-    resample_params: ResampleParams = None,
+    resample_params: ResampleParam = None,
     seq_params: Optional[SequentialFeatureParam] = None,
 ) -> pd.DataFrame:
     """
@@ -108,7 +108,7 @@ def prepare_sequential_feature_resampled(
         DataFrame with sequential feature data, indexed by [timestamp, symbol].
         Each row contains sequence arrays for the feature columns.
     """
-    resample_params = resample_params or ResampleParams()
+    resample_params = resample_params or ResampleParam()
     seq_params = seq_params or SequentialFeatureParam()
     
     sequence_window = seq_params.sequence_window

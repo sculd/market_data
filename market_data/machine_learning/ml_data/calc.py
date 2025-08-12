@@ -1,5 +1,5 @@
 import pandas as pd
-from typing import List, Tuple, Optional, Union, Any
+from typing import Optional
 import logging
 
 from market_data.target.calc import TargetParamsBatch
