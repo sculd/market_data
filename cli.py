@@ -24,10 +24,10 @@ import setup_env
 
 from cli.commands import (
     FeatureCommand, 
-    # TargetCommand, 
-    # MLDataCommand, 
-    # ResampledCommand,
-    # RawCommand
+    TargetCommand, 
+    MLDataCommand, 
+    ResampledCommand,
+    RawCommand
 )
 
 
@@ -38,10 +38,10 @@ class MarketDataCLI:
         self.commands = {
             cmd.name: cmd() for cmd in [
                 FeatureCommand,
-                # TargetCommand,
-                # MLDataCommand,
-                # ResampledCommand,
-                # RawCommand
+                TargetCommand,
+                MLDataCommand,
+                ResampledCommand,
+                RawCommand
             ]
         }
     
