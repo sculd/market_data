@@ -309,8 +309,8 @@ def load_cached_ml_data(
         folder_path = cache_context.get_ml_data_path(params_dir)
         return d_from, market_data.util.cache.read.read_daily_from_local_cache(
                 folder_path,
-                d_from = d_from,
-                d_to = d_to,
+                d_from,
+                d_to,
                 columns=columns,
         )
 

@@ -107,8 +107,8 @@ def load_cached_resampled_data(
         folder_path = cache_context.get_resampled_path(params.get_params_dir())
         df = market_data.util.cache.read.read_daily_from_local_cache(
                 folder_path,
-                d_from = d_from,
-                d_to = d_to,
+                d_from,
+                d_to,
                 columns=columns,
         )        
         return d_from, df
