@@ -178,7 +178,6 @@ def main():
                     market_data.ingest.missing_data_finder.check_missing_feature_data,
                     cache_context=cache_context,
                     feature_label=feature_label_obj,
-                    feature_params=None,
                     )
 
                 calculation_ranges = market_data.util.cache.time.chop_missing_time_range(

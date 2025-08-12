@@ -54,11 +54,11 @@ def read_from_local_cache(
         # Memory-efficient concatenation: avoid creating intermediate copies
         if df_concat is None:
             # First batch - just concatenate the list
-            df_concat = pd.concat(df_list, ignore_index=True, copy=False)
+            df_concat = pd.concat(df_list, copy=False)
         else:
             # Subsequent batches - use list concatenation to minimize copies
-            df_batch = pd.concat(df_list, ignore_index=True, copy=False)
-            df_concat = pd.concat([df_concat, df_batch], ignore_index=True, copy=False)
+            df_batch = pd.concat(df_list, copy=False)
+            df_concat = pd.concat([df_concat, df_batch], copy=False)
             # Explicitly delete the batch to free memory immediately
             del df_batch
         
