@@ -2,7 +2,6 @@
 Common feature parameters and utilities.
 """
 
-from typing import Any, Dict
 from market_data.util.param import Param
 
 class SequentialFeatureParam(Param):
