@@ -62,8 +62,8 @@ def check_missing_feature_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Note: feature cache path structure is different - params_dir then base_label
-        folder_path = cache_context.get_folder_path(["feature_data", "features", feature_name, params_dir])
+        # Use the proper feature path method for consistent path structure
+        folder_path = cache_context.get_feature_path(feature_name, params_dir)
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -102,8 +102,8 @@ def check_missing_target_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Note: target cache path structure has params_dir before base_label  
-        folder_path = cache_context.get_folder_path(["feature_data", "targets", params_dir])
+        # Use the proper target path method for consistent path structure
+        folder_path = cache_context.get_target_path(params_dir)
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -134,8 +134,8 @@ def check_missing_resampled_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Note: resampled cache path structure has params_dir before base_label
-        folder_path = cache_context.get_folder_path(["feature_data", "resampled", params_dir])
+        # Use the proper resampled path method for consistent path structure
+        folder_path = cache_context.get_resampled_path(params_dir)
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -181,8 +181,8 @@ def check_missing_feature_resampled_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Note: feature_resampled cache path structure has params_dir before base_label
-        folder_path = cache_context.get_folder_path(["feature_data", "feature_resampled", params_dir])
+        # Feature resampled needs feature label in the path structure
+        folder_path = cache_context.get_folder_path(["feature_data", "feature_resampled", feature_label.feature_label], params_dir)
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
@@ -222,8 +222,8 @@ def check_missing_ml_data(
     for d_range in daily_ranges:
         d_from, d_to = d_range
         
-        # Note: ml_data cache path structure has params_dir before base_label
-        folder_path = cache_context.get_folder_path(["feature_data", "ml_data", params_dir])
+        # Use the proper ML data path method for consistent path structure
+        folder_path = cache_context.get_ml_data_path(params_dir)
         filename = to_local_filename(folder_path, d_from, d_to)
 
         if not os.path.exists(filename):
