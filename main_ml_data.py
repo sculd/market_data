@@ -17,7 +17,7 @@ from market_data.machine_learning.ml_data.cache import (
     calculate_and_cache_ml_data, load_cached_ml_data)
 from market_data.machine_learning.resample import (
     get_resample_params_class, list_registered_resample_methods)
-from market_data.target.calc import TargetParams, TargetParamsBatch
+from market_data.target.param import TargetParams, TargetParamsBatch
 from market_data.util.time import TimeRange
 
 # Configure logging
