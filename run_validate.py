@@ -1,5 +1,7 @@
-import datetime, logging, sys, os
-
+import datetime
+import logging
+import os
+import sys
 
 if os.path.exists('./credential.json'):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(os.getcwd(), 'credential.json')
@@ -18,6 +20,7 @@ logging.basicConfig(
 
 import ingest.bq.cache
 import ingest.bq.common as bq_common
+
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE
 
 if __name__ == '__main__':

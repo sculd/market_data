@@ -1,8 +1,9 @@
-import pandas as pd
-import numpy as np
-import numba as nb
 from dataclasses import dataclass, field
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
+
+import numba as nb
+import numpy as np
+import pandas as pd
 
 _threshold_default = 1e-3
 _default_zscore_window = 100

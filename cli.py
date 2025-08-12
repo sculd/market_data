@@ -11,9 +11,10 @@ Usage:
     python cli.py ml-data check --features all --from 2024-01-01 --to 2024-01-02
     python cli.py target cache --forward-periods "1,2,3" --tps "0.001,0.002" --from 2024-01-01 --to 2024-01-02
 """
-import sys
 import os
-from argparse import ArgumentParser, RawDescriptionHelpFormatter, ArgumentDefaultsHelpFormatter
+import sys
+from argparse import (ArgumentDefaultsHelpFormatter, ArgumentParser,
+                      RawDescriptionHelpFormatter)
 from pathlib import Path
 
 # Add the project root to Python path for imports
@@ -21,14 +22,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Setup environment variables
 import setup_env
-
-from cli.commands import (
-    FeatureCommand, 
-    TargetCommand, 
-    MLDataCommand, 
-    ResampledCommand,
-    RawCommand
-)
+from cli.commands import (FeatureCommand, MLDataCommand, RawCommand,
+                          ResampledCommand, TargetCommand)
 
 
 class MarketDataCLI:

@@ -5,19 +5,21 @@ This module provides functions for calculating market regime indicators
 based on volatility patterns.
 """
 
-import pandas as pd
-import numpy as np
-import logging
 import datetime
-import numba as nb
+import logging
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from market_data.feature.registry import register_feature
-from market_data.feature.param import FeatureParam
-from market_data.feature.impl.returns import _calculate_simple_returns_numba
-from market_data.feature.impl.common_calc import _calculate_rolling_std_numba, _calculate_rolling_mean_numba
+import numba as nb
+import numpy as np
+import pandas as pd
+
+from market_data.feature.impl.common_calc import (
+    _calculate_rolling_mean_numba, _calculate_rolling_std_numba)
 from market_data.feature.impl.indicators import _calculate_zscore_numba
+from market_data.feature.impl.returns import _calculate_simple_returns_numba
+from market_data.feature.param import FeatureParam
+from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
 

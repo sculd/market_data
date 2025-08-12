@@ -5,9 +5,10 @@ This module provides a registry for resample methods and utility functions
 to register and retrieve resample implementations by their labels.
 """
 
-from typing import Dict, Any, Callable, TypeVar, Type, Optional, List
-import pandas as pd
 import logging
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 

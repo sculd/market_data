@@ -6,9 +6,11 @@ in the caching system.
 """
 
 import datetime
-import pytz
 import logging
 from typing import Callable, List, Tuple
+
+import pytz
+
 from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)

@@ -6,13 +6,13 @@ import multiprocessing
 from argparse import ArgumentParser, Namespace
 from functools import partial
 
-from cli.base import BaseCommand, handle_common_errors
-from market_data.feature.registry import list_registered_features
-from market_data.feature.cache_writer import cache_feature_cache
-from market_data.feature.label import FeatureLabel
-import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
+import market_data.util.cache.time
+from cli.base import BaseCommand, handle_common_errors
+from market_data.feature.cache_writer import cache_feature_cache
+from market_data.feature.label import FeatureLabel
+from market_data.feature.registry import list_registered_features
 
 
 class FeatureCommand(BaseCommand):

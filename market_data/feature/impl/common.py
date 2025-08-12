@@ -4,6 +4,7 @@ Common feature parameters and utilities.
 
 from market_data.util.param import Param
 
+
 class SequentialFeatureParam(Param):
     """
     Parameters for sequential feature calculation.

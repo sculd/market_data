@@ -1,19 +1,22 @@
-import pandas as pd
 import datetime
-import pytz
 import logging
-import typing
 import os
+import typing
+
+import pandas as pd
+import pytz
 
 import market_data.ingest.bq.candle as candle
-import market_data.ingest.bq.orderbook1l as orderbook1l
 import market_data.ingest.bq.common as common
-from market_data.ingest.common import AGGREGATION_MODE
+import market_data.ingest.bq.orderbook1l as orderbook1l
 import market_data.util.time as util_time
-from market_data.ingest.gcs.util import download_gcs_blob, upload_file_to_gcs, if_blob_exist
-from market_data.util.cache.time import split_t_range, anchor_to_begin_of_day, is_exact_cache_interval
+from market_data.ingest.common import AGGREGATION_MODE
+from market_data.ingest.gcs.util import (download_gcs_blob, if_blob_exist,
+                                         upload_file_to_gcs)
 from market_data.util.cache.path import get_cache_base_path
-
+from market_data.util.cache.time import (anchor_to_begin_of_day,
+                                         is_exact_cache_interval,
+                                         split_t_range)
 
 # the cache will be stored per day.
 _cache_interval = datetime.timedelta(days=1)

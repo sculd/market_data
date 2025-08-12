@@ -1,9 +1,9 @@
 import datetime
-import pytz
 import os
 
-from market_data.util.cache.path import get_cache_base_path
+import pytz
 
+from market_data.util.cache.path import get_cache_base_path
 
 # the cache will be stored per day.
 cache_interval = datetime.timedelta(days=1)

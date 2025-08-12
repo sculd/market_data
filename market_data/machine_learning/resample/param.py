@@ -6,6 +6,7 @@ All resample parameter classes should inherit from ResampleParam.
 """
 
 import abc
+
 from market_data.util.param import Param
 
 

@@ -4,10 +4,10 @@ Raw data management command
 import datetime
 from argparse import ArgumentParser, Namespace
 
-from cli.base import BaseCommand, handle_common_errors
 import market_data.ingest.gcs.cache
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.time
+from cli.base import BaseCommand, handle_common_errors
 
 
 class RawCommand(BaseCommand):
@@ -86,7 +86,8 @@ class RawCommand(BaseCommand):
             print(f"  Skip First Day: {args.skip_first_day}")
         
         # Get enum values
-        from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+        from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
+                                               EXPORT_MODE)
         dataset_mode = getattr(DATASET_MODE, getattr(args, 'dataset_mode', 'OKX'))
         export_mode = getattr(EXPORT_MODE, getattr(args, 'export_mode', 'BY_MINUTE'))
         time_range = self.create_time_range(args)

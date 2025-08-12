@@ -6,12 +6,12 @@ import multiprocessing
 from argparse import ArgumentParser, Namespace
 from functools import partial
 
-from cli.base import BaseCommand, handle_common_errors
-from market_data.target.calc import TargetParamsBatch, TargetParams
-from market_data.target.cache import calculate_and_cache_targets
-import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
+import market_data.util.cache.time
+from cli.base import BaseCommand, handle_common_errors
+from market_data.target.cache import calculate_and_cache_targets
+from market_data.target.calc import TargetParams, TargetParamsBatch
 
 
 class TargetCommand(BaseCommand):

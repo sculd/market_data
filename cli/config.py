@@ -1,11 +1,12 @@
 """
 Configuration management for the CLI
 """
+import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 import yaml
-import os
 
 
 @dataclass

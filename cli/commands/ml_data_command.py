@@ -6,21 +6,17 @@ import multiprocessing
 from argparse import ArgumentParser, Namespace
 from functools import partial
 
+import market_data.ingest.missing_data_finder
+import market_data.util.cache.parallel_processing
+import market_data.util.cache.time
 from cli.base import BaseCommand, handle_common_errors
-from market_data.target.calc import TargetParamsBatch, TargetParams
-from market_data.machine_learning.resample import (
-    get_resample_params_class,
-    list_registered_resample_methods
-)
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
 from market_data.machine_learning.ml_data.cache import (
-    calculate_and_cache_ml_data,
-    load_cached_ml_data,
-)
-import market_data.util.cache.time
-import market_data.ingest.missing_data_finder
-import market_data.util.cache.parallel_processing
+    calculate_and_cache_ml_data, load_cached_ml_data)
+from market_data.machine_learning.resample import (
+    get_resample_params_class, list_registered_resample_methods)
+from market_data.target.calc import TargetParams, TargetParamsBatch
 
 
 class MLDataCommand(BaseCommand):

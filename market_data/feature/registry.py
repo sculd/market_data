@@ -5,9 +5,10 @@ This module provides a registry for feature modules and utility functions
 to register and retrieve feature implementations by their labels.
 """
 
-from typing import Dict, Any, Callable, TypeVar, Type, Optional, List, Tuple
-import pandas as pd
 import logging
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
+
+import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -177,8 +178,9 @@ def find_feature_params_for_columns(column_names: List[str]) -> List[Tuple[str, 
         List of tuples (feature_label, params) where params is the parameter object
         for the feature. You can use these tuples directly with feature.calculate(df, params).
     """
-    from market_data.feature.label import FeatureLabel
     import re
+
+    from market_data.feature.label import FeatureLabel
 
     # First get the mapping from features to columns
     feature_map = find_features_for_columns(column_names)

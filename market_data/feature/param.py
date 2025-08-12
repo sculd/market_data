@@ -8,6 +8,7 @@ All feature parameter classes should inherit from FeatureParam.
 import abc
 import datetime
 import math
+
 from market_data.util.param import Param
 
 

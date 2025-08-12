@@ -4,16 +4,17 @@ Returns Feature Module
 This module provides functions for calculating return-based features.
 """
 
-import pandas as pd
-import numpy as np
-import logging
-import numba as nb
 import datetime
+import logging
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from market_data.feature.registry import register_feature
+import numba as nb
+import numpy as np
+import pandas as pd
+
 from market_data.feature.param import FeatureParam
+from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
 

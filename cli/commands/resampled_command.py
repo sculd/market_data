@@ -6,16 +6,15 @@ import multiprocessing
 from argparse import ArgumentParser, Namespace
 from functools import partial
 
-from cli.base import BaseCommand, handle_common_errors
-from market_data.machine_learning.resample import (
-    get_resample_params_class,
-    get_resample_function,
-    list_registered_resample_methods
-)
-from market_data.machine_learning.resample.cache import calculate_and_cache_resampled
-import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
+import market_data.util.cache.time
+from cli.base import BaseCommand, handle_common_errors
+from market_data.machine_learning.resample import (
+    get_resample_function, get_resample_params_class,
+    list_registered_resample_methods)
+from market_data.machine_learning.resample.cache import \
+    calculate_and_cache_resampled
 
 
 class ResampledCommand(BaseCommand):

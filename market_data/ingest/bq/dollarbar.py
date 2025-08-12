@@ -1,5 +1,7 @@
-import pandas as pd
 from collections import defaultdict
+
+import pandas as pd
+
 
 def df_bar_to_dollar_bar(df):
     dollar_bar_rows = []

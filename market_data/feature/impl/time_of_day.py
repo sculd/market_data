@@ -5,16 +5,17 @@ This module provides functions for calculating time-of-day features
 such as hour of day and trading session bins based on US market hours.
 """
 
-import pandas as pd
-import numpy as np
-import logging
 import datetime
-import pytz
+import logging
 from dataclasses import dataclass
 from typing import Optional
 
-from market_data.feature.registry import register_feature
+import numpy as np
+import pandas as pd
+import pytz
+
 from market_data.feature.param import FeatureParam
+from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
 

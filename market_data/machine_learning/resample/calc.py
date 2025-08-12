@@ -1,10 +1,13 @@
-import pandas as pd
-import numpy as np
-from typing import List
 from dataclasses import dataclass
+from typing import List
 
-from market_data.machine_learning.resample.resample_registry import register_resample_param, register_resample_function
+import numpy as np
+import pandas as pd
+
 from market_data.machine_learning.resample.param import ResampleParam
+from market_data.machine_learning.resample.resample_registry import (
+    register_resample_function, register_resample_param)
+
 
 @register_resample_param("cumsum")
 @dataclass

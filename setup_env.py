@@ -1,11 +1,14 @@
 #!/usr/bin/env python
 import logging
-import os, sys
+import os
+import sys
+
 from dotenv import load_dotenv
 
 # OpenMP threading issue
 os.environ["OMP_NUM_THREADS"] = "1"
 import torch
+
 torch.set_num_threads(1)
 
 logging.basicConfig(

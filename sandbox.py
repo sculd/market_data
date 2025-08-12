@@ -1,8 +1,13 @@
-import logging
-import os, sys, datetime, time
-from dotenv import load_dotenv
+import datetime
 import importlib
+import logging
+import os
+import sys
+import time
+
 import pandas as pd
+from dotenv import load_dotenv
+
 import market_data.util.time
 
 logging.basicConfig(
@@ -23,15 +28,14 @@ _PROJECT_ID = os.getenv('GOOGLE_CLOUD_PROJECT')
 if not _PROJECT_ID:
     logging.warning("GOOGLE_CLOUD_PROJECT environment variable not set. Please check your .env file.")
 
-from market_data.feature.impl.common import SequentialFeatureParam
-
-import market_data.ingest.common
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 import market_data.ingest.bq.cache
+import market_data.ingest.common
 import market_data.machine_learning.resample.calc
-
 import market_data.util
 import market_data.util.time
+from market_data.feature.impl.common import SequentialFeatureParam
+from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
+                                       EXPORT_MODE)
 
 cache_context = market_data.ingest.common.CacheContext(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST)
@@ -256,6 +260,7 @@ cache_context = market_data.ingest.common.CacheContext(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST
 )
 from market_data.feature.label import FeatureLabel
+
 feature_label_obj = FeatureLabel('returns', None)
 missing = market_data.ingest.missing_data_finder.check_missing_feature_resampled_data(
     cache_context=cache_context,

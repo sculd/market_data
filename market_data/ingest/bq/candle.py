@@ -1,13 +1,12 @@
-import pandas as pd
 import datetime
 import logging
+
+import pandas as pd
 import pytz
 
-import market_data.util.time as util_time
-
 import market_data.ingest.bq.common as common
+import market_data.util.time as util_time
 from market_data.ingest.common import AGGREGATION_MODE
-
 
 _query_template_take_latest = """
     WITH LATEST AS (

@@ -4,18 +4,20 @@ Fractional Finite Difference Volatility Zscore Feature Module
 This module provides functions for calculating ffd volatility zscore features.
 """
 
-import pandas as pd
-import numpy as np
-import logging
-import numba as nb
 import datetime
+import logging
 from dataclasses import dataclass, field
 from typing import Optional
 
+import numba as nb
+import numpy as np
+import pandas as pd
 
-from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams, get_zscored_ffd_series
-from market_data.feature.registry import register_feature
+from market_data.feature.fractional_difference import \
+    ZscoredFFDParams as BaseZscoredFFDParams
+from market_data.feature.fractional_difference import get_zscored_ffd_series
 from market_data.feature.param import FeatureParam
+from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
 

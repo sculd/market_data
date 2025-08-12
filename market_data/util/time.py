@@ -1,8 +1,10 @@
 import datetime
-import pytz
 import typing
 from dataclasses import dataclass
 from typing import Optional, Tuple
+
+import pytz
+
 
 @dataclass
 class TimeRange:

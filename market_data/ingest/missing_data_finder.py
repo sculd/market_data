@@ -1,16 +1,14 @@
 import os
 from typing import Any
 
-from market_data.util.cache.common import to_local_filename
-from market_data.ingest.common import CacheContext
-from market_data.util.time import TimeRange
-from market_data.util.cache.time import split_t_range
-from market_data.target.calc import TargetParamsBatch
-from market_data.machine_learning.resample.calc import CumSumResampleParams
-from market_data.feature.label import FeatureLabelCollection, FeatureLabel
-
-
 import market_data.feature.impl  # Import to ensure all features are registered
+from market_data.feature.label import FeatureLabel, FeatureLabelCollection
+from market_data.ingest.common import CacheContext
+from market_data.machine_learning.resample.calc import CumSumResampleParams
+from market_data.target.calc import TargetParamsBatch
+from market_data.util.cache.common import to_local_filename
+from market_data.util.cache.time import split_t_range
+from market_data.util.time import TimeRange
 
 
 def check_missing_raw_data(
@@ -164,8 +162,9 @@ def check_missing_feature_resampled_data(
     Returns:
         A list of (start_date, end_date) tuples for missing days
     """
-    from market_data.machine_learning.feature_resample.cache import _get_feature_resampled_params_dir
-    
+    from market_data.machine_learning.feature_resample.cache import \
+        _get_feature_resampled_params_dir
+
     # Parse feature parameters
     feature_label_param = (feature_label.feature_label, feature_label.params)
     resample_params = resample_params or CumSumResampleParams()
@@ -204,8 +203,9 @@ def check_missing_ml_data(
     
     Returns a list of (start_date, end_date) tuples for missing days.
     """
-    from market_data.machine_learning.ml_data.cache import _get_mldata_params_dir
-    
+    from market_data.machine_learning.ml_data.cache import \
+        _get_mldata_params_dir
+
     # Normalize parameters
     target_params_batch = target_params_batch or TargetParamsBatch()
     resample_params = resample_params or CumSumResampleParams()

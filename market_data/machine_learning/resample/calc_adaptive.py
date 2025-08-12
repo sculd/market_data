@@ -1,7 +1,9 @@
-import pandas as pd
 from dataclasses import dataclass
 
+import pandas as pd
+
 from market_data.machine_learning.resample.param import ResampleParam
+
 
 @dataclass
 class AdaptiveResampleParams(ResampleParam):

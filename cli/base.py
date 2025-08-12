@@ -1,13 +1,14 @@
 """
 Base classes and utilities for the CLI framework
 """
+import logging
+import sys
 from abc import ABC, abstractmethod
 from argparse import ArgumentParser, Namespace
 from typing import Optional
-import logging
-import sys
 
-from market_data.ingest.common import CacheContext, DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
+                                       EXPORT_MODE, CacheContext)
 from market_data.util.time import TimeRange
 
 

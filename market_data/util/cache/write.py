@@ -1,12 +1,15 @@
-import pandas as pd
 import datetime
 import logging
-import typing
 import os
-
+import typing
 from typing import Callable, TypeVar
+
+import pandas as pd
+
 import market_data.util.cache.common
-from market_data.util.cache.time import split_t_range, anchor_to_begin_of_day, is_exact_cache_interval
+from market_data.util.cache.time import (anchor_to_begin_of_day,
+                                         is_exact_cache_interval,
+                                         split_t_range)
 from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)

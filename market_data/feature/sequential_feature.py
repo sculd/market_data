@@ -5,10 +5,11 @@ This module provides functions for sequentializing features,
 allowing for sequential features to be created from non-sequential features.
 """
 
-import pandas as pd
 import logging
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
+
 import numpy as np
+import pandas as pd
 from numba import jit
 
 from market_data.feature.impl.common import SequentialFeatureParam

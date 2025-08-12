@@ -1,13 +1,12 @@
-import time
-
 import logging
-import requests
-import pandas as pd
-import numpy as np
 import os
-
+import time
 import urllib.parse as urlparse
 from urllib.parse import urlencode
+
+import numpy as np
+import pandas as pd
+import requests
 
 polygon_api_key = os.getenv("QUANT_GALORE_POLYGON_API_KEY")
 _POLYGON_V2_BASE_URL = "https://api.polygon.io/v2"
