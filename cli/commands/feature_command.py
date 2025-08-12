@@ -9,6 +9,7 @@ from functools import partial
 from cli.base import BaseCommand, handle_common_errors
 from market_data.feature.registry import list_registered_features
 from market_data.feature.cache_writer import cache_feature_cache
+from market_data.feature.label import FeatureLabel
 import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
@@ -77,10 +78,10 @@ class FeatureCommand(BaseCommand):
         time_range = self.create_time_range(args)
         
         print(f"\nChecking feature: {args.feature}")
+        feature_label_obj = FeatureLabel(args.feature, None)
         missing_ranges = market_data.ingest.missing_data_finder.check_missing_feature_data(
             cache_context=cache_context,
-            feature_label=args.feature,
-            feature_params=None,
+            feature_label=feature_label_obj,
             time_range=time_range
         )
         
@@ -135,6 +136,7 @@ class FeatureCommand(BaseCommand):
         
         for feature_label in features_to_process:
             print(f"\nCaching feature: {feature_label}")
+            feature_label_obj = FeatureLabel(feature_label)
             
             try:
                 # Set up calculation parameters
@@ -145,8 +147,7 @@ class FeatureCommand(BaseCommand):
                 missing_range_finder_func = partial(
                     market_data.ingest.missing_data_finder.check_missing_feature_data,
                     cache_context=cache_context,
-                    feature_label=feature_label,
-                    feature_params=None,
+                    feature_label=feature_label_obj,
                 )
 
                 calculation_ranges = market_data.util.cache.time.chop_missing_time_range(
@@ -168,7 +169,7 @@ class FeatureCommand(BaseCommand):
 
                     cache_func = partial(
                         cache_feature_cache,
-                        feature_label_param=feature_label,
+                        feature_label_obj=feature_label_obj,
                         cache_context=cache_context,
                         calculation_batch_days=1,  # Process each range as single batch
                         warm_up_days=args.warmup_days,
@@ -197,7 +198,7 @@ class FeatureCommand(BaseCommand):
                         calc_time_range = market_data.util.time.TimeRange(calc_t_from, calc_t_to)
                         
                         success = cache_feature_cache(
-                            feature_label_param=feature_label,
+                            feature_label_obj=feature_label_obj,
                             cache_context=cache_context,
                             time_range=calc_time_range,
                             calculation_batch_days=1,  # Process each range as single batch

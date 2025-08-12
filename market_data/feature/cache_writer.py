@@ -20,7 +20,7 @@ from market_data.util.cache.time import (
 )
 from market_data.util.cache.path import get_cache_base_path
 from market_data.feature.registry import get_feature_by_label
-from market_data.feature.util import parse_feature_label_param
+from market_data.feature.label import FeatureLabel
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.sequential_feature import sequentialize_feature
 import market_data.util.cache.write
@@ -33,7 +33,7 @@ Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 
 def cache_feature_cache(
-        feature_label_param: Union[str, Tuple[str, Any]],
+        feature_label_obj: FeatureLabel,
         cache_context: CacheContext,
         time_range: TimeRange = None,
         calculation_batch_days: int = 1,
@@ -47,11 +47,7 @@ def cache_feature_cache(
     which is useful for on-demand caching of features without recalculating all features.
     
     Args:
-        feature_label_param: Either a feature label string or a tuple of (feature_label, parameters).
-                             If only a feature label is provided, a default parameter instance will be created.
-                             If a tuple is provided, feature_label is a registered feature label and
-                             parameters is an instance of the appropriate parameters class or None.
-                             If parameters is None, a default parameter instance will be created.
+        feature_label_obj: FeatureLabel object containing feature name and parameters
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode - required
         time_range: TimeRange object specifying the time range to cache
         calculation_batch_days: Number of days to calculate features for in each batch
@@ -61,7 +57,7 @@ def cache_feature_cache(
     Returns:
         True if caching was successful, False otherwise
     """
-    feature_label, params = parse_feature_label_param(feature_label_param)
+    feature_label, params = feature_label_obj.feature_label, feature_label_obj.params
 
     # Validate inputs
     if time_range is None:
@@ -112,7 +108,7 @@ def cache_feature_cache(
         return False
 
 def cache_seq_feature_cache(
-    feature_label_param: Dict[str, Any],
+    feature_label_obj: FeatureLabel,
     cache_context: CacheContext,
     time_range: TimeRange,
     seq_params: SequentialFeatureParam = SequentialFeatureParam(),
@@ -124,7 +120,7 @@ def cache_seq_feature_cache(
     Cache sequential features for a specific feature with given parameters.
     
     Args:
-        feature_label_param: Dictionary containing feature label and parameters
+        feature_label_obj: FeatureLabel object containing feature name and parameters
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode - required
         time_range: Time range for which to cache the feature
         seq_params: Sequential feature parameters
@@ -136,7 +132,7 @@ def cache_seq_feature_cache(
         bool: True if caching was successful, False otherwise
     """
     try:
-        feature_label, params = parse_feature_label_param(feature_label_param)
+        feature_label, params = feature_label_obj.feature_label, feature_label_obj.params
 
         # Get feature module
         feature_module = get_feature_by_label(feature_label)

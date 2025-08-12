@@ -7,7 +7,6 @@ from typing import Optional, Any, List
 logger = logging.getLogger(__name__)
 
 
-
 def _find_param_class(feature_label: str) -> Optional[Any]:
     try:
         module_path = f"market_data.feature.impl.{feature_label}"
@@ -66,6 +65,9 @@ class FeatureLabelCollection:
     def __init__(self):
         self.feature_labels: List[FeatureLabel] = []
 
+    def __iter__(self):
+        return iter(self.feature_labels)
+
     def with_feature_label(self, feature_label: FeatureLabel):
         self.feature_labels.append(feature_label)
         return self
@@ -84,5 +86,6 @@ class FeatureLabelCollection:
         """
         Get the maximum warm-up period required for a list of feature labels and parameters.
         """
-        return max([fl.get_warm_up_days() for fl in self.feature_labels])
+        return max([fl.get_warmup_period() for fl in self.feature_labels])
+
 

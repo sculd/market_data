@@ -10,10 +10,11 @@ import json
 
 import market_data.target.cache
 from market_data.target.calc import TargetParamsBatch
-from market_data.feature.util import parse_feature_label_params
+from market_data.feature.label import FeatureLabelCollection
 from market_data.ingest.common import CacheContext
 from market_data.util.time import TimeRange
-from market_data.machine_learning.resample.calc import ResampleParams
+from market_data.machine_learning.resample.param import ResampleParam
+from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.ml_data.calc import prepare_ml_data
 from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.util.cache.time import (
@@ -22,7 +23,6 @@ from market_data.util.cache.time import (
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
-import market_data.util.cache.common
 import market_data.util.cache.read
 import market_data.util.cache.write
 from market_data.util.cache.path import get_cache_base_path
@@ -48,8 +48,8 @@ Path(LOCAL_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def _write_description_file(
     params_dir: str,
-    resample_params: ResampleParams,
-    feature_label_params: List[Tuple[str, Any]],
+    resample_params: ResampleParam,
+    feature_collection: FeatureLabelCollection,
     target_params_batch: TargetParamsBatch,
     seq_params: Optional[SequentialFeatureParam] = None,
 ) -> None:
@@ -80,8 +80,8 @@ def _write_description_file(
     
     # Feature parameters
     lines.append("Feature Parameters:")
-    for feature_label, param in sorted(feature_label_params, key=lambda x: x[0]):
-        lines.append(f"{feature_label}: {param.get_params_dir()}")
+    for feature_label_obj in sorted(feature_collection.feature_labels, key=lambda x: x.feature_label):
+        lines.append(f"{feature_label_obj.feature_label}: {feature_label_obj.params.get_params_dir()}")
     lines.append("")
     
     # Add timestamp
@@ -98,8 +98,8 @@ def _write_description_file(
         f.write(description)
 
 def _generate_params_uuid(
-    resample_params: ResampleParams,
-    feature_label_params: List[Tuple[str, Any]],
+    resample_params: ResampleParam,
+    feature_collection: FeatureLabelCollection,
     target_params_batch: TargetParamsBatch,
     seq_params: Optional[SequentialFeatureParam] = None,
 ) -> str:
@@ -115,10 +115,10 @@ def _generate_params_uuid(
     }
     
     # Add features in sorted order for consistency
-    for feature_label, param in sorted(feature_label_params, key=lambda x: x[0]):
+    for feature_label_obj in sorted(feature_collection.feature_labels, key=lambda x: x.feature_label):
         params_dict['features'].append({
-            'label': feature_label,
-            'params': param.get_params_dir()
+            'label': feature_label_obj.feature_label,
+            'params': feature_label_obj.params.get_params_dir()
         })
     
     # Add sequential params if present
@@ -131,8 +131,8 @@ def _generate_params_uuid(
     return hashlib.sha256(params_str.encode()).hexdigest()[:12]
 
 def _get_mldata_params_dir(
-    resample_params: ResampleParams,
-    feature_label_params: List[Tuple[str, Any]],
+    resample_params: ResampleParam,
+    feature_collection: FeatureLabelCollection,
     target_params_batch: TargetParamsBatch,
     seq_params: Optional[SequentialFeatureParam] = None,
 ) -> str:
@@ -144,7 +144,7 @@ def _get_mldata_params_dir(
     the parameter descriptions in a description.txt file.
     """
     # Generate deterministic UUID from all parameters
-    params_uuid = _generate_params_uuid(resample_params, feature_label_params, target_params_batch, seq_params)
+    params_uuid = _generate_params_uuid(resample_params, feature_collection, target_params_batch, seq_params)
     
     # Return just the UUID - dataset_id is handled separately
     return params_uuid
@@ -153,9 +153,9 @@ def _get_mldata_params_dir(
 def _calculate_daily_ml_data(
     date: datetime.datetime,
     cache_context: CacheContext,
-    feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]],
+    feature_collection: FeatureLabelCollection,
     target_params_batch: TargetParamsBatch,
-    resample_params: ResampleParams,
+    resample_params: ResampleParam,
     seq_params: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
 ) -> None:
@@ -168,7 +168,7 @@ def _calculate_daily_ml_data(
     Args:
         date: The date to calculate ML data for
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
-        feature_label_params: List of feature labels and their parameters
+        feature_collection: Collection of feature labels and their parameters
         target_params_batch: Target calculation parameters
         resample_params: Resampling parameters
         seq_params: Sequential feature parameters. If provided, creates sequential ML data.
@@ -182,7 +182,7 @@ def _calculate_daily_ml_data(
     ml_data_df = prepare_ml_data(
         cache_context=cache_context,
         time_range=time_range,
-        feature_label_params=feature_label_params,
+        feature_collection=feature_collection,
         target_params_batch=target_params_batch,
         resample_params=resample_params,
         seq_params=seq_params,
@@ -196,7 +196,7 @@ def _calculate_daily_ml_data(
     data_type = "sequential" if seq_params is not None else "regular"
     logger.info(f"Caching {data_type} ML data for {date}")
     
-    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
+    params_dir = _get_mldata_params_dir(resample_params, feature_collection, target_params_batch, seq_params)
     folder_path = cache_context.get_ml_data_path(params_dir)
     market_data.util.cache.write.cache_locally_df(
         df=ml_data_df,
@@ -212,9 +212,9 @@ def _calculate_daily_ml_data(
 def calculate_and_cache_ml_data(
     cache_context: CacheContext,
     time_range: TimeRange,
-    feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
+    feature_collection: FeatureLabelCollection,
     target_params_batch: TargetParamsBatch = None,
-    resample_params: ResampleParams = None,
+    resample_params: ResampleParam = None,
     seq_params: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
 ) -> None:
@@ -233,30 +233,29 @@ def calculate_and_cache_ml_data(
     Args:
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
-        feature_label_params: List of feature labels and their parameters. If None, uses default parameters.
+        feature_collection: Collection of feature labels and their parameters.
         target_params_batch: Target calculation parameters. If None, uses default parameters.
         resample_params: Resampling parameters. If None, uses default parameters.
         seq_params: Sequential feature parameters. If provided, creates sequential ML data.
         overwrite_cache: Whether to overwrite existing cache files
     """
-    feature_label_params = parse_feature_label_params(feature_label_params)
     target_params_batch = target_params_batch or TargetParamsBatch()
-    resample_params = resample_params or ResampleParams()
+    resample_params = resample_params or CumSumResampleParams()
     t_from, t_to = time_range.to_datetime()
     current_date = t_from
     
-    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
+    params_dir = _get_mldata_params_dir(resample_params, feature_collection, target_params_batch, seq_params)
     folder_path = cache_context.get_ml_data_path(params_dir)
 
     data_type = "sequential" if seq_params is not None else "regular"
-    logger.info(f"Starting {data_type} ML data processing for {len(feature_label_params)} features")
+    logger.info(f"Starting {data_type} ML data processing for {len(feature_collection.feature_labels)} features")
     logger.info(f"Cache UUID: {params_dir}")
     
     # Write description file (only if it doesn't exist to avoid overwriting)
     description_path = os.path.join(folder_path, "description.txt")
     print(f"{description_path=}")
     if not os.path.exists(description_path):
-        _write_description_file(folder_path, resample_params, feature_label_params, target_params_batch, seq_params)
+        _write_description_file(folder_path, resample_params, feature_collection, target_params_batch, seq_params)
         logger.info(f"Created parameter description file: {description_path}")
     
     # Process each day
@@ -266,7 +265,7 @@ def calculate_and_cache_ml_data(
         _calculate_daily_ml_data(
             date=current_date,
             cache_context=cache_context,
-            feature_label_params=feature_label_params,
+            feature_collection=feature_collection,
             target_params_batch=target_params_batch,
             resample_params=resample_params,
             seq_params=seq_params,
@@ -279,9 +278,9 @@ def calculate_and_cache_ml_data(
 def load_cached_ml_data(
     cache_context: CacheContext,
     time_range: TimeRange,
-    feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
+    feature_collection: FeatureLabelCollection,
     target_params_batch: TargetParamsBatch = None,
-    resample_params: ResampleParams = None,
+    resample_params: ResampleParam = None,
     seq_params: Optional[SequentialFeatureParam] = None,
     columns: Optional[List[str]] = None,
     max_workers: int = 10,
@@ -296,7 +295,7 @@ def load_cached_ml_data(
     Args:
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
-        feature_label_params: List of feature labels and their parameters
+        feature_collection: Collection of feature labels and their parameters
         target_params_batch: Target calculation parameters. If None, uses default parameters.
         resample_params: Resampling parameters. If None, uses default parameters.
         seq_params: Sequential feature parameters. If provided, loads sequential ML data.
@@ -306,10 +305,9 @@ def load_cached_ml_data(
         DataFrame with ML data (regular or sequential based on seq_params),
         or empty DataFrame if no data is available
     """
-    feature_label_params = parse_feature_label_params(feature_label_params)
     target_params_batch = target_params_batch or TargetParamsBatch()
-    resample_params = resample_params or ResampleParams()
-    params_dir = _get_mldata_params_dir(resample_params, feature_label_params, target_params_batch, seq_params)
+    resample_params = resample_params or CumSumResampleParams()
+    params_dir = _get_mldata_params_dir(resample_params, feature_collection, target_params_batch, seq_params)
 
     def load(d_from, d_to):
         folder_path = cache_context.get_ml_data_path(params_dir)

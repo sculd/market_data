@@ -16,7 +16,7 @@ from market_data.machine_learning.resample import (
     list_registered_resample_methods
 )
 from market_data.feature.impl.common import SequentialFeatureParam
-from market_data.feature.util import parse_feature_label_params
+from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.registry import list_registered_features
 from market_data.machine_learning.ml_data.cache import (
     calculate_and_cache_ml_data,
@@ -139,7 +139,11 @@ def main():
     else:
         features_to_process = [f.strip() for f in args.features.split(",")]
     
-    feature_label_params = features_to_process  # with default parameters
+    # Create FeatureLabelCollection from feature labels
+    feature_collection = FeatureLabelCollection()
+    for feature in features_to_process:
+        feature_label = FeatureLabel(feature)
+        feature_collection = feature_collection.with_feature_label(feature_label)
     target_params_batch = TargetParamsBatch()
     if args.forward_periods and args.tps:
         target_params_batch = TargetParamsBatch(
@@ -183,7 +187,7 @@ def main():
         missing_ranges = market_data.ingest.missing_data_finder.check_missing_ml_data(
             cache_context=cache_context,
             time_range=time_range,
-            feature_label_params=feature_label_params,
+            feature_collection=feature_collection,
             target_params_batch=target_params_batch,
             resample_params=resample_params,
             seq_params=seq_params
@@ -228,7 +232,7 @@ def main():
             missing_range_finder_func = partial(
                 market_data.ingest.missing_data_finder.check_missing_ml_data,
                 cache_context=cache_context,
-                feature_label_params=feature_label_params,
+                feature_collection=feature_collection,
                 target_params_batch=target_params_batch,
                 resample_params=resample_params,
                 seq_params=seq_params
@@ -254,7 +258,7 @@ def main():
                 cache_func = partial(
                     calculate_and_cache_ml_data,
                     cache_context=cache_context,
-                    feature_label_params=feature_label_params,
+                    feature_collection=feature_collection,
                     target_params_batch=target_params_batch,
                     resample_params=resample_params,
                     seq_params=seq_params,
@@ -279,7 +283,7 @@ def main():
                     calculate_and_cache_ml_data(
                         cache_context=cache_context,
                         time_range=calc_time_range,
-                        feature_label_params=feature_label_params,
+                        feature_collection=feature_collection,
                         target_params_batch=target_params_batch,
                         resample_params=resample_params,
                         seq_params=seq_params,
@@ -293,7 +297,7 @@ def main():
             ml_data = load_cached_ml_data(
                 cache_context=cache_context,
                 time_range=time_range,
-                feature_label_params=feature_label_params,
+                feature_collection=feature_collection,
                 target_params_batch=target_params_batch,
                 resample_params=resample_params,
                 seq_params=seq_params

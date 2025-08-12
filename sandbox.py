@@ -25,7 +25,6 @@ if not _PROJECT_ID:
 
 from market_data.feature.impl.common import SequentialFeatureParam
 
-import market_data.ingest.bq.common as bq_common
 import market_data.ingest.common
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 import market_data.ingest.bq.cache
@@ -62,11 +61,13 @@ time_range = market_data.util.time.TimeRange(
 
 
 import market_data.feature.cache_reader
-'''
+from market_data.feature.label import FeatureLabel, FeatureLabelCollection
+
+feature_label_collection = FeatureLabelCollection().with_feature_label(FeatureLabel("returns")).with_feature_label(FeatureLabel("ema"))
 featuers_df = market_data.feature.cache_reader.read_multi_feature_cache(
-    feature_labels_params=["returns", "ema"],
+    feature_label_collection=feature_label_collection,
     time_range=time_range,
-    cache_context,
+    cache_context=cache_context,
 )
 print(featuers_df)
 #'''
@@ -91,10 +92,11 @@ time_range = market_data.util.time.TimeRange(
     )
 
 '''
+feature_label_collection = FeatureLabelCollection().with_feature_label(FeatureLabel("returns")).with_feature_label(FeatureLabel("ema"))
 featuers_df = market_data.feature.cache_reader.read_multi_feature_cache(
-    feature_labels_params=['returns'],
+    feature_label_collection=feature_label_collection,
     time_range=time_range,
-    cache_context,
+    cache_context=cache_context,
 )
 print(featuers_df.shape)
 #'''
@@ -136,7 +138,7 @@ for label in sorted(registry.keys()):
     if label in ["bollinger"]:
         continue
     market_data.feature.cache_writer.cache_seq_feature_cache(
-        label,
+        FeatureLabel(label),
         DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST,
         time_range=time_range,
     )
@@ -253,11 +255,12 @@ import market_data.ingest.missing_data_finder
 cache_context = market_data.ingest.common.CacheContext(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LASTEST
 )
+from market_data.feature.label import FeatureLabel
+feature_label_obj = FeatureLabel('returns', None)
 missing = market_data.ingest.missing_data_finder.check_missing_feature_resampled_data(
     cache_context=cache_context,
     time_range=time_range,
-    feature_label='returns',
-    feature_params=None,
+    feature_label=feature_label_obj,
     resample_params=market_data.machine_learning.resample.calc.ResampleParams(
         threshold=0.05,
     ),

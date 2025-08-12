@@ -12,7 +12,7 @@ from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MOD
 from market_data.util.time import TimeRange
 from market_data.feature.registry import list_registered_features
 from market_data.feature.cache_writer import cache_feature_cache
-from market_data.feature.util import parse_feature_label_param
+from market_data.feature.label import FeatureLabel
 import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
@@ -125,10 +125,10 @@ def main():
         # Process each feature
         for feature_label in features_to_process:
             print(f"\nChecking feature: {feature_label}")
+            feature_label_obj = FeatureLabel(feature_label, None)
             missing_ranges = market_data.ingest.missing_data_finder.check_missing_feature_data(
                 cache_context=cache_context,
-                feature_label=feature_label,
-                feature_params=None,
+                feature_label=feature_label_obj,
                 time_range=time_range
             )
             
@@ -161,6 +161,7 @@ def main():
         
         for feature_label in features_to_process:
             print(f"\nCaching feature: {feature_label}")
+            feature_label_obj = FeatureLabel(feature_label)
             
             try:
                 # Set up calculation parameters
@@ -171,7 +172,7 @@ def main():
                 missing_range_finder_func = partial(
                     market_data.ingest.missing_data_finder.check_missing_feature_data,
                     cache_context=cache_context,
-                    feature_label=feature_label,
+                    feature_label=feature_label_obj,
                     feature_params=None,
                     )
 
@@ -194,7 +195,7 @@ def main():
 
                     cache_func = partial(
                         cache_feature_cache,
-                        feature_label_param=feature_label,
+                        feature_label_obj=feature_label_obj,
                         cache_context=cache_context,
                         calculation_batch_days=1,  # Process each range as single batch
                         warm_up_days=args.warmup_days,
@@ -222,7 +223,7 @@ def main():
                         calc_time_range = TimeRange(calc_t_from, calc_t_to)
                         
                         success = cache_feature_cache(
-                            feature_label_param=feature_label,
+                            feature_label_obj=feature_label_obj,
                             cache_context=cache_context,
                             time_range=calc_time_range,
                             calculation_batch_days=1,  # Process each range as single batch

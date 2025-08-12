@@ -177,7 +177,7 @@ def find_feature_params_for_columns(column_names: List[str]) -> List[Tuple[str, 
         List of tuples (feature_label, params) where params is the parameter object
         for the feature. You can use these tuples directly with feature.calculate(df, params).
     """
-    from market_data.feature.util import _create_default_params
+    from market_data.feature.label import FeatureLabel
     import re
 
     # First get the mapping from features to columns
@@ -186,11 +186,12 @@ def find_feature_params_for_columns(column_names: List[str]) -> List[Tuple[str, 
     # Create the result list with feature labels and their params
     result = []
     for feature_label, columns in feature_map.items():
-        # Create default parameters for the feature
-        params = _create_default_params(feature_label)
-        
-        if params is None:
-            logger.warning(f"Could not create parameters for feature '{feature_label}', skipping")
+        # Create default parameters for the feature using FeatureLabel
+        try:
+            feature_label_obj = FeatureLabel(feature_label)
+            params = feature_label_obj.params
+        except Exception as e:
+            logger.warning(f"Could not create parameters for feature '{feature_label}': {e}, skipping")
             continue
         
         # Check if we need to customize parameters or if defaults are sufficient

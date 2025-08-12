@@ -11,14 +11,13 @@ import logging
 import typing
 import os
 from pathlib import Path
-from typing import List, Tuple, Any, Optional, Union
 
 from market_data.ingest.common import CacheContext
 from market_data.util.time import TimeRange
 from market_data.util.cache.path import get_cache_base_path
 import market_data.feature.impl # needed to register features
 from market_data.feature.registry import get_feature_by_label
-from market_data.feature.util import parse_feature_label_params
+from market_data.feature.label import FeatureLabelCollection
 from market_data.util.cache.parallel_processing import (
     read_multithreaded,
 )
@@ -30,7 +29,7 @@ Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 logger = logging.getLogger(__name__)
 
 def read_multi_feature_cache(
-        feature_labels_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
+        feature_label_collection: FeatureLabelCollection,
         time_range: TimeRange = None,
         columns: typing.List[str] = None,
         cache_context: CacheContext = None,
@@ -40,9 +39,6 @@ def read_multi_feature_cache(
     Read cached features for multiple feature types and parameters.
     
     Args:
-        feature_labels_params: List of either:
-            - feature labels (str) - will use default parameters
-            - (label, params) tuples - will use the provided parameters
         time_range: Time range to fetch data for
         columns: Specific columns to retrieve
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
@@ -52,10 +48,10 @@ def read_multi_feature_cache(
     """
     all_dfs = []
     
-    feature_labels_params = parse_feature_label_params(feature_labels_params)
-    for feature_label_param in feature_labels_params:
-        feature_label, params = feature_label_param
-
+    # Process each FeatureLabelCollection object
+    for feature_label_obj in feature_label_collection:
+        feature_label = feature_label_obj.feature_label
+        
         logger.info(f"Reading cached feature: {feature_label}")
         
         # Get the feature module
@@ -67,7 +63,7 @@ def read_multi_feature_cache(
         # Read from cache
         try:
             def load(d_from, d_to):
-                params_dir=params.get_params_dir()
+                params_dir=feature_label_obj.params.get_params_dir()
                 folder_path = cache_context.get_feature_path(feature_label, params_dir)
                 df = market_data.util.cache.read.read_daily_from_local_cache(
                         folder_path,

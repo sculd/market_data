@@ -10,13 +10,13 @@ import setup_env # needed for env variables
 
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 from market_data.util.time import TimeRange
-from market_data.util.cache.time import split_t_range
 from market_data.feature.registry import list_registered_features
 from market_data.machine_learning.resample import (
     get_resample_params_class,
     list_registered_resample_methods
 )
 from market_data.machine_learning.feature_resample.cache import calculate_and_cache_feature_resampled
+from market_data.feature.label import FeatureLabel
 import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
@@ -135,11 +135,12 @@ def main():
         # Process each feature
         for feature_label in features_to_process:
             print(f"\nChecking feature resampled: {feature_label}")
+            # Create FeatureLabel object at main script level
+            feature_label_obj = FeatureLabel(feature_label)
             missing_ranges = market_data.ingest.missing_data_finder.check_missing_feature_resampled_data(
                 cache_context=cache_context,
                 time_range=time_range,
-                feature_label=feature_label,
-                feature_params=None,
+                feature_label=feature_label_obj,
                 resample_params=resample_params,
                 seq_params=None,
             )
@@ -176,6 +177,8 @@ def main():
         
         for feature_label in features_to_process:
             print(f"\nCaching feature resampled: {feature_label}")
+            # Create FeatureLabel object at main script level
+            feature_label_obj = FeatureLabel(feature_label)
             
             try:
                 # Set up calculation parameters
@@ -212,8 +215,7 @@ def main():
                     cache_func = partial(
                         calculate_and_cache_feature_resampled,
                         cache_context=cache_context,
-                        feature_label=feature_label,
-                        feature_params=None,
+                        feature_label_obj=feature_label_obj,
                         resample_params=resample_params,
                         seq_params=None,
                         overwrite_cache=args.overwrite_cache,
@@ -242,8 +244,7 @@ def main():
                         success = calculate_and_cache_feature_resampled(
                             cache_context=cache_context,
                             time_range=calc_time_range,
-                            feature_label=feature_label,
-                            feature_params=None,
+                            feature_label_obj=feature_label_obj,
                             resample_params=resample_params,
                             seq_params=None,
                             overwrite_cache=args.overwrite_cache,

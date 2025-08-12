@@ -7,7 +7,7 @@ from market_data.util.time import TimeRange
 from market_data.machine_learning.resample.cache import load_cached_resampled_data
 from market_data.machine_learning.resample.calc import ResampleParams
 from market_data.feature.cache_reader import read_multi_feature_cache
-from market_data.feature.util import parse_feature_label_param
+from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.impl.common import SequentialFeatureParam
 
 logger = logging.getLogger(__name__)
@@ -15,8 +15,7 @@ logger = logging.getLogger(__name__)
 def prepare_feature_resampled(
     cache_context: CacheContext,
     time_range: TimeRange,
-    feature_label: str,
-    feature_params: Any,
+    feature_label_obj: FeatureLabel,
     resample_params: ResampleParams = None,
 ) -> pd.DataFrame:
     """
@@ -30,16 +29,13 @@ def prepare_feature_resampled(
     Args:
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
-        feature_label: Name of the feature to load (e.g., 'bollinger_bands', 'rsi')
-        feature_params: Parameters for the feature calculation. If None, uses default parameters.
+        feature_label_obj: FeatureLabel object containing the feature label and parameters
         resample_params: Resampling parameters. If None, uses default parameters.
         
     Returns:
         DataFrame with the feature joined with resampled data, indexed by [timestamp, symbol].
         Returns empty DataFrame if resampled data or feature data is not available.
     """
-    # Parse feature label and parameters (handles None parameters by creating defaults)
-    feature_label_param = parse_feature_label_param((feature_label, feature_params,))
     resample_params = resample_params or ResampleParams()
     
     # Load resampled data
@@ -59,16 +55,17 @@ def prepare_feature_resampled(
     resampled_df_cleaned = resampled_df_cleaned[[]]
     
     # Load the feature data
-    logger.info(f"Processing feature: {feature_label_param}")
+    logger.info(f"Processing feature: {feature_label_obj.feature_label}")
     
+    feature_label_collection = FeatureLabelCollection().with_feature_label(feature_label_obj)
     feature_df = read_multi_feature_cache(
-        feature_labels_params=[feature_label_param],
+        feature_label_collection=feature_label_collection,
         cache_context=cache_context,
         time_range=time_range
     )
     
     if feature_df is None or len(feature_df) == 0:
-        logger.warning(f"No data available for feature '{feature_label}', skipping")
+        logger.warning(f"No data available for feature '{feature_label_obj.feature_label}', skipping")
         return pd.DataFrame()
     
     # Join this feature with the resampled DataFrame
@@ -79,15 +76,14 @@ def prepare_feature_resampled(
         logger.error("No feature data available after resampling")
         return pd.DataFrame()
     
-    logger.info(f"Successfully resampled {feature_label} with {len(feature_resampled_df)} rows")
+    logger.info(f"Successfully resampled {feature_label_obj.feature_label} with {len(feature_resampled_df)} rows")
     return feature_resampled_df
 
 
 def prepare_sequential_feature_resampled(
     cache_context: CacheContext,
     time_range: TimeRange,
-    feature_label: str,
-    feature_params: Any,
+    feature_label_obj: FeatureLabel,
     resample_params: ResampleParams = None,
     seq_params: Optional[SequentialFeatureParam] = None,
 ) -> pd.DataFrame:
@@ -104,8 +100,7 @@ def prepare_sequential_feature_resampled(
     Args:
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
-        feature_label: Name of the feature to load (e.g., 'bollinger_bands', 'rsi')
-        feature_params: Parameters for the feature calculation. If None, uses default parameters.
+        feature_label_obj: FeatureLabel object containing the feature label and parameters
         resample_params: Resampling parameters. If None, uses default parameters.
         seq_params: Sequential feature parameters. If None, uses default parameters.
         
@@ -113,8 +108,6 @@ def prepare_sequential_feature_resampled(
         DataFrame with sequential feature data, indexed by [timestamp, symbol].
         Each row contains sequence arrays for the feature columns.
     """
-    # Use default parameters if none provided
-    feature_label_param = parse_feature_label_param((feature_label, feature_params))
     resample_params = resample_params or ResampleParams()
     seq_params = seq_params or SequentialFeatureParam()
     
@@ -152,17 +145,18 @@ def prepare_sequential_feature_resampled(
     
     logger.info(f"Loading features with extended time range: {extended_t_from} to {t_to}")
     
-    logger.info(f"Processing feature: {feature_label}")
+    logger.info(f"Processing feature: {feature_label_obj.feature_label}")
     
     # Load feature data with extended time range
+    feature_label_collection = FeatureLabelCollection().with_feature_label(feature_label_obj)
     feature_df = read_multi_feature_cache(
-        feature_labels_params=[feature_label_param],
+        feature_label_collection=feature_label_collection,
         cache_context=cache_context,
         time_range=extended_time_range
     )
     
     if feature_df is None or len(feature_df) == 0:
-        logger.warning(f"No data available for feature '{feature_label}', skipping")
+        logger.warning(f"No data available for feature '{feature_label_obj.feature_label}', skipping")
         return pd.DataFrame()
     
     # Sort by timestamp for each symbol
@@ -196,7 +190,7 @@ def prepare_sequential_feature_resampled(
             
             # Check if we have enough data points
             if len(sequence_data) < sequence_window:
-                logger.debug(f"Not enough history for timestamp {ts}, symbol {symbol}, feature {feature_label}. Got {len(sequence_data)} points, need {sequence_window}.")
+                logger.debug(f"Not enough history for timestamp {ts}, symbol {symbol}, feature {feature_label_obj.feature_label}. Got {len(sequence_data)} points, need {sequence_window}.")
                 continue
             
             # If we have more points than needed, take the most recent ones
@@ -205,7 +199,7 @@ def prepare_sequential_feature_resampled(
             
             # Ensure we have the right number of values
             if len(sequence_data) != sequence_window:
-                logger.debug(f"Expected {sequence_window} values but got {len(sequence_data)} for {ts}, {symbol}, {feature_label}")
+                logger.debug(f"Expected {sequence_window} values but got {len(sequence_data)} for {ts}, {symbol}, {feature_label_obj.feature_label}")
                 continue
             
             # Create a small DataFrame with this sequence

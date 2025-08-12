@@ -7,9 +7,10 @@ from market_data.ingest.common import CacheContext
 from market_data.util.time import TimeRange
 from market_data.target.cache import load_cached_targets
 from market_data.machine_learning.resample.cache import load_cached_resampled_data
-from market_data.machine_learning.resample.calc import ResampleParams
+from market_data.machine_learning.resample.param import ResampleParam
+from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.feature_resample.cache import load_cached_feature_resampled
-from market_data.feature.util import parse_feature_label_param, parse_feature_label_params
+from market_data.feature.label import FeatureLabelCollection
 from market_data.feature.impl.common import SequentialFeatureParam
 
 logger = logging.getLogger(__name__)
@@ -17,9 +18,9 @@ logger = logging.getLogger(__name__)
 def prepare_ml_data(
     cache_context: CacheContext,
     time_range: TimeRange,
-    feature_label_params: Optional[List[Union[str, Tuple[str, Any]]]] = None,
+    feature_collection: FeatureLabelCollection,
     target_params_batch: TargetParamsBatch = None,
-    resample_params: ResampleParams = None,
+    resample_params: ResampleParam = None,
     seq_params: Optional[SequentialFeatureParam] = None,
 ) -> pd.DataFrame:
     """
@@ -51,9 +52,8 @@ def prepare_ml_data(
         Features can be regular or sequential based on seq_params.
     """
     # Use default parameters if none provided
-    feature_label_params = parse_feature_label_params(feature_label_params)
     target_params_batch = target_params_batch or TargetParamsBatch()
-    resample_params = resample_params or ResampleParams()
+    resample_params = resample_params or CumSumResampleParams()
     
     # Ensure resampled data is present
     resampled_df = load_cached_resampled_data(
@@ -78,19 +78,20 @@ def prepare_ml_data(
     combined_df = resampled_df_cleaned.copy()
     
     data_type = "sequential" if seq_params is not None else "regular"
-    logger.info(f"Loading {data_type} feature_resampled data for {len(feature_label_params)} features")
+    logger.info(f"Loading {data_type} feature_resampled data for {len(feature_collection.feature_labels)} features")
     
     # Load and join features with resampled data one by one
-    for feature_label_param in feature_label_params:
-        feature_label, feature_params = parse_feature_label_param(feature_label_param)
+    for feature_label_obj in feature_collection.feature_labels:
 
+        feature_label = feature_label_obj.feature_label
+        feature_params = feature_label_obj.params
+        
         logger.info(f"Processing feature: {feature_label}")
 
         feature_resampled_df = load_cached_feature_resampled(
             cache_context=cache_context,
             time_range=time_range,
-            feature_label=feature_label,
-            feature_params=feature_params,
+            feature_label_obj=feature_label_obj,
             resample_params=resample_params,
             seq_params=seq_params,
         )
