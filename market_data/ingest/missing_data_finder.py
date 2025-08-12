@@ -90,17 +90,8 @@ def check_missing_target_data(
     Returns:
         A list of (start_date, end_date) tuples for missing days
     """
-    from market_data.util.cache.path import params_to_dir_name
-    
     target_params = target_params or TargetParamsBatch()
-    
-    # Convert params to directory name
-    params_dict = {
-        'fp': sorted(set([p.forward_period for p in target_params.target_params_list])),
-        'tp': sorted(set([p.tp_value for p in target_params.target_params_list])),
-        'sl': sorted(set([p.sl_value for p in target_params.target_params_list])),
-    }
-    params_dir = params_to_dir_name(params_dict)
+    params_dir = target_params.get_params_dir()
     
     t_from, t_to = time_range.to_datetime()
     
@@ -131,11 +122,8 @@ def check_missing_resampled_data(
     
     Returns a list of (start_date, end_date) tuples for missing days.
     """
-    from market_data.util.cache.path import params_to_dir_name
-    from dataclasses import asdict
-    
     resample_params = resample_params or CumSumResampleParams()
-    params_dir = params_to_dir_name(asdict(resample_params))
+    params_dir = resample_params.get_params_dir()
     
     t_from, t_to = time_range.to_datetime()
     

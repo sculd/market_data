@@ -8,7 +8,6 @@ import pandas as pd
 import logging
 import os
 from pathlib import Path
-from dataclasses import asdict
 from typing import Optional, List
 
 from market_data.ingest.common import CacheContext
@@ -19,10 +18,7 @@ from market_data.util.cache.parallel_processing import (
 )
 import market_data.util.cache.read
 import market_data.util.cache.write
-from market_data.util.cache.path import (
-    params_to_dir_name,
-    get_cache_base_path
-)
+from market_data.util.cache.path import get_cache_base_path
 
 # Global paths configuration - use configurable base path
 TARGET_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
@@ -30,16 +26,6 @@ TARGET_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
 Path(TARGET_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
-
-def _get_target_params_dir(params: TargetParamsBatch = None) -> str:
-    """Convert target parameters to a directory name string"""
-    params = params or TargetParamsBatch()
-    params_dict = {
-        'fp': sorted(set([p.forward_period for p in params.target_params_list])),
-        'tp': sorted(set([p.tp_value for p in params.target_params_list])),
-        'sl': sorted(set([p.sl_value for p in params.target_params_list])),
-    }
-    return params_to_dir_name(params_dict)
 
 def _get_recommended_warm_up_days(params: TargetParamsBatch) -> int:
     """
@@ -97,7 +83,7 @@ def calculate_and_cache_targets(
         logger.info(f"Using {warm_up_days} warm-up days for targets")
     
     # Get the params directory name
-    params_dir = _get_target_params_dir(params)
+    params_dir = params.get_params_dir() if params else TargetParamsBatch().get_params_dir()
     raw_data_folder_path = cache_context.get_market_data_path()
     folder_path = cache_context.get_target_path(params_dir)
 
@@ -134,7 +120,7 @@ def load_cached_targets(
         Cache context containing dataset_mode, export_mode, aggregation_mode
     """
     def load(d_from, d_to):
-        params_dir = params_to_dir_name(asdict(params or TargetParamsBatch()))
+        params_dir = (params or TargetParamsBatch()).get_params_dir()
         folder_path = cache_context.get_target_path(params_dir)
         df = market_data.util.cache.read.read_daily_from_local_cache(
                 folder_path,

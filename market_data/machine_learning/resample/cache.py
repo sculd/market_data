@@ -4,7 +4,6 @@ import logging
 import typing
 import os
 from pathlib import Path
-from dataclasses import asdict
 from typing import Callable
 
 from market_data.ingest.gcs.cache import read_from_local_cache_or_query_and_cache
@@ -20,10 +19,7 @@ from market_data.util.cache.parallel_processing import (
 )
 import market_data.util.cache.read
 import market_data.util.cache.write
-from market_data.util.cache.path import (
-    params_to_dir_name,
-    get_cache_base_path,
-)
+from market_data.util.cache.path import get_cache_base_path
 
 logger = logging.getLogger(__name__)
 
@@ -87,8 +83,7 @@ def calculate_and_cache_resampled(
                 continue
                 
             # 4. Cache resampled data daily
-            params_dir = params_to_dir_name(asdict(params or ResampleParam()))
-            folder_path = cache_context.get_resampled_path(params_dir)
+            folder_path = cache_context.get_resampled_path(params.get_params_dir())
             market_data.util.cache.write.cache_locally_df(
                 df=resampled_df,
                 folder_path=folder_path,
@@ -112,8 +107,7 @@ def load_cached_resampled_data(
     """
     
     def load(d_from, d_to):
-        params_dir = params_to_dir_name(asdict(params or ResampleParam()))
-        folder_path = cache_context.get_resampled_path(params_dir)
+        folder_path = cache_context.get_resampled_path(params.get_params_dir())
         df = market_data.util.cache.read.read_daily_from_local_cache(
                 folder_path,
                 d_from = d_from,

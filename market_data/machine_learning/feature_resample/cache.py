@@ -4,7 +4,6 @@ from typing import Optional, List, Any, Tuple
 import os
 import datetime
 from pathlib import Path
-from dataclasses import asdict
 
 from market_data.feature.label import FeatureLabel
 from market_data.ingest.common import CacheContext
@@ -20,10 +19,7 @@ from market_data.util.cache.parallel_processing import (
 )
 import market_data.util.cache.read
 import market_data.util.cache.write
-from market_data.util.cache.path import (
-    params_to_dir_name,
-    get_cache_base_path,
-)
+from market_data.util.cache.path import get_cache_base_path
 
 logger = logging.getLogger(__name__)
 
@@ -51,9 +47,7 @@ def _get_feature_resampled_params_dir(
         Path string with nested directories for parameters
     """
     # Start with base path for resample params
-    base_path = params_to_dir_name({
-        f'r_{key}': value for key, value in asdict(resample_params).items()
-    })
+    base_path = f"r_{resample_params.get_params_dir()}"
     
     # Add sequential params if provided
     if seq_params is not None:

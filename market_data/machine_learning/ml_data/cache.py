@@ -8,7 +8,6 @@ from dataclasses import asdict
 import hashlib
 import json
 
-import market_data.target.cache
 from market_data.target.calc import TargetParamsBatch
 from market_data.feature.label import FeatureLabelCollection
 from market_data.ingest.common import CacheContext
@@ -69,7 +68,7 @@ def _write_description_file(
     
     # Target parameters
     lines.append("Target Parameters:")
-    lines.append(f"{market_data.target.cache._get_target_params_dir(target_params_batch)}")
+    lines.append(f"{target_params_batch.get_params_dir()}")
     lines.append("")
     
     # Sequential parameters
@@ -109,7 +108,7 @@ def _generate_params_uuid(
     # Create a consistent dictionary for all parameters
     params_dict = {
         'resample': asdict(resample_params),
-        'target': market_data.target.cache._get_target_params_dir(target_params_batch),
+        'target': target_params_batch.get_params_dir(),
         'features': [],
         'sequential': None
     }

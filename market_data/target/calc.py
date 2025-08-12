@@ -52,7 +52,7 @@ def _get_default_target_params_list() -> List[TargetParams]:
             for tp in DEFAULT_TP_VALUES]
 
 @dataclass
-class TargetParamsBatch:
+class TargetParamsBatch(Param):
     """
     Encapsulates parameters for target engineering.
     
@@ -60,6 +60,54 @@ class TargetParamsBatch:
     providing a single source of truth for target configuration.
     """
     target_params_list: List[TargetParams] = field(default_factory=lambda: _get_default_target_params_list())
+
+    @classmethod
+    def from_str(cls, param_str: str) -> 'TargetParamsBatch':
+        """Parse parameters from string format: fp:5,10,30|tp:0.015,0.03,0.05|sl:0.015,0.03,0.05"""
+        if not param_str:
+            return cls()
+        
+        params_dict = {}
+        for part in param_str.split('|'):
+            if ':' in part:
+                key, values = part.split(':', 1)
+                if key == 'fp':
+                    params_dict['forward_periods'] = [int(v) for v in values.split(',')]
+                elif key == 'tp':
+                    params_dict['tp_values'] = [float(v) for v in values.split(',')]
+                elif key == 'sl':
+                    params_dict['sl_values'] = [float(v) for v in values.split(',')]
+        
+        # Create target params list from the parsed values
+        forward_periods = params_dict.get('forward_periods', DEFAULT_FORWARD_PERIODS)
+        tp_values = params_dict.get('tp_values', DEFAULT_TP_VALUES)
+        sl_values = params_dict.get('sl_values', DEFAULT_TP_VALUES)
+        
+        target_params_list = [
+            TargetParams(forward_period=fp, tp_value=tp, sl_value=sl)
+            for fp in forward_periods
+            for tp in tp_values
+            for sl in sl_values
+        ]
+        
+        return cls(target_params_list=target_params_list)
+    
+    def to_str(self) -> str:
+        """Convert parameters to string format: fp:5,10,30|tp:0.015,0.03,0.05|sl:0.015,0.03,0.05"""
+        # Extract unique values from the list
+        forward_periods = sorted(set(p.forward_period for p in self.target_params_list))
+        tp_values = sorted(set(p.tp_value for p in self.target_params_list))
+        sl_values = sorted(set(p.sl_value for p in self.target_params_list))
+        
+        parts = []
+        if forward_periods:
+            parts.append(f"fp:{','.join(map(str, forward_periods))}")
+        if tp_values:
+            parts.append(f"tp:{','.join(map(str, tp_values))}")
+        if sl_values:
+            parts.append(f"sl:{','.join(map(str, sl_values))}")
+        
+        return '|'.join(parts)
 
     def __repr__(self) -> str:
         """String representation of the parameters."""
