@@ -3,6 +3,7 @@ import datetime
 import pandas as pd
 import os
 import multiprocessing
+import logging
 from pathlib import Path
 from functools import partial
 
@@ -20,6 +21,10 @@ from market_data.feature.label import FeatureLabel
 import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -98,8 +103,8 @@ def main():
     resample_params_class = get_resample_params_class(args.resample_type_label)
     
     if resample_params_class is None:
-        print(f"Error: Unknown resample type '{args.resample_type_label}'")
-        print(f"Available methods: {', '.join(list_registered_resample_methods())}")
+        logger.error(f"Unknown resample type '{args.resample_type_label}'")
+        logger.error(f"Available methods: {', '.join(list_registered_resample_methods())}")
         return 1
     
     # Parse resample parameters if provided
@@ -107,34 +112,34 @@ def main():
     if args.resample_params:
         resample_params = resample_params_class.from_str(args.resample_params)
     
-    print(f"Processing with parameters:")
-    print(f"  Action: {args.action}")
-    print(f"  Feature: {args.feature}")
-    print(f"  Resample Type: {args.resample_type_label}")
+    logger.info("Processing with parameters:")
+    logger.info(f"  Action: {args.action}")
+    logger.info(f"  Feature: {args.feature}")
+    logger.info(f"  Resample Type: {args.resample_type_label}")
     if resample_params:
         # Create a display string for the parameters
         param_display = []
         for field_name, field_value in resample_params.__dict__.items():
             param_display.append(f"{field_name}={field_value}")
-        print(f"  Resample Params: {', '.join(param_display)}")
+        logger.info(f"  Resample Params: {', '.join(param_display)}")
     
-    print(f"  Dataset Mode: {str(dataset_mode)}")
-    print(f"  Export Mode: {str(export_mode)}")
-    print(f"  Aggregation Mode: {str(aggregation_mode)}")
-    print(f"  Time Range: {args.date_from} to {args.date_to}")
+    logger.info(f"  Dataset Mode: {str(dataset_mode)}")
+    logger.info(f"  Export Mode: {str(export_mode)}")
+    logger.info(f"  Aggregation Mode: {str(aggregation_mode)}")
+    logger.info(f"  Time Range: {args.date_from} to {args.date_to}")
 
     # Determine features to process
     features_to_process = []
     if args.feature in ["all", "forex", "crypto", "stock"]:
         features_to_process = list_registered_features(security_type=args.feature)
-        print(f"\nProcessing all {len(features_to_process)} registered {args.feature} features")
+        logger.info(f"Processing all {len(features_to_process)} registered {args.feature} features")
     else:
         features_to_process = [args.feature]
     
     if args.action == 'check':
         # Process each feature
         for feature_label in features_to_process:
-            print(f"\nChecking feature resampled: {feature_label}")
+            logger.info(f"Checking feature resampled: {feature_label}")
             # Create FeatureLabel object at main script level
             feature_label_obj = FeatureLabel(feature_label)
             missing_ranges = market_data.ingest.missing_data_finder.check_missing_feature_resampled_data(
@@ -146,29 +151,29 @@ def main():
             )
             
             if not missing_ranges:
-                print(f"  All data for '{feature_label}' is present in the cache.")
+                logger.info(f"  All data for '{feature_label}' is present in the cache.")
             else:
                 # Group consecutive dates
                 grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
                 
                 total_missing_days = len(missing_ranges)
-                print(f"  Missing data for '{feature_label}': {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
+                logger.info(f"  Missing data for '{feature_label}': {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
                 
                 for i, (d_from, d_to) in enumerate(grouped_ranges):
                     if d_from.date() == d_to.date() - datetime.timedelta(days=1):
                         # Single day range (common when using daily intervals)
-                        print(f"    {i+1}. {d_from.date()}")
+                        logger.info(f"    {i+1}. {d_from.date()}")
                     else:
                         # Multi-day range
-                        print(f"    {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
+                        logger.info(f"    {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
                 
                 # Suggest command to cache this feature
                 resample_type_option = f" --resample_type_label {args.resample_type_label}" if args.resample_type_label != 'cumsum' else ""
                 suggest_cmd = f"python main_feature_resampled_data.py --action cache --feature {feature_label}{resample_type_option} --from {args.date_from} --to {args.date_to}"
                 if args.resample_params:
                     suggest_cmd += f" --resample_params {args.resample_params}"
-                print(f"\n  To cache this feature, run:")
-                print(f"    {suggest_cmd}")
+                logger.info(f"To cache this feature, run:")
+                logger.info(f"    {suggest_cmd}")
 
     elif args.action == 'cache':
         # Process each feature
@@ -176,7 +181,7 @@ def main():
         failed_features = []
         
         for feature_label in features_to_process:
-            print(f"\nCaching feature resampled: {feature_label}")
+            logger.info(f"Caching feature resampled: {feature_label}")
             # Create FeatureLabel object at main script level
             feature_label_obj = FeatureLabel(feature_label)
             
@@ -209,7 +214,7 @@ def main():
                     else:
                         workers = args.workers
                     
-                    print(f"  Using parallel processing with {workers} workers")
+                    logger.info(f"  Using parallel processing with {workers} workers")
 
                     cache_func = partial(
                         calculate_and_cache_feature_resampled,
@@ -229,14 +234,14 @@ def main():
                     feature_success = True
                     if failed_batches > 0:
                         feature_success = False
-                        print(f"  Failed to process feature: {feature_label} with {successful_batches} successful batches and {failed_batches} failed batches")
+                        logger.error(f"Failed to process feature: {feature_label} with {successful_batches} successful batches and {failed_batches} failed batches")
             
                 else:
                     # Sequential processing (original behavior)
                     feature_success = True
                     for i, calc_range in enumerate(calculation_ranges):
                         calc_t_from, calc_t_to = calc_range
-                        print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                        logger.info(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
                         
                         calc_time_range = TimeRange(calc_t_from, calc_t_to)
                         
@@ -251,29 +256,29 @@ def main():
                         
                         if not success:
                             feature_success = False
-                            print(f"  Failed to process batch {i+1} for feature: {feature_label}")
+                            logger.error(f"Failed to process batch {i+1} for feature: {feature_label}")
                             break
                 
                 if feature_success:
                     successful_features.append(feature_label)
-                    print(f"  Successfully cached feature: {feature_label}")
+                    logger.info(f"Successfully cached feature: {feature_label}")
                 else:
                     failed_features.append(feature_label)
-                    print(f"  Failed to cache feature: {feature_label}")
+                    logger.error(f"Failed to cache feature: {feature_label}")
                     
             except Exception as e:
                 failed_features.append(feature_label)
-                print(f"  Failed to cache feature {feature_label}: {e}")
+                logger.error(f"Failed to cache feature {feature_label}: {e}")
         
         # Summary
-        print("\nCaching summary:")
-        print(f"  Successfully cached: {len(successful_features)} feature(s)")
-        print(f"  Failed to cache: {len(failed_features)} feature(s)")
+        logger.info("Caching summary:")
+        logger.info(f"Successfully cached: {len(successful_features)} feature(s)")
+        logger.info(f"Failed to cache: {len(failed_features)} feature(s)")
         
         if failed_features:
-            print("\nFailed features:")
+            logger.error("Failed features:")
             for feature in failed_features:
-                print(f"  - {feature}")
+                logger.error(f"  - {feature}")
 
 if __name__ == "__main__":
     main()

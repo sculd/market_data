@@ -3,6 +3,7 @@ import datetime
 import pandas as pd
 import os
 import multiprocessing
+import logging
 from pathlib import Path
 from functools import partial
 
@@ -15,6 +16,10 @@ from market_data.target.cache import calculate_and_cache_targets
 import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -85,15 +90,15 @@ def main():
     # Create TimeRange object
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
     
-    print(f"Processing with parameters:")
-    print(f"  Action: {args.action}")
-    print(f"  Dataset Mode: {str(dataset_mode)}")
-    print(f"  Export Mode: {str(export_mode)}")
-    print(f"  Aggregation Mode: {str(aggregation_mode)}")
-    print(f"  Time Range: {args.date_from} to {args.date_to}")
+    logger.info("Processing with parameters:")
+    logger.info(f"  Action: {args.action}")
+    logger.info(f"  Dataset Mode: {str(dataset_mode)}")
+    logger.info(f"  Export Mode: {str(export_mode)}")
+    logger.info(f"  Aggregation Mode: {str(aggregation_mode)}")
+    logger.info(f"  Time Range: {args.date_from} to {args.date_to}")
     if args.forward_periods and args.tps:
-        print(f"  Forward Periods: {args.forward_periods}")
-        print(f"  Target Price Shifts: {args.tps}")
+        logger.info(f"  Forward Periods: {args.forward_periods}")
+        logger.info(f"  Target Price Shifts: {args.tps}")
 
     target_params: TargetParamsBatch = None
     if args.forward_periods and args.tps:
@@ -104,7 +109,7 @@ def main():
         )
 
     if args.action == 'check':
-        print("\nChecking target data")
+        logger.info("Checking target data")
         missing_ranges = market_data.ingest.missing_data_finder.check_missing_target_data(
             cache_context=cache_context,
             time_range=time_range,
@@ -112,31 +117,31 @@ def main():
         )
         
         if not missing_ranges:
-            print(f"  All target data is present in the cache.")
+            logger.info("All target data is present in the cache.")
         else:
             # Group consecutive dates
             grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
             
             total_missing_days = len(missing_ranges)
-            print(f"  Missing target data: {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
+            logger.info(f"Missing target data: {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
             
             for i, (d_from, d_to) in enumerate(grouped_ranges):
                 if d_from.date() == d_to.date() - datetime.timedelta(days=1):
                     # Single day range (common when using daily intervals)
-                    print(f"    {i+1}. {d_from.date()}")
+                    logger.info(f"  {i+1}. {d_from.date()}")
                 else:
                     # Multi-day range
-                    print(f"    {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
+                    logger.info(f"  {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
             
             # Suggest command to cache target data
             suggest_cmd = f"python main_target_data.py --action cache --from {args.date_from} --to {args.date_to}"
             if args.forward_periods and args.tps:
                 suggest_cmd += f" --forward_periods {args.forward_periods} --tps {args.tps}"
-            print(f"\n  To cache target data, run:")
-            print(f"    {suggest_cmd}")
+            logger.info(f"To cache target data, run:")
+            logger.info(f"  {suggest_cmd}")
     
     elif args.action == 'cache':
-        print("\nCaching target data")
+        logger.info("Caching target data")
         try:
             missing_range_finder_func = partial(
                 market_data.ingest.missing_data_finder.check_missing_target_data,
@@ -159,7 +164,7 @@ def main():
                 else:
                     workers = args.workers
                 
-                print(f"  Using parallel processing with {workers} workers")
+                logger.info(f"Using parallel processing with {workers} workers")
 
                 cache_func = partial(
                     calculate_and_cache_targets,
@@ -179,7 +184,7 @@ def main():
                 # Sequential processing (original behavior)
                 for i, calc_range in enumerate(calculation_ranges):
                     calc_t_from, calc_t_to = calc_range
-                    print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                    logger.info(f"Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
                     
                     calc_time_range = TimeRange(calc_t_from, calc_t_to)
                     
@@ -191,9 +196,9 @@ def main():
                         overwrite_cache=args.overwrite_cache,
                     )
 
-            print("  Successfully cached target data")
+            logger.info("Successfully cached target data")
         except Exception as e:
-            print(f"  Failed to cache target data: {e}")
+            logger.error(f"Failed to cache target data: {e}")
 
 if __name__ == "__main__":
     main()

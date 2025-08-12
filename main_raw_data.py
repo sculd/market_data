@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import logging
 
 import setup_env # needed for env variables
 
@@ -9,6 +10,10 @@ from market_data.util.time import TimeRange
 import market_data.ingest.gcs.cache
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.time
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -61,12 +66,12 @@ def main():
     # Create TimeRange object
     time_range = TimeRange(date_str_from=args.date_from, date_str_to=args.date_to)
     
-    print(f"Processing with parameters:")
-    print(f"  Action: {args.action}")
-    print(f"  Dataset Mode: {str(dataset_mode)}")
-    print(f"  Export Mode: {str(export_mode)}")
-    print(f"  Aggregation Mode: {str(aggregation_mode)}")
-    print(f"  Time Range: {args.date_from} to {args.date_to}")
+    logger.info("Processing with parameters:")
+    logger.info(f"  Action: {args.action}")
+    logger.info(f"  Dataset Mode: {str(dataset_mode)}")
+    logger.info(f"  Export Mode: {str(export_mode)}")
+    logger.info(f"  Aggregation Mode: {str(aggregation_mode)}")
+    logger.info(f"  Time Range: {args.date_from} to {args.date_to}")
     
     if args.action == 'check':
         # Check which date ranges are missing from the cache
@@ -76,30 +81,30 @@ def main():
         )
         
         if not missing_ranges:
-            print("\nAll data for the specified range is present in the cache.")
+            logger.info("All data for the specified range is present in the cache.")
         else:
             # Group consecutive dates
             grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
             
             total_missing_days = len(missing_ranges)
-            print(f"\nMissing data for {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
+            logger.info(f"Missing data for {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
             
             for i, (d_from, d_to) in enumerate(grouped_ranges):
                 if d_from.date() == d_to.date() - datetime.timedelta(days=1):
                     # Single day range (common when using daily intervals)
-                    print(f"  {i+1}. {d_from.date()}")
+                    logger.info(f"  {i+1}. {d_from.date()}")
                 else:
                     # Multi-day range
-                    print(f"  {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
+                    logger.info(f"  {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
                 
             # Suggest command to cache the missing data
             suggest_cmd = f"python main_raw_data.py --action cache --dataset_mode {args.dataset_mode} --export_mode {args.export_mode} --aggregation_mode {args.aggregation_mode} --from {args.date_from} --to {args.date_to}"
-            print(f"\nTo cache the missing data, run:")
-            print(f"  {suggest_cmd}")
+            logger.info(f"To cache the missing data, run:")
+            logger.info(f"  {suggest_cmd}")
     
     else:  # args.action == 'cache'
-        print(f"  Overwrite Cache: {args.overwrite_cache}")
-        print(f"  Skip First Day: {args.skip_first_day}")
+        logger.info(f"  Overwrite Cache: {args.overwrite_cache}")
+        logger.info(f"  Skip First Day: {args.skip_first_day}")
         
         # Query and cache data
         market_data.ingest.gcs.cache.cache(

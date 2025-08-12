@@ -3,6 +3,7 @@ import datetime
 import pandas as pd
 import os
 import multiprocessing
+import logging
 from pathlib import Path
 from functools import partial
 
@@ -21,6 +22,9 @@ import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -96,12 +100,12 @@ def main():
     resample_function = get_resample_function(args.resample_type_label)
     
     if resample_params_class is None:
-        print(f"Error: Unknown resample type '{args.resample_type_label}'")
-        print(f"Available methods: {', '.join(list_registered_resample_methods())}")
+        logger.error(f"Unknown resample type '{args.resample_type_label}'")
+        logger.error(f"Available methods: {', '.join(list_registered_resample_methods())}")
         return 1
     
     if resample_function is None:
-        print(f"Error: No function registered for resample type '{args.resample_type_label}'")
+        logger.error(f"No function registered for resample type '{args.resample_type_label}'")
         return 1
     
     # Parse resample parameters if provided
@@ -109,24 +113,24 @@ def main():
     if args.resample_params:
         resample_params = resample_params_class.from_str(args.resample_params)
     
-    print(f"Processing with parameters:")
-    print(f"  Action: {args.action}")
-    print(f"  Processing: Resampled data")
-    print(f"  Resample Type: {args.resample_type_label}")
+    logger.info("Processing with parameters:")
+    logger.info(f"  Action: {args.action}")
+    logger.info(f"  Processing: Resampled data")
+    logger.info(f"  Resample Type: {args.resample_type_label}")
     if resample_params:
         # Create a display string for the parameters
         param_display = []
         for field_name, field_value in resample_params.__dict__.items():
             param_display.append(f"{field_name}={field_value}")
-        print(f"  Resample Params: {', '.join(param_display)}")
+        logger.info(f"  Resample Params: {', '.join(param_display)}")
     
-    print(f"  Dataset Mode: {str(dataset_mode)}")
-    print(f"  Export Mode: {str(export_mode)}")
-    print(f"  Aggregation Mode: {str(aggregation_mode)}")
-    print(f"  Time Range: {args.date_from} to {args.date_to}")
+    logger.info(f"  Dataset Mode: {str(dataset_mode)}")
+    logger.info(f"  Export Mode: {str(export_mode)}")
+    logger.info(f"  Aggregation Mode: {str(aggregation_mode)}")
+    logger.info(f"  Time Range: {args.date_from} to {args.date_to}")
 
     if args.action == 'check':
-        print("\nChecking resampled data")
+        logger.info("Checking resampled data")
         missing_ranges = market_data.ingest.missing_data_finder.check_missing_resampled_data(
             cache_context=cache_context,
             time_range=time_range,
@@ -134,31 +138,31 @@ def main():
         )
         
         if not missing_ranges:
-            print(f"  All resampled data is present in the cache.")
+            logger.info(f"  All resampled data is present in the cache.")
         else:
             # Group consecutive dates
             grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
             
             total_missing_days = len(missing_ranges)
-            print(f"  Missing resampled data: {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
+            logger.info(f"  Missing resampled data: {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
             
             for i, (d_from, d_to) in enumerate(grouped_ranges):
                 if d_from.date() == d_to.date() - datetime.timedelta(days=1):
                     # Single day range (common when using daily intervals)
-                    print(f"    {i+1}. {d_from.date()}")
+                    logger.info(f"    {i+1}. {d_from.date()}")
                 else:
                     # Multi-day range
-                    print(f"    {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
+                    logger.info(f"    {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
             
             # Suggest command to cache resampled data
             resample_param_option = f" --resample_params {args.resample_params}" if args.resample_params else ""
             resample_type_option = f" --resample_type_label {args.resample_type_label}" if args.resample_type_label != 'cumsum' else ""
             suggest_cmd = f"python main_resampled_data.py --action cache{resample_type_option}{resample_param_option} --from {args.date_from} --to {args.date_to}"
-            print(f"\n  To cache resampled data, run:")
-            print(f"    {suggest_cmd}")
+            logger.info(f"To cache resampled data, run:")
+            logger.info(f"    {suggest_cmd}")
     
     elif args.action == 'cache':
-        print("\nCaching resampled data")
+        logger.info("Caching resampled data")
         try:
             # Set up calculation parameters
             calculation_batch_days = args.calculation_batch_days
@@ -186,7 +190,7 @@ def main():
                 else:
                     workers = args.workers
                 
-                print(f"  Using parallel processing with {workers} workers")
+                logger.info(f"  Using parallel processing with {workers} workers")
 
                 cache_func = partial(
                     calculate_and_cache_resampled,
@@ -207,7 +211,7 @@ def main():
                 # Sequential processing (original behavior)
                 for i, calc_range in enumerate(calculation_ranges):
                     calc_t_from, calc_t_to = calc_range
-                    print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                    logger.info(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
                     
                     calc_time_range = TimeRange(calc_t_from, calc_t_to)
                     
@@ -220,9 +224,9 @@ def main():
                         overwrite_cache=args.overwrite_cache
                     )
             
-            print("  Successfully cached resampled data")
+            logger.info("Successfully cached resampled data")
         except Exception as e:
-            print(f"  Failed to cache resampled data: {e}")
+            logger.error(f"Failed to cache resampled data: {e}")
 
 if __name__ == "__main__":
     main()

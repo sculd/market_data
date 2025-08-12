@@ -3,6 +3,7 @@ import datetime
 import pandas as pd
 import os
 import multiprocessing
+import logging
 from pathlib import Path
 from functools import partial
 
@@ -25,6 +26,10 @@ from market_data.machine_learning.ml_data.cache import (
 import market_data.util.cache.time
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 def main():
     parser = argparse.ArgumentParser(
@@ -115,27 +120,27 @@ def main():
     resample_params_class = get_resample_params_class(args.resample_type_label)
     
     if resample_params_class is None:
-        print(f"Error: Unknown resample type '{args.resample_type_label}'")
-        print(f"Available methods: {', '.join(list_registered_resample_methods())}")
+        logger.error(f"Unknown resample type '{args.resample_type_label}'")
+        logger.error(f"Available methods: {', '.join(list_registered_resample_methods())}")
         return 1
     
     # Create parameter objects
     features_to_process = []
     if args.features == "all":
         features_to_process = list_registered_features()
-        print(f"\nProcessing all {len(features_to_process)} registered features")
+        logger.info(f"Processing all {len(features_to_process)} registered features")
     elif args.features == "forex":
         features_to_process = list_registered_features(security_type="forex")
-        print(f"\nProcessing all {len(features_to_process)} registered forex features")
+        logger.info(f"Processing all {len(features_to_process)} registered forex features")
     elif args.features == "crypto":
         features_to_process = list_registered_features(security_type="crypto")
-        print(f"\nProcessing all {len(features_to_process)} registered crypto features")
+        logger.info(f"Processing all {len(features_to_process)} registered crypto features")
     elif args.features == "stock":
         features_to_process = list_registered_features(security_type="stock")
-        print(f"\nProcessing all {len(features_to_process)} registered stock features")
+        logger.info(f"Processing all {len(features_to_process)} registered stock features")
     elif args.features == "none":
         features_to_process = []
-        print(f"\nProcessing none {len(features_to_process)} registered features")
+        logger.info(f"Processing none {len(features_to_process)} registered features")
     else:
         features_to_process = [f.strip() for f in args.features.split(",")]
     
@@ -160,29 +165,29 @@ def main():
     if args.sequential:
         seq_params = SequentialFeatureParam(sequence_window=args.sequence_window)
     
-    print(f"Processing with parameters:")
-    print(f"  Action: {args.action}")
-    print(f"  Dataset Mode: {str(dataset_mode)}")
-    print(f"  Export Mode: {str(export_mode)}")
-    print(f"  Aggregation Mode: {str(aggregation_mode)}")
-    print(f"  Time Range: {args.date_from} to {args.date_to}")
-    print(f"  Features: {args.features if args.features else 'All registered features'}")
+    logger.info("Processing with parameters:")
+    logger.info(f"  Action: {args.action}")
+    logger.info(f"  Dataset Mode: {str(dataset_mode)}")
+    logger.info(f"  Export Mode: {str(export_mode)}")
+    logger.info(f"  Aggregation Mode: {str(aggregation_mode)}")
+    logger.info(f"  Time Range: {args.date_from} to {args.date_to}")
+    logger.info(f"  Features: {args.features if args.features else 'All registered features'}")
     if args.forward_periods and args.tps:
-        print(f"  Forward Periods: {args.forward_periods}")
-        print(f"  Target Price Shifts: {args.tps}")
-    print(f"  Resample Type: {args.resample_type_label}")
+        logger.info(f"  Forward Periods: {args.forward_periods}")
+        logger.info(f"  Target Price Shifts: {args.tps}")
+    logger.info(f"  Resample Type: {args.resample_type_label}")
     if resample_params:
         # Create a display string for the parameters
         param_display = []
         for field_name, field_value in resample_params.__dict__.items():
             param_display.append(f"{field_name}={field_value}")
-        print(f"  Resample Params: {', '.join(param_display)}")
-    print(f"  Sequential: {args.sequential}")
+        logger.info(f"  Resample Params: {', '.join(param_display)}")
+    logger.info(f"  Sequential: {args.sequential}")
     if args.sequential:
-        print(f"  Sequence Window: {args.sequence_window}")
+        logger.info(f"  Sequence Window: {args.sequence_window}")
     
     if args.action == 'check':
-        print("\nChecking ml_data")
+        logger.info("Checking ml_data")
         # Check which date ranges are missing from the ML data cache
         missing_ranges = market_data.ingest.missing_data_finder.check_missing_ml_data(
             cache_context=cache_context,
@@ -194,21 +199,21 @@ def main():
         )
         
         if not missing_ranges:
-            print("  All ml_data is present in the cache.")
+            logger.info("All ml_data is present in the cache.")
         else:
             # Group consecutive dates
             grouped_ranges = market_data.util.cache.time.group_consecutive_dates(missing_ranges)
             
             total_missing_days = len(missing_ranges)
-            print(f"\nMissing ML data: {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
+            logger.info(f"Missing ML data: {total_missing_days} day(s), grouped into {len(grouped_ranges)} range(s):")
             
             for i, (d_from, d_to) in enumerate(grouped_ranges):
                 if d_from.date() == d_to.date() - datetime.timedelta(days=1):
                     # Single day range
-                    print(f"  {i+1}. {d_from.date()}")
+                    logger.info(f"  {i+1}. {d_from.date()}")
                 else:
                     # Multi-day range
-                    print(f"  {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
+                    logger.info(f"  {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
             
             # Suggest command to cache ML data
             resample_type_option = f" --resample_type_label {args.resample_type_label}" if args.resample_type_label != 'cumsum' else ""
@@ -219,11 +224,11 @@ def main():
             sequential_option = " --sequential" if args.sequential else ""
             
             suggest_cmd = f"python main_ml_data.py --action cache --features {args.features}{resample_type_option}{resample_param_option}{target_options}{sequential_option} --from {args.date_from} --to {args.date_to}"
-            print(f"\n  To cache ML data, run:")
-            print(f"    {suggest_cmd}")
+            logger.info(f"To cache ML data, run:")
+            logger.info(f"    {suggest_cmd}")
     
     elif args.action == 'cache':
-        print("\nCalculating and caching ML data...")
+        logger.info("Calculating and caching ML data...")
         
         try:
             # Set up calculation parameters
@@ -253,7 +258,7 @@ def main():
                 else:
                     workers = args.workers
                 
-                print(f"  Using parallel processing with {workers} workers")
+                logger.info(f"  Using parallel processing with {workers} workers")
 
                 cache_func = partial(
                     calculate_and_cache_ml_data,
@@ -276,7 +281,7 @@ def main():
                 # Sequential processing (original behavior)
                 for i, calc_range in enumerate(calculation_ranges):
                     calc_t_from, calc_t_to = calc_range
-                    print(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
+                    logger.info(f"  Processing batch {i+1}/{len(calculation_ranges)}: {calc_t_from.date()} to {calc_t_to.date()}")
                     
                     calc_time_range = TimeRange(calc_t_from, calc_t_to)
                     
@@ -304,15 +309,15 @@ def main():
             )
             
             if ml_data is not None and not ml_data.empty:
-                print(f"Successfully loaded ML data with {len(ml_data)} rows and {len(ml_data.columns)} columns")
-                print(f"Data sample spans from {ml_data.index.min()} to {ml_data.index.max()}")
-                print(f"Number of unique symbols: {ml_data['symbol'].nunique()}")
-                print(f"Features included: {len(ml_data.columns) - 1} columns")  # -1 for symbol column
+                logger.info(f"Successfully loaded ML data with {len(ml_data)} rows and {len(ml_data.columns)} columns")
+                logger.info(f"Data sample spans from {ml_data.index.min()} to {ml_data.index.max()}")
+                logger.info(f"Number of unique symbols: {ml_data['symbol'].nunique()}")
+                logger.info(f"Features included: {len(ml_data.columns) - 1} columns")  # -1 for symbol column
             else:
-                print("Failed to load cached ML data. Please check the logs for details.")
+                logger.error("Failed to load cached ML data. Please check the logs for details.")
                 
         except Exception as e:
-            print(f"\nError caching ML data: {e}")
+            logger.error(f"Error caching ML data: {e}")
 
 if __name__ == "__main__":
     main()
