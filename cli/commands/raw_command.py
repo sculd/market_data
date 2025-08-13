@@ -86,8 +86,8 @@ class RawCommand(BaseCommand):
             print(f"  Skip First Day: {args.skip_first_day}")
         
         # Get enum values
-        from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
-                                               EXPORT_MODE)
+        from market_data.ingest.common import (DATASET_MODE,
+                                               EXPORT_MODE, CacheContext)
         dataset_mode = getattr(DATASET_MODE, getattr(args, 'dataset_mode', 'OKX'))
         export_mode = getattr(EXPORT_MODE, getattr(args, 'export_mode', 'BY_MINUTE'))
         time_range = self.create_time_range(args)
@@ -97,12 +97,10 @@ class RawCommand(BaseCommand):
         try:
             # Query and cache data
             result_df = market_data.ingest.gcs.cache.cache(
-                dataset_mode=dataset_mode,
-                export_mode=export_mode,
+                CacheContext(dataset_mode, export_mode),
                 time_range=time_range,
                 overwrite_cache=args.overwrite_cache,
                 skip_first_day=getattr(args, 'skip_first_day', False),
-                columns=None,
             )
             
             # Print summary of results
