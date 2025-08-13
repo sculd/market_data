@@ -1,6 +1,3 @@
-"""
-Raw data management command
-"""
 import datetime
 from argparse import ArgumentParser, Namespace
 

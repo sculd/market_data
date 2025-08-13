@@ -1,11 +1,3 @@
-"""
-Feature Cache Reader
-
-This module provides functions for reading cached feature data,
-including a multi-feature cache reader that can load multiple
-feature types in a single operation.
-"""
-
 import logging
 import typing
 

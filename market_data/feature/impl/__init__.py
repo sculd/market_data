@@ -1,10 +1,3 @@
-"""
-Feature implementations package.
-
-This package contains specific implementations of market features.
-All modules are imported here to ensure they are registered with the feature registry.
-"""
-
 # Import all feature implementations to ensure they are registered
 from market_data.feature.impl import (bollinger, btc_features, ema,
                                       ffd_volatility_zscore, ffd_zscore, garch,

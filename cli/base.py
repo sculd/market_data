@@ -1,6 +1,3 @@
-"""
-Base classes and utilities for the CLI framework
-"""
 import logging
 import sys
 from abc import ABC, abstractmethod

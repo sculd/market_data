@@ -1,10 +1,3 @@
-"""
-Feature Cache Writer
-
-This module provides functions for writing feature data to cache,
-allowing for caching specific features with their parameters.
-"""
-
 import logging
 import math
 from datetime import timedelta

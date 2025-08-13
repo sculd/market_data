@@ -1,6 +1,3 @@
-"""
-Resampled data management command
-"""
 import datetime
 import multiprocessing
 from argparse import ArgumentParser, Namespace

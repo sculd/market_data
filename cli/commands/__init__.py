@@ -1,6 +1,3 @@
-"""
-CLI Command implementations
-"""
 from .feature_command import FeatureCommand
 from .ml_data_command import MLDataCommand
 from .raw_command import RawCommand

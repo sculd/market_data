@@ -1,10 +1,3 @@
-"""
-Feature Registry
-
-This module provides a registry for feature modules and utility functions
-to register and retrieve feature implementations by their labels.
-"""
-
 import logging
 from typing import Any, Callable, Dict, List, Optional, Tuple, Type, TypeVar
 

@@ -1,9 +1,3 @@
-"""
-Bollinger Bands Feature Module
-
-This module provides functions for calculating Bollinger Bands features.
-"""
-
 import datetime
 import logging
 from dataclasses import dataclass
