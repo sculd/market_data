@@ -7,9 +7,7 @@ allowing for caching specific features with their parameters.
 
 import logging
 import math
-import os
 from datetime import timedelta
-from pathlib import Path
 from typing import Any, Optional
 
 import pandas as pd
@@ -21,13 +19,8 @@ from market_data.feature.label import FeatureLabel
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.sequential_feature import sequentialize_feature
 from market_data.ingest.common import CacheContext
-from market_data.util.cache.path import get_cache_base_path
 from market_data.util.cache.time import split_t_range
 from market_data.util.time import TimeRange
-
-# Global paths configuration - use configurable base path
-FEATURE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
-Path(FEATURE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 
 logger = logging.getLogger(__name__)

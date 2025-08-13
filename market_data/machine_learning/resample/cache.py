@@ -14,15 +14,10 @@ from market_data.ingest.gcs.cache import \
     read_from_local_cache_or_query_and_cache
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.util.cache.parallel_processing import read_multithreaded
-from market_data.util.cache.path import get_cache_base_path
 from market_data.util.cache.time import split_t_range
 from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)
-
-# Global paths configuration - use configurable base path
-RESAMPLE_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
-Path(RESAMPLE_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 
 def calculate_and_cache_resampled(

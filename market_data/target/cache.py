@@ -16,13 +16,7 @@ import market_data.util.cache.write
 from market_data.ingest.common import CacheContext
 from market_data.target.calc import TargetParamsBatch, create_targets
 from market_data.util.cache.parallel_processing import read_multithreaded
-from market_data.util.cache.path import get_cache_base_path
 from market_data.util.time import TimeRange
-
-# Global paths configuration - use configurable base path
-TARGET_CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data')
-# Ensure the directory exists
-Path(TARGET_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 logger = logging.getLogger(__name__)
 

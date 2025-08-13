@@ -1,7 +1,6 @@
 import datetime
 import logging
 import os
-from pathlib import Path
 from typing import Any, List, Optional, Tuple
 
 import pandas as pd
@@ -15,15 +14,11 @@ from market_data.machine_learning.feature_resample.calc import (
     prepare_feature_resampled, prepare_sequential_feature_resampled)
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.util.cache.parallel_processing import read_multithreaded
-from market_data.util.cache.path import get_cache_base_path
 from market_data.util.cache.time import anchor_to_begin_of_day
 from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)
 
-# Global paths configuration - use configurable base path
-CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'feature_data', 'feature_resampled')
-Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def _get_feature_resampled_params_dir(
     resample_params: ResampleParam,

@@ -19,28 +19,11 @@ from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.target.calc import TargetParamsBatch
 from market_data.util.cache.parallel_processing import read_multithreaded
-from market_data.util.cache.path import get_cache_base_path
 from market_data.util.cache.time import anchor_to_begin_of_day
 from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)
 
-
-def get_local_cache_base_path():
-    '''
-    For ML data, use separate cache base.
-    As the access to external disk via network is slow.
-    '''
-    base_path = os.environ.get('ML_DATA_LOCAL_CACHE_BASE', '~/algo_cache')
-    return os.path.expanduser(base_path) 
-
-# Global paths configuration - use configurable base path
-CACHE_BASE_PATH = os.path.join(get_cache_base_path(), 'ml_data')
-Path(CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
-
-# local cache for ml data
-LOCAL_CACHE_BASE_PATH = os.path.join(get_local_cache_base_path(), 'ml_data')
-Path(LOCAL_CACHE_BASE_PATH).mkdir(parents=True, exist_ok=True)
 
 def _write_description_file(
     params_dir: str,
