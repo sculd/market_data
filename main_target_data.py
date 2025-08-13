@@ -38,7 +38,7 @@ def main():
                         choices=[mode.name for mode in EXPORT_MODE],
                         help='Export mode')
     
-    parser.add_argument('--aggregation_mode', type=str, default='TAKE_LASTEST',
+    parser.add_argument('--aggregation_mode', type=str, default='TAKE_LATEST',
                         choices=[mode.name for mode in AGGREGATION_MODE],
                         help='Aggregation mode')
     

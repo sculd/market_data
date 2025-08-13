@@ -35,7 +35,7 @@ def main():
                         choices=[mode.name for mode in EXPORT_MODE],
                         help='Export mode')
     
-    parser.add_argument('--aggregation_mode', type=str, default='TAKE_LASTEST',
+    parser.add_argument('--aggregation_mode', type=str, default='TAKE_LATEST',
                         choices=[mode.name for mode in AGGREGATION_MODE],
                         help='Aggregation mode')
     
@@ -120,7 +120,7 @@ def main():
 
 if __name__ == "__main__":
     #"""
-    cache_context = CacheContext(DATASET_MODE.OKX, EXPORT_MODE.RAW, AGGREGATION_MODE.TAKE_LASTEST)
+    cache_context = CacheContext(DATASET_MODE.OKX, EXPORT_MODE.RAW, AGGREGATION_MODE.TAKE_LATEST)
     market_data.ingest.gcs.cache.cache(
         cache_context,
         time_range=TimeRange(date_str_from="2025-07-01", date_str_to="2025-07-03"),

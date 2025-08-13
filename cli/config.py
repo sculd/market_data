@@ -16,7 +16,7 @@ class CLIConfig:
     # Default values for common parameters
     default_dataset_mode: str = 'OKX'
     default_export_mode: str = 'BY_MINUTE'
-    default_aggregation_mode: str = 'TAKE_LASTEST'
+    default_aggregation_mode: str = 'TAKE_LATEST'
     default_workers: Optional[int] = None
     
     # Cache settings
@@ -143,7 +143,7 @@ class CLIConfig:
 # Default data source settings
 default_dataset_mode: OKX              # Options: OKX, FOREX_IBKR, etc.
 default_export_mode: BY_MINUTE         # Options: BY_MINUTE, RAW, etc.
-default_aggregation_mode: TAKE_LASTEST # Options: TAKE_LASTEST, COLLECT_ALL_UPDATES, etc.
+default_aggregation_mode: TAKE_LATEST # Options: TAKE_LATEST, COLLECT_ALL_UPDATES, etc.
 
 # Processing settings
 default_workers: null                  # Number of parallel workers (null = auto-detect)

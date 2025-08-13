@@ -31,7 +31,7 @@ class DATASET_MODE(Enum):
     STOCK_HIGH_VOLATILITY = 11
 
 class AGGREGATION_MODE(str, Enum):
-    TAKE_LASTEST = "take_tatest"
+    TAKE_LATEST = "take_latest"
     COLLECT_ALL_UPDATES = "collect_all_updates"
 
 

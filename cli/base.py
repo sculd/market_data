@@ -35,7 +35,7 @@ class BaseCommand(ABC):
         parser.add_argument('--export-mode', type=str, default='BY_MINUTE',
                            choices=[mode.name for mode in EXPORT_MODE],
                            help='Export mode')
-        parser.add_argument('--aggregation-mode', type=str, default='TAKE_LASTEST',
+        parser.add_argument('--aggregation-mode', type=str, default='TAKE_LATEST',
                            choices=[mode.name for mode in AGGREGATION_MODE],
                            help='Aggregation mode')
         
@@ -56,7 +56,7 @@ class BaseCommand(ABC):
         """Create CacheContext from common arguments"""
         dataset_mode = getattr(DATASET_MODE, getattr(args, 'dataset_mode', 'OKX'))
         export_mode = getattr(EXPORT_MODE, getattr(args, 'export_mode', 'BY_MINUTE'))
-        aggregation_mode = getattr(AGGREGATION_MODE, getattr(args, 'aggregation_mode', 'TAKE_LASTEST'))
+        aggregation_mode = getattr(AGGREGATION_MODE, getattr(args, 'aggregation_mode', 'TAKE_LATEST'))
         return CacheContext(dataset_mode, export_mode, aggregation_mode)
     
     def create_time_range(self, args: Namespace) -> Optional[TimeRange]:
@@ -79,7 +79,7 @@ class BaseCommand(ABC):
         print(f"Processing with parameters:")
         print(f"  Dataset Mode: {getattr(args, 'dataset_mode', 'OKX')}")
         print(f"  Export Mode: {getattr(args, 'export_mode', 'BY_MINUTE')}")
-        print(f"  Aggregation Mode: {getattr(args, 'aggregation_mode', 'TAKE_LASTEST')}")
+        print(f"  Aggregation Mode: {getattr(args, 'aggregation_mode', 'TAKE_LATEST')}")
         if hasattr(args, 'date_from') and hasattr(args, 'date_to'):
             print(f"  Time Range: {args.date_from} to {args.date_to}")
         if hasattr(args, 'parallel') and args.parallel:

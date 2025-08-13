@@ -39,7 +39,7 @@ _query_template_collect_all_updates = """
 
 
 def _get_query_template(aggregation_mode: AGGREGATION_MODE) -> str:
-    if aggregation_mode == AGGREGATION_MODE.TAKE_LASTEST:
+    if aggregation_mode == AGGREGATION_MODE.TAKE_LATEST:
         return _query_template_take_latest
     elif aggregation_mode == AGGREGATION_MODE.COLLECT_ALL_UPDATES:
         return _query_template_collect_all_updates

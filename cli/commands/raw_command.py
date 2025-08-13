@@ -71,7 +71,7 @@ class RawCommand(BaseCommand):
                     print(f"  {i+1}. {d_from.date()} to {(d_to.date() - datetime.timedelta(days=1))}")
                 
             # Suggest command to cache the missing data
-            suggest_cmd = f"python cli.py raw cache --dataset-mode {getattr(args, 'dataset_mode', 'OKX')} --export-mode {getattr(args, 'export_mode', 'BY_MINUTE')} --aggregation-mode {getattr(args, 'aggregation_mode', 'TAKE_LASTEST')} --from {args.date_from} --to {args.date_to}"
+            suggest_cmd = f"python cli.py raw cache --dataset-mode {getattr(args, 'dataset_mode', 'OKX')} --export-mode {getattr(args, 'export_mode', 'BY_MINUTE')} --aggregation-mode {getattr(args, 'aggregation_mode', 'TAKE_LATEST')} --from {args.date_from} --to {args.date_to}"
             print(f"\nTo cache the missing data, run:")
             print(f"  {suggest_cmd}")
         
