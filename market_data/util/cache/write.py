@@ -7,6 +7,7 @@ from typing import Callable, TypeVar
 import pandas as pd
 
 import market_data.util.cache.common
+import market_data.util.cache.path
 from market_data.util.cache.time import (anchor_to_begin_of_day,
                                          is_exact_cache_interval,
                                          split_t_range)
@@ -33,7 +34,7 @@ def cache_locally_daily_df(
         logging.info(f"df for {t_from}-{t_to} is empty thus will not be cached.")
         return None
 
-    filename = market_data.util.cache.common.to_local_filename(folder_path, t_from, t_to)
+    filename = market_data.util.cache.path.to_local_filename(folder_path, t_from, t_to)
     if os.path.exists(filename):
         logging.info(f"{filename} already exists.")
         if overwrite:

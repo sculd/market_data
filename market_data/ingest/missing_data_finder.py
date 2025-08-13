@@ -6,7 +6,7 @@ from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.target.calc import TargetParamsBatch
-from market_data.util.cache.common import to_local_filename
+from market_data.util.cache.path import to_local_filename
 from market_data.util.cache.time import split_t_range
 from market_data.util.time import TimeRange
 

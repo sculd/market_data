@@ -6,8 +6,8 @@ import typing
 import pandas as pd
 
 import market_data.ingest.gcs.util
-import market_data.util.cache.common
 import market_data.util.cache.read
+import market_data.util.cache.path
 from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, CacheContext
 from market_data.util.cache.time import split_t_range
 from market_data.util.time import TimeRange
@@ -62,7 +62,7 @@ def cache(
         if skip_first_day and i == 0:
             continue
 
-        local_filename = market_data.util.cache.common.to_local_filename(folder_path, t_from, t_to)
+        local_filename = market_data.util.cache.path.to_local_filename(folder_path, t_from, t_to)
         if overwrite_cache or not os.path.exists(local_filename):
             blob_name = _get_gcsblobname(cache_context, t_from)
             blob_exist = market_data.ingest.gcs.util.if_blob_exist(blob_name)
@@ -76,7 +76,7 @@ def cache(
         if cache_context.dataset_mode == DATASET_MODE.OKX and cache_context.export_mode == EXPORT_MODE.RAW:
             logging.info(f"For okx raw data, convert to by minute.")
             by_minute_folder_path = cache_context.with_params({"export_mode": EXPORT_MODE.BY_MINUTE}).get_market_data_path()
-            by_minute_local_filename = market_data.util.cache.common.to_local_filename(by_minute_folder_path, t_from, t_to)
+            by_minute_local_filename = market_data.util.cache.path.to_local_filename(by_minute_folder_path, t_from, t_to)
             if overwrite_cache or not os.path.exists(by_minute_local_filename):
                 raw_df = market_data.util.cache.read.read_daily_from_local_cache(
                     folder_path,

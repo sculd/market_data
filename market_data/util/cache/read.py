@@ -6,6 +6,7 @@ import typing
 import pandas as pd
 
 import market_data.util.cache.common
+import market_data.util.cache.path
 from market_data.util.cache.time import is_exact_cache_interval, split_t_range
 from market_data.util.time import TimeRange
 
@@ -19,7 +20,7 @@ def read_daily_from_local_cache(
     if not is_exact_cache_interval(t_from, t_to):
         logging.info(f"{t_from} to {t_to} does not match {market_data.util.cache.common.cache_interval=} thus not read from cache.")
         return None
-    filename = market_data.util.cache.common.to_local_filename(folder_path, t_from, t_to)
+    filename = market_data.util.cache.path.to_local_filename(folder_path, t_from, t_to)
     if not os.path.exists(filename):
         return None
 
