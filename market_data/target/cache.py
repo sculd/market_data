@@ -5,8 +5,6 @@ This module provides functions for calculating and caching targets.
 """
 
 import logging
-import os
-from pathlib import Path
 from typing import List, Optional
 
 import pandas as pd
