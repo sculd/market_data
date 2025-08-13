@@ -9,7 +9,6 @@ import pytz
 import market_data.ingest.bq.candle as candle
 import market_data.ingest.bq.common as common
 import market_data.ingest.bq.orderbook1l as orderbook1l
-import market_data.util.time as util_time
 from market_data.ingest.common import AGGREGATION_MODE, CacheContext
 from market_data.ingest.gcs.util import (download_gcs_blob, if_blob_exist,
                                          upload_file_to_gcs)
@@ -288,23 +287,11 @@ def read_from_cache_or_query_and_cache(
 
 def validate_df(
         cache_context: CacheContext,
+        time_range: TimeRange,
         label: str = _label_market_data,
-        t_from: datetime.datetime = None,
-        t_to: datetime.datetime = None,
-        epoch_seconds_from: int = None,
-        epoch_seconds_to: int = None,
-        date_str_from: str = None,
-        date_str_to: str = None,
         ) -> None:
     t_id = common.get_full_table_id(cache_context.dataset_mode, cache_context.export_mode)
-    t_from, t_to = util_time.to_t(
-        t_from=t_from,
-        t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from,
-        epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from,
-        date_str_to=date_str_to,
-    )
+    t_from, t_to = time_range.to_datetime()
     t_ranges = split_t_range(t_from, t_to)
     for t_range in t_ranges:
         t_from, t_to = t_range[0], t_range[-1]

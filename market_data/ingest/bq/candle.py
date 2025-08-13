@@ -2,10 +2,9 @@ import datetime
 import logging
 
 import pandas as pd
-import pytz
 
 import market_data.ingest.bq.common as common
-import market_data.util.time as util_time
+import market_data.ingest.bq.time as bq_time
 from market_data.ingest.common import AGGREGATION_MODE
 
 _query_template_take_latest = """
@@ -54,8 +53,8 @@ def _fetch_minute_candle_datetime(t_id: str, aggregation_mode: AGGREGATION_MODE,
     query_template = _get_query_template(aggregation_mode)
     query_str = query_template.format(
         t_id=t_id,
-        t_str_from=util_time.t_to_bq_t_str(t_from),
-        t_str_to=util_time.t_to_bq_t_str(t_to),
+        t_str_from=bq_time.t_to_bq_t_str(t_from),
+        t_str_to=bq_time.t_to_bq_t_str(t_to),
     )
     df = common.run_query(query_str, timestamp_columnname="timestamp")
     df = df.reset_index().drop_duplicates(["timestamp", "symbol"]).set_index("timestamp")
@@ -72,7 +71,7 @@ def fetch_minute_candle(
         date_str_from: str = None,
         date_str_to: str = None,
         ) -> pd.DataFrame:
-    t_from, t_to = util_time.to_t(
+    t_from, t_to = bq_time.to_t(
         t_from=t_from,
         t_to=t_to,
         epoch_seconds_from=epoch_seconds_from,

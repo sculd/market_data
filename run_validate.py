@@ -3,6 +3,9 @@ import logging
 import os
 import sys
 
+from market_data.ingest.common import CacheContext
+from market_data.util.time import TimeRange
+
 if os.path.exists('./credential.json'):
     os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = os.path.join(os.getcwd(), 'credential.json')
     os.environ["GOOGLE_CLOUD_PROJECT"] = "trading-290017"
@@ -19,13 +22,11 @@ logging.basicConfig(
 )
 
 import market_data.ingest.bq.cache
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE
+from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
 
 if __name__ == '__main__':
     market_data.ingest.bq.cache.validate_df(
+        CacheContext(DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST),
+        TimeRange(date_str_from='2024-01-01', date_str_to='2024-03-21'),
         label=market_data.ingest.bq.cache._label_market_data,
-        date_str_from='2024-01-01',
-        date_str_to='2024-03-21',
-        dataset_mode=DATASET_MODE.OKX,
-        export_mode=EXPORT_MODE.BY_MINUTE,
     )
