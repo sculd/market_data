@@ -65,13 +65,13 @@ class TimeRange:
             )
         elif self.date_str_from is not None and self.date_str_to is not None:
             return (
-                date_str_et_to_t(self.date_str_from),
-                date_str_et_to_t(self.date_str_to)
+                date_str_to_et_t(self.date_str_from),
+                date_str_to_et_t(self.date_str_to)
             )
         else:
             raise ValueError("No valid time range parameters provided")
 
-def truncate_utc_timestamp_to_minute(timestamp_seconds):
+def truncate_timestamp_seconds_to_minute(timestamp_seconds):
     t_tz = epoch_seconds_to_datetime(timestamp_seconds)
     t_tz_minute = t_tz.replace(second=0, microsecond=0)
     return t_tz_minute
@@ -83,7 +83,7 @@ def epoch_seconds_to_datetime(timestamp_seconds):
 def epoch_seconds_to_str(timestamp_seconds):
     return str(epoch_seconds_to_datetime(timestamp_seconds))
 
-def date_str_et_to_t(date_str):
+def date_str_to_et_t(date_str):
     '''
     Convert a date string to a datetime object in Eastern timezone.
     

@@ -91,8 +91,8 @@ def cache(
 
 def read_from_local_cache_or_query_and_cache(
     cache_context: CacheContext,
+    time_range: TimeRange,
     resample_interval_str = None,
-    time_range: TimeRange = None,
     columns: typing.List[str] = None,
     overwrite_cache = False,
 ) -> pd.DataFrame:

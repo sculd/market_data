@@ -10,13 +10,14 @@ import market_data.ingest.bq.candle as candle
 import market_data.ingest.bq.common as common
 import market_data.ingest.bq.orderbook1l as orderbook1l
 import market_data.util.time as util_time
-from market_data.ingest.common import AGGREGATION_MODE
+from market_data.ingest.common import AGGREGATION_MODE, CacheContext
 from market_data.ingest.gcs.util import (download_gcs_blob, if_blob_exist,
                                          upload_file_to_gcs)
 from market_data.util.cache.path import get_cache_base_path
 from market_data.util.cache.time import (anchor_to_begin_of_day,
                                          is_exact_cache_interval,
                                          split_t_range)
+from market_data.util.time import TimeRange
 
 # the cache will be stored per day.
 _cache_interval = datetime.timedelta(days=1)
@@ -81,10 +82,8 @@ def _cache_daily_df(df: pd.DataFrame, label: str, aggregation_mode: AGGREGATION_
 
 def cache_df(
         df: pd.DataFrame,
-        label: str,
-        aggregation_mode: AGGREGATION_MODE,
-        dataset_mode: common.DATASET_MODE,
-        export_mode: common.EXPORT_MODE,
+        cache_context: CacheContext,
+        label: str = _label_market_data,
         overwrite = False,
         warm_up_period_days = 1,
 ) -> None:
@@ -97,7 +96,7 @@ def cache_df(
     if len(df) == 0:
         logging.info(f"df is empty for {label} thus will be skipped.")
         return
-    t_id = common.get_full_table_id(dataset_mode, export_mode)
+    t_id = common.get_full_table_id(cache_context.dataset_mode, cache_context.export_mode)
 
     def _split_df_by_day() -> typing.List[pd.DataFrame]:
         dfs = [group[1] for group in df.groupby(df.index.get_level_values(_timestamp_index_name).date)]
@@ -111,7 +110,7 @@ def cache_df(
         timestamps = df_daily.index.get_level_values(_timestamp_index_name).unique()
         t_begin = anchor_to_begin_of_day(timestamps[0])
         t_end = anchor_to_begin_of_day(t_begin + _cache_interval)
-        _cache_daily_df(df_daily, label, aggregation_mode, t_id, t_begin, t_end, overwrite=overwrite)
+        _cache_daily_df(df_daily, label, cache_context.aggregation_mode, t_id, t_begin, t_end, overwrite=overwrite)
         del df_daily
 
 
@@ -147,29 +146,15 @@ def _fetch_from_daily_cache(
 
 
 def read_from_cache(
-        dataset_mode: common.DATASET_MODE,
-        export_mode: common.EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
+        time_range: TimeRange,
         label: str = _label_market_data,
         resample_interval_str = None,
-        t_from: datetime.datetime = None,
-        t_to: datetime.datetime = None,
-        epoch_seconds_from: int = None,
-        epoch_seconds_to: int = None,
-        date_str_from: str = None,
-        date_str_to: str = None,
         columns: typing.List[str] = None,
         ) -> pd.DataFrame:
-    t_from, t_to = util_time.to_t(
-        t_from=t_from,
-        t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from,
-        epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from,
-        date_str_to=date_str_to,
-    )
+    t_from, t_to = time_range.to_datetime()
 
-    t_id = common.get_full_table_id(dataset_mode, export_mode)
+    t_id = common.get_full_table_id(cache_context.dataset_mode, cache_context.export_mode)
     t_ranges = split_t_range(t_from, t_to)
     df_concat: pd.DataFrame = None
     df_list = []
@@ -190,7 +175,7 @@ def read_from_cache(
         df_list = []
 
     for i, t_range in enumerate(t_ranges):
-        df = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
+        df = _fetch_from_daily_cache(t_id, label, cache_context.aggregation_mode, t_range[0], t_range[1])
         if df is None:
             continue
         df_list.append(df)
@@ -208,37 +193,23 @@ def read_from_cache(
 
 
 def query_and_cache(
-        dataset_mode: common.DATASET_MODE,
-        export_mode: common.EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
+        time_range: TimeRange,
         label: str = _label_market_data,
         resample_interval_str = None,
-        t_from: datetime.datetime = None,
-        t_to: datetime.datetime = None,
-        epoch_seconds_from: int = None,
-        epoch_seconds_to: int = None,
-        date_str_from: str = None,
-        date_str_to: str = None,
         overwrite_cache = False,
         skip_first_day = False,
         ) -> pd.DataFrame:
-    t_from, t_to = util_time.to_t(
-        t_from=t_from,
-        t_to=t_to,
-        epoch_seconds_from=epoch_seconds_from,
-        epoch_seconds_to=epoch_seconds_to,
-        date_str_from=date_str_from,
-        date_str_to=date_str_to,
-    )
+    t_from, t_to = time_range.to_datetime()
 
-    t_id = common.get_full_table_id(dataset_mode, export_mode)
-    if export_mode == common.EXPORT_MODE.BY_MINUTE:
+    t_id = common.get_full_table_id(cache_context.dataset_mode, cache_context.export_mode)
+    if cache_context.export_mode == common.EXPORT_MODE.BY_MINUTE:
         fetch_function = candle.fetch_minute_candle
 
-    elif export_mode == common.EXPORT_MODE.ORDERBOOK_LEVEL1:
+    elif cache_context.export_mode == common.EXPORT_MODE.ORDERBOOK_LEVEL1:
         fetch_function = orderbook1l.fetch_orderbook1l
     else:
-        raise Exception(f"{dataset_mode=}, {export_mode=} is not available for ingestion")
+        raise Exception(f"{cache_context.dataset_mode=}, {cache_context.export_mode=} is not available for ingestion")
 
     t_ranges = split_t_range(t_from, t_to)
     df_concat: pd.DataFrame = None
@@ -262,10 +233,10 @@ def query_and_cache(
     for i, t_range in enumerate(t_ranges):
         if skip_first_day and i == 0:
             continue
-        df_cache = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
+        df_cache = _fetch_from_daily_cache(t_id, label, cache_context.aggregation_mode, t_range[0], t_range[1])
         if overwrite_cache or df_cache is None:
-            df = fetch_function(t_id, aggregation_mode, t_from=t_range[0], t_to=t_range[1])
-            _cache_daily_df(df, label, aggregation_mode, t_id, t_range[0], t_range[1])
+            df = fetch_function(t_id, cache_context.aggregation_mode, t_from=t_range[0], t_to=t_range[1])
+            _cache_daily_df(df, label, cache_context.aggregation_mode, t_id, t_range[0], t_range[1])
         else:
             df = df_cache
 
@@ -291,56 +262,33 @@ def query_and_cache(
 
 
 def read_from_cache_or_query_and_cache(
-        dataset_mode: common.DATASET_MODE,
-        export_mode: common.EXPORT_MODE,
-        aggregation_mode: AGGREGATION_MODE,
+        cache_context: CacheContext,
+        time_range: TimeRange,
         label: str = _label_market_data,
         resample_interval_str = None,
-        t_from: datetime.datetime = None,
-        t_to: datetime.datetime = None,
-        epoch_seconds_from: int = None,
-        epoch_seconds_to: int = None,
-        date_str_from: str = None,
-        date_str_to: str = None,
         overwrite_cache = False,
         ) -> pd.DataFrame:
     df = read_from_cache(
-            dataset_mode,
-            export_mode,
-            aggregation_mode,
+            cache_context,
+            time_range,
             label = label,
             resample_interval_str=resample_interval_str,
-            t_from = t_from,
-            t_to = t_to,
-            epoch_seconds_from = epoch_seconds_from,
-            epoch_seconds_to = epoch_seconds_to,
-            date_str_from = date_str_from,
-            date_str_to = date_str_to,
     )
     if df is not None:
         return df
 
     return query_and_cache(
-            dataset_mode,
-            export_mode,
-            aggregation_mode,
+            cache_context,
+            time_range,
             label = label,
             resample_interval_str=resample_interval_str,
-            t_from = t_from,
-            t_to = t_to,
-            epoch_seconds_from = epoch_seconds_from,
-            epoch_seconds_to = epoch_seconds_to,
-            date_str_from = date_str_from,
-            date_str_to = date_str_to,
             overwrite_cache = overwrite_cache,
     )
 
 
 def validate_df(
-        label: str,
-        dataset_mode: common.DATASET_MODE,
-        export_mode: common.EXPORT_MODE,
-        aggregation_mode: common.AGGREGATION_MODE,
+        cache_context: CacheContext,
+        label: str = _label_market_data,
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,
         epoch_seconds_from: int = None,
@@ -348,7 +296,7 @@ def validate_df(
         date_str_from: str = None,
         date_str_to: str = None,
         ) -> None:
-    t_id = common.get_full_table_id(dataset_mode, export_mode)
+    t_id = common.get_full_table_id(cache_context.dataset_mode, cache_context.export_mode)
     t_from, t_to = util_time.to_t(
         t_from=t_from,
         t_to=t_to,
@@ -360,7 +308,7 @@ def validate_df(
     t_ranges = split_t_range(t_from, t_to)
     for t_range in t_ranges:
         t_from, t_to = t_range[0], t_range[-1]
-        filename = to_filename(_cache_base_path, label, t_id, aggregation_mode, t_from, t_to)
+        filename = to_filename(_cache_base_path, label, t_id, cache_context.aggregation_mode, t_from, t_to)
         if not os.path.exists(filename):
             blob_name = _to_gcsblobname(label, t_id, t_from, t_to)
             blob_exist = if_blob_exist(blob_name)

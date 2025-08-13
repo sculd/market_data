@@ -96,7 +96,7 @@ class RawCommand(BaseCommand):
         
         try:
             # Query and cache data
-            result_df = market_data.ingest.gcs.cache.query_and_cache(
+            result_df = market_data.ingest.gcs.cache.cache(
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 time_range=time_range,
