@@ -23,6 +23,11 @@ def get_cache_base_path():
     base_path = os.environ.get('ALGO_CACHE_BASE', '~/algo_cache')
     return os.path.expanduser(base_path) 
 
+cache_base_path = get_cache_base_path()
+try:
+    os.mkdir(cache_base_path)
+except FileExistsError:
+    pass
 
 def to_local_filename(folder_path: str, t_from: datetime.date, t_to: datetime.datetime) -> str:
     t_str_from = t_from.strftime("%Y-%m-%dT%H:%M:%S%z")

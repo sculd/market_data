@@ -2,7 +2,7 @@ import os
 from enum import Enum
 from typing import Dict
 
-import market_data.util.cache.common
+import market_data.util.cache.path
 
 
 class EXPORT_MODE(Enum):
@@ -53,7 +53,7 @@ class CacheContext:
         return CacheContext(dataset_mode, export_mode, aggregation_mode)
 
     def get_folder_path(self, labels, params_dir=None):
-        folder_path = os.path.join(market_data.util.cache.common.cache_base_path, *labels, self.base_label)
+        folder_path = os.path.join(market_data.util.cache.path.cache_base_path, *labels, self.base_label)
         if params_dir is not None:
             folder_path = os.path.join(folder_path, params_dir)
         return folder_path
