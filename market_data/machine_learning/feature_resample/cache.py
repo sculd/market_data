@@ -135,7 +135,7 @@ def calculate_and_cache_feature_resampled(
     resample_params: ResampleParam = None,
     seq_params: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
-) -> None:
+) -> bool:
     """
     Calculate and cache feature resampled data by processing the data daily.
     
@@ -151,6 +151,9 @@ def calculate_and_cache_feature_resampled(
         resample_params: Resampling parameters. If None, uses default parameters.
         seq_params: Sequential feature parameters. If provided, creates sequential features.
         overwrite_cache: Whether to overwrite existing cache files
+        
+    Returns:
+        True if caching was successful, False otherwise
     """
     resample_params = resample_params or ResampleParam()
     t_from, t_to = time_range.to_datetime()

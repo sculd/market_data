@@ -79,9 +79,7 @@ def check_missing_target_data(
     Check which date ranges are missing from the target data cache.
     
     Args:
-        dataset_mode: Dataset mode (LIVE, REPLAY, etc.)
-        export_mode: Export mode (OHLC, TICKS, etc.)
-        aggregation_mode: Aggregation mode (MIN_1, MIN_5, etc.)
+        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range to check
         target_params: Target parameters. If None, uses default parameters
         

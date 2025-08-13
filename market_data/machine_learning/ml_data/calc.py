@@ -87,7 +87,6 @@ def prepare_ml_data(
     for feature_label_obj in feature_collection.feature_labels:
 
         feature_label = feature_label_obj.feature_label
-        feature_params = feature_label_obj.params
         
         logger.info(f"Processing feature: {feature_label}")
 

@@ -51,7 +51,8 @@ def cache_feature_cache(
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode - required
         time_range: TimeRange object specifying the time range to cache
         calculation_batch_days: Number of days to calculate features for in each batch
-        warm_up_days: Number of warm-up days for calculation (if None, auto-calculated)
+        warm_up_days: Number of warm-up days for calculation. If None, will attempt to use 
+                     params.get_warm_up_days() if available, otherwise defaults to 1 day
         overwrite_cache: Whether to overwrite existing cache files
         
     Returns:

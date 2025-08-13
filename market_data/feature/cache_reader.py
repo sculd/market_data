@@ -39,9 +39,11 @@ def read_multi_feature_cache(
     Read cached features for multiple feature types and parameters.
     
     Args:
+        feature_label_collection: Collection of feature labels and their parameters to read
         time_range: Time range to fetch data for
         columns: Specific columns to retrieve
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
+        max_workers: Number of workers for parallel reading (default: 10)
         
     Returns:
         Combined DataFrame with all requested features
