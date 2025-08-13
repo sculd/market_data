@@ -5,6 +5,23 @@ from typing import Optional, Tuple
 
 import pytz
 
+def _epoch_seconds_to_datetime(timestamp_seconds):
+    t = datetime.datetime.utcfromtimestamp(timestamp_seconds)
+    return pytz.utc.localize(t)
+
+def _date_str_to_et_t(date_str):
+    '''
+    Convert a date string to a datetime object in Eastern timezone.
+    
+    Args:
+        date_str: Date string in YYYY-MM-DD format
+        
+    Returns:
+        datetime object localized to Eastern timezone
+    '''
+    t = datetime.datetime.strptime(date_str, '%Y-%m-%d')
+    return pytz.timezone('America/New_York').localize(t)
+
 
 @dataclass
 class TimeRange:
@@ -60,35 +77,13 @@ class TimeRange:
             return self.t_from, self.t_to
         elif self.epoch_seconds_from is not None and self.epoch_seconds_to is not None:
             return (
-                epoch_seconds_to_datetime(self.epoch_seconds_from),
-                epoch_seconds_to_datetime(self.epoch_seconds_to)
+                _epoch_seconds_to_datetime(self.epoch_seconds_from),
+                _epoch_seconds_to_datetime(self.epoch_seconds_to)
             )
         elif self.date_str_from is not None and self.date_str_to is not None:
             return (
-                date_str_to_et_t(self.date_str_from),
-                date_str_to_et_t(self.date_str_to)
+                _date_str_to_et_t(self.date_str_from),
+                _date_str_to_et_t(self.date_str_to)
             )
         else:
             raise ValueError("No valid time range parameters provided")
-
-def truncate_timestamp_seconds_to_minute(timestamp_seconds):
-    t_tz = epoch_seconds_to_datetime(timestamp_seconds)
-    t_tz_minute = t_tz.replace(second=0, microsecond=0)
-    return t_tz_minute
-
-def epoch_seconds_to_datetime(timestamp_seconds):
-    t = datetime.datetime.utcfromtimestamp(timestamp_seconds)
-    return pytz.utc.localize(t)
-
-def date_str_to_et_t(date_str):
-    '''
-    Convert a date string to a datetime object in Eastern timezone.
-    
-    Args:
-        date_str: Date string in YYYY-MM-DD format
-        
-    Returns:
-        datetime object localized to Eastern timezone
-    '''
-    t = datetime.datetime.strptime(date_str, '%Y-%m-%d')
-    return pytz.timezone('America/New_York').localize(t)
