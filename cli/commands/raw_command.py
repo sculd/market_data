@@ -100,7 +100,7 @@ class RawCommand(BaseCommand):
                 dataset_mode=dataset_mode,
                 export_mode=export_mode,
                 time_range=time_range,
-                overwirte_cache=args.overwrite_cache,
+                overwrite_cache=args.overwrite_cache,
                 skip_first_day=getattr(args, 'skip_first_day', False),
                 columns=None,
             )

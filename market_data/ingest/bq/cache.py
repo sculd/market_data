@@ -219,7 +219,7 @@ def query_and_cache(
         epoch_seconds_to: int = None,
         date_str_from: str = None,
         date_str_to: str = None,
-        overwirte_cache = False,
+        overwrite_cache = False,
         skip_first_day = False,
         ) -> pd.DataFrame:
     t_from, t_to = util_time.to_t(
@@ -263,7 +263,7 @@ def query_and_cache(
         if skip_first_day and i == 0:
             continue
         df_cache = _fetch_from_daily_cache(t_id, label, aggregation_mode, t_range[0], t_range[1])
-        if overwirte_cache or df_cache is None:
+        if overwrite_cache or df_cache is None:
             df = fetch_function(t_id, aggregation_mode, t_from=t_range[0], t_to=t_range[1])
             _cache_daily_df(df, label, aggregation_mode, t_id, t_range[0], t_range[1])
         else:
@@ -302,8 +302,7 @@ def read_from_cache_or_query_and_cache(
         epoch_seconds_to: int = None,
         date_str_from: str = None,
         date_str_to: str = None,
-        overwirte_cache = False,
-        skip_first_day = False,
+        overwrite_cache = False,
         ) -> pd.DataFrame:
     df = read_from_cache(
             dataset_mode,
@@ -333,6 +332,7 @@ def read_from_cache_or_query_and_cache(
             epoch_seconds_to = epoch_seconds_to,
             date_str_from = date_str_from,
             date_str_to = date_str_to,
+            overwrite_cache = overwrite_cache,
     )
 
 

@@ -50,7 +50,7 @@ def _convert_raw_to_by_minute(raw_df: pd.DataFrame) -> pd.DataFrame:
 def cache(
     cache_context: CacheContext,
     time_range: TimeRange = None,
-    overwirte_cache = False,
+    overwrite_cache = False,
     skip_first_day = False,
 ) -> pd.DataFrame:
     t_from, t_to = time_range.to_datetime()
@@ -63,7 +63,7 @@ def cache(
             continue
 
         local_filename = market_data.util.cache.common.to_local_filename(folder_path, t_from, t_to)
-        if overwirte_cache or not os.path.exists(local_filename):
+        if overwrite_cache or not os.path.exists(local_filename):
             blob_name = _get_gcsblobname(cache_context, t_from)
             blob_exist = market_data.ingest.gcs.util.if_blob_exist(blob_name)
             if not blob_exist:
@@ -77,7 +77,7 @@ def cache(
             logging.info(f"For okx raw data, convert to by minute.")
             by_minute_folder_path = cache_context.with_params({"export_mode": EXPORT_MODE.BY_MINUTE}).get_market_data_path()
             by_minute_local_filename = market_data.util.cache.common.to_local_filename(by_minute_folder_path, t_from, t_to)
-            if overwirte_cache or not os.path.exists(by_minute_local_filename):
+            if overwrite_cache or not os.path.exists(by_minute_local_filename):
                 raw_df = market_data.util.cache.read.read_daily_from_local_cache(
                     folder_path,
                     t_from,
@@ -94,23 +94,22 @@ def read_from_local_cache_or_query_and_cache(
     resample_interval_str = None,
     time_range: TimeRange = None,
     columns: typing.List[str] = None,
-    overwirte_cache = False,
-    skip_first_day = False,
+    overwrite_cache = False,
 ) -> pd.DataFrame:
     folder_path = cache_context.get_market_data_path()
     df = market_data.util.cache.read.read_from_local_cache(
         folder_path,
         resample_interval_str=resample_interval_str,
         time_range = time_range,
+        columns = columns,
     )
     if df is not None:
         return df
 
     cache(
         cache_context,
-        resample_interval_str=resample_interval_str,
         time_range = time_range,
-        columns=columns,
+        overwrite_cache = overwrite_cache,
     )
     return market_data.util.cache.read.read_from_local_cache(
         folder_path,

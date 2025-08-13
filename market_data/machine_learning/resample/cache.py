@@ -66,7 +66,7 @@ def calculate_and_cache_resampled(
             raw_df = read_from_local_cache_or_query_and_cache(
                 cache_context,
                 time_range=TimeRange(t_from=calc_t_from, t_to=calc_t_to),
-                overwirte_cache=overwrite_cache
+                overwrite_cache=overwrite_cache
             )
             
             if raw_df is None or len(raw_df) == 0:

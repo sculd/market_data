@@ -110,7 +110,7 @@ def main():
         market_data.ingest.gcs.cache.cache(
             cache_context=cache_context,
             time_range=time_range,
-            overwirte_cache=args.overwrite_cache,
+            overwrite_cache=args.overwrite_cache,
             skip_first_day=args.skip_first_day,
         )
         
@@ -124,7 +124,7 @@ if __name__ == "__main__":
     market_data.ingest.gcs.cache.cache(
         cache_context,
         time_range=TimeRange(date_str_from="2025-07-01", date_str_to="2025-07-03"),
-        overwirte_cache=False,
+        overwrite_cache=False,
         skip_first_day=False,
     )
     #"""

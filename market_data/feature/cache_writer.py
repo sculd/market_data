@@ -113,7 +113,6 @@ def cache_seq_feature_cache(
     cache_context: CacheContext,
     time_range: TimeRange,
     seq_params: SequentialFeatureParam = SequentialFeatureParam(),
-    calculation_batch_days: int = 30,
     warm_up_days: Optional[int] = None,
     overwrite_cache: bool = True
 ) -> bool:
