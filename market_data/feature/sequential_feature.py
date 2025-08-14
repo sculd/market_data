@@ -65,14 +65,14 @@ def create_sequences_multi_numba(values: np.ndarray, sequence_window: int) -> np
 
 def sequentialize_feature(
     df: pd.DataFrame,
-    seq_params: SequentialFeatureParam = SequentialFeatureParam(),
+    seq_param: SequentialFeatureParam = SequentialFeatureParam(),
 ) -> Optional[pd.DataFrame]:
     """
     Create sequential features from a regular feature DataFrame.
     
     Args:
         df: DataFrame containing regular features
-        seq_params: Sequential feature parameters
+        seq_param: Sequential feature parameters
         
     Returns:
         DataFrame with sequential features or None if error occurs
@@ -99,7 +99,7 @@ def sequentialize_feature(
         
         for symbol, symbol_data in groupby:
             # Get number of sequences for this symbol
-            n_sequences = len(symbol_data) - seq_params.sequence_window + 1
+            n_sequences = len(symbol_data) - seq_param.sequence_window + 1
             if n_sequences <= 0:
                 continue
                 
@@ -111,7 +111,7 @@ def sequentialize_feature(
             
             # Create sequences for all features at once using the multi-column version
             # Result shape: (n_sequences, n_features, sequence_window)
-            symbol_sequences = create_sequences_multi_numba(feature_values, seq_params.sequence_window)
+            symbol_sequences = create_sequences_multi_numba(feature_values, seq_param.sequence_window)
             
             # Store results
             all_sequences.append(symbol_sequences)

@@ -24,7 +24,7 @@ def prepare_ml_data(
     feature_collection: FeatureLabelCollection,
     target_params_batch: TargetParamsBatch = None,
     resample_params: ResampleParam = None,
-    seq_params: Optional[SequentialFeatureParam] = None,
+    seq_param: Optional[SequentialFeatureParam] = None,
 ) -> pd.DataFrame:
     """
     Prepare machine learning data by loading cached feature_resampled data and joining with targets.
@@ -34,7 +34,7 @@ def prepare_ml_data(
     
     This function:
     * Loads cached resampled data to establish the base timestamps
-    * Loads cached feature_resampled data (regular or sequential based on seq_params)
+    * Loads cached feature_resampled data (regular or sequential based on seq_param)
     * Joins multiple features efficiently
     * Loads cached target data
     * Joins all data to create the final ML dataset
@@ -48,11 +48,11 @@ def prepare_ml_data(
             If None, uses all available features with default parameters
         target_params_batch: Target calculation parameters. If None, uses default parameters.
         resample_params: Resampling parameters. If None, uses default parameters.
-        seq_params: Sequential feature parameters. If provided, loads sequential features.
+        seq_param: Sequential feature parameters. If provided, loads sequential features.
         
     Returns:
         DataFrame with features and targets, resampled at significant price movements.
-        Features can be regular or sequential based on seq_params.
+        Features can be regular or sequential based on seq_param.
     """
     # Use default parameters if none provided
     target_params_batch = target_params_batch or TargetParamsBatch()
@@ -80,7 +80,7 @@ def prepare_ml_data(
     # Initialize the combined feature and resampled DataFrame
     combined_df = resampled_df_cleaned.copy()
     
-    data_type = "sequential" if seq_params is not None else "regular"
+    data_type = "sequential" if seq_param is not None else "regular"
     logger.info(f"Loading {data_type} feature_resampled data for {len(feature_collection.feature_labels)} features")
     
     # Load and join features with resampled data one by one
@@ -95,7 +95,7 @@ def prepare_ml_data(
             time_range=time_range,
             feature_label_obj=feature_label_obj,
             resample_params=resample_params,
-            seq_params=seq_params,
+            seq_param=seq_param,
         )
 
         if feature_resampled_df is None or len(feature_resampled_df) == 0:

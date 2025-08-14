@@ -87,7 +87,7 @@ def prepare_sequential_feature_resampled(
     time_range: TimeRange,
     feature_label_obj: FeatureLabel,
     resample_params: ResampleParam = None,
-    seq_params: Optional[SequentialFeatureParam] = None,
+    seq_param: Optional[SequentialFeatureParam] = None,
 ) -> pd.DataFrame:
     """
     Prepare sequential feature data by creating sequences aligned with resampled timestamps.
@@ -104,16 +104,16 @@ def prepare_sequential_feature_resampled(
         time_range: TimeRange object specifying the time range
         feature_label_obj: FeatureLabel object containing the feature label and parameters
         resample_params: Resampling parameters. If None, uses default parameters.
-        seq_params: Sequential feature parameters. If None, uses default parameters.
+        seq_param: Sequential feature parameters. If None, uses default parameters.
         
     Returns:
         DataFrame with sequential feature data, indexed by [timestamp, symbol].
         Each row contains sequence arrays for the feature columns.
     """
     resample_params = resample_params or ResampleParam()
-    seq_params = seq_params or SequentialFeatureParam()
+    seq_param = seq_param or SequentialFeatureParam()
     
-    sequence_window = seq_params.sequence_window
+    sequence_window = seq_param.sequence_window
     logger.info(f"Preparing sequential feature data with sequence window: {sequence_window}")
     
     # First, get the resampled data to identify required timestamps and symbols

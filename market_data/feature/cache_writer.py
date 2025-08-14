@@ -97,7 +97,7 @@ def cache_seq_feature_cache(
     feature_label_obj: FeatureLabel,
     cache_context: CacheContext,
     time_range: TimeRange,
-    seq_params: SequentialFeatureParam = SequentialFeatureParam(),
+    seq_param: SequentialFeatureParam = SequentialFeatureParam(),
     warm_up_days: Optional[int] = None,
     overwrite_cache: bool = True
 ) -> bool:
@@ -108,7 +108,7 @@ def cache_seq_feature_cache(
         feature_label_obj: FeatureLabel object containing feature name and parameters
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode - required
         time_range: Time range for which to cache the feature
-        seq_params: Sequential feature parameters
+        seq_param: Sequential feature parameters
         calculation_batch_days: Number of days to process in each batch
         warm_up_days: Number of warm-up days for feature calculation
         overwrite_cache: Whether to overwrite existing cache files
@@ -135,7 +135,7 @@ def cache_seq_feature_cache(
                 warm_up_days = 0
                 
         # Add sequence window warm-up days (assuming minute granularity)
-        seq_warm_up_days = math.ceil(seq_params.sequence_window / (24 * 60))
+        seq_warm_up_days = math.ceil(seq_param.sequence_window / (24 * 60))
         warm_up_days = max(warm_up_days, seq_warm_up_days)
         
         # Split time range into daily chunks
@@ -163,14 +163,14 @@ def cache_seq_feature_cache(
                     continue
                     
                 # Create sequential features
-                seq_df = sequentialize_feature(df, seq_params)
+                seq_df = sequentialize_feature(df, seq_param)
                 if seq_df is None:
                     logger.error(f"Failed to sequentialize {feature_label} for {t_range[0].date()}")
                     continue
                 
                 # Cache sequential features
-                seq_params_dir = f"sequence_window-{seq_params.sequence_window}/{params_dir}"
-                seq_folder_path = cache_context.get_feature_path(feature_label, seq_params_dir)
+                seq_param_dir = f"sequence_window-{seq_param.sequence_window}/{params_dir}"
+                seq_folder_path = cache_context.get_feature_path(feature_label, seq_param_dir)
                 market_data.util.cache.write.cache_locally_df(
                     df=seq_df,
                     folder_path=seq_folder_path,
