@@ -264,11 +264,11 @@ feature_label_obj = FeatureLabel('returns', None)
 missing = market_data.ingest.missing_data_finder.check_missing_feature_resampled_data(
     cache_context=cache_context,
     time_range=time_range,
-    feature_label=feature_label_obj,
+    feature_label_obj=feature_label_obj,
     resample_params=market_data.machine_learning.resample.calc.ResampleParams(
         threshold=0.05,
     ),
-    #seq_params=None,
+    #seq_param=None,
 )
 print(missing)
 #'''
@@ -295,7 +295,7 @@ import market_data.machine_learning.ml_data.cache
 market_data.machine_learning.ml_data.cache.calculate_and_cache_ml_data(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST,
     time_range=time_range,
-    seq_params = SequentialFeatureParam(),
+    seq_param = SequentialFeatureParam(),
 )
 #'''
 

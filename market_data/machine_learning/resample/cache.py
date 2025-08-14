@@ -10,6 +10,7 @@ import market_data.util.cache.write
 from market_data.ingest.common import CacheContext
 from market_data.ingest.gcs.cache import \
     read_from_local_cache_or_query_and_cache
+from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.util.cache.parallel_processing import read_multithreaded
 from market_data.util.cache.time import split_t_range
@@ -36,7 +37,7 @@ def calculate_and_cache_resampled(
     """
     assert resample_at_events_func is not None, "resample_at_events_func must be provided"
     
-    params = params or ResampleParam()
+    params = params or CumSumResampleParams()
     
     # Resolve time range
     t_from, t_to = time_range.to_datetime() if time_range else (None, None)

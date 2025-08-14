@@ -196,6 +196,9 @@ def main():
             logger.info("Successfully cached target data")
         except Exception as e:
             logger.error(f"Failed to cache target data: {e}")
+            logger.error("--- traceback ---")
+            import traceback
+            logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
     main()

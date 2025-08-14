@@ -141,9 +141,9 @@ def main():
             missing_ranges = market_data.ingest.missing_data_finder.check_missing_feature_resampled_data(
                 cache_context=cache_context,
                 time_range=time_range,
-                feature_label=feature_label_obj,
+                feature_label_obj=feature_label_obj,
                 resample_params=resample_params,
-                seq_params=None,
+                seq_param=None,
             )
             
             if not missing_ranges:
@@ -190,9 +190,9 @@ def main():
                 missing_range_finder_func = partial(
                     market_data.ingest.missing_data_finder.check_missing_feature_resampled_data,
                     cache_context=cache_context,
-                    feature_label=feature_label_obj,
+                    feature_label_obj=feature_label_obj,
                     resample_params=resample_params,
-                    seq_params=None,
+                    seq_param=None,
                     )
 
                 calculation_ranges = market_data.util.cache.time.chop_missing_time_range(
@@ -217,7 +217,7 @@ def main():
                         cache_context=cache_context,
                         feature_label_obj=feature_label_obj,
                         resample_params=resample_params,
-                        seq_params=None,
+                        seq_param=None,
                         overwrite_cache=args.overwrite_cache,
                     )
 
@@ -246,7 +246,7 @@ def main():
                             time_range=calc_time_range,
                             feature_label_obj=feature_label_obj,
                             resample_params=resample_params,
-                            seq_params=None,
+                            seq_param=None,
                             overwrite_cache=args.overwrite_cache,
                         )
                         
@@ -265,6 +265,9 @@ def main():
             except Exception as e:
                 failed_features.append(feature_label)
                 logger.error(f"Failed to cache feature {feature_label}: {e}")
+                logger.error("--- traceback ---")
+                import traceback
+                logger.error(traceback.format_exc()) 
         
         # Summary
         logger.info("Caching summary:")

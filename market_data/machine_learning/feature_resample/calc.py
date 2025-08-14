@@ -9,6 +9,7 @@ from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.resample.cache import \
     load_cached_resampled_data
+from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.util.time import TimeRange
 
@@ -38,7 +39,7 @@ def prepare_feature_resampled(
         DataFrame with the feature joined with resampled data, indexed by [timestamp, symbol].
         Returns empty DataFrame if resampled data or feature data is not available.
     """
-    resample_params = resample_params or ResampleParam()
+    resample_params = resample_params or CumSumResampleParams()
     
     # Load resampled data
     resampled_df = load_cached_resampled_data(
@@ -110,7 +111,7 @@ def prepare_sequential_feature_resampled(
         DataFrame with sequential feature data, indexed by [timestamp, symbol].
         Each row contains sequence arrays for the feature columns.
     """
-    resample_params = resample_params or ResampleParam()
+    resample_params = resample_params or CumSumResampleParams()
     seq_param = seq_param or SequentialFeatureParam()
     
     sequence_window = seq_param.sequence_window

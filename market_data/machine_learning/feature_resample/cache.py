@@ -12,6 +12,7 @@ from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.feature_resample.calc import (
     prepare_feature_resampled, prepare_sequential_feature_resampled)
+from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.util.cache.parallel_processing import read_multithreaded
 from market_data.util.cache.time import anchor_to_begin_of_day
@@ -113,7 +114,7 @@ def calculate_and_cache_feature_resampled(
     Returns:
         True if caching was successful, False otherwise
     """
-    resample_params = resample_params or ResampleParam()
+    resample_params = resample_params or CumSumResampleParams()
     t_from, t_to = time_range.to_datetime()
     current_date = t_from
     
@@ -169,7 +170,7 @@ def load_cached_feature_resampled(
         DataFrame with feature resampled data (regular or sequential based on seq_param),
         or empty DataFrame if no data is available
     """
-    resample_params = resample_params or ResampleParam()
+    resample_params = resample_params or CumSumResampleParams()
 
     folder_path = cache_context.get_feature_resampled_path(
         feature_label_obj.feature_label, 

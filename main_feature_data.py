@@ -245,6 +245,9 @@ def main():
             except Exception as e:
                 failed_features.append(feature_label)
                 logger.error(f"Failed to cache feature {feature_label}: {e}")
+                logger.error("--- traceback ---")
+                import traceback
+                logger.error(traceback.format_exc())
         
         # Summary
         logger.info("Caching summary:")

@@ -154,9 +154,9 @@ def main():
     resample_params = resample_params_class.from_str(args.resample_params)
     
     # Create sequential parameters if needed
-    seq_params = None
+    seq_param = None
     if args.sequential:
-        seq_params = SequentialFeatureParam(sequence_window=args.sequence_window)
+        seq_param = SequentialFeatureParam(sequence_window=args.sequence_window)
     
     logger.info("Processing with parameters:")
     logger.info(f"  Action: {args.action}")
@@ -188,7 +188,7 @@ def main():
             feature_collection=feature_collection,
             target_params_batch=target_params_batch,
             resample_params=resample_params,
-            seq_params=seq_params
+            seq_param=seq_param
         )
         
         if not missing_ranges:
@@ -233,7 +233,7 @@ def main():
                 feature_collection=feature_collection,
                 target_params_batch=target_params_batch,
                 resample_params=resample_params,
-                seq_params=seq_params
+                seq_param=seq_param
                 )
 
             calculation_ranges = market_data.util.cache.time.chop_missing_time_range(
@@ -259,7 +259,7 @@ def main():
                     feature_collection=feature_collection,
                     target_params_batch=target_params_batch,
                     resample_params=resample_params,
-                    seq_params=seq_params,
+                    seq_param=seq_param,
                     overwrite_cache=args.overwrite_cache,
                 )
 
@@ -284,7 +284,7 @@ def main():
                         feature_collection=feature_collection,
                         target_params_batch=target_params_batch,
                         resample_params=resample_params,
-                        seq_params=seq_params,
+                        seq_param=seq_param,
                         overwrite_cache=args.overwrite_cache
                     )
             
@@ -298,7 +298,7 @@ def main():
                 feature_collection=feature_collection,
                 target_params_batch=target_params_batch,
                 resample_params=resample_params,
-                seq_params=seq_params
+                seq_param=seq_param
             )
             
             if ml_data is not None and not ml_data.empty:
@@ -311,6 +311,9 @@ def main():
                 
         except Exception as e:
             logger.error(f"Error caching ML data: {e}")
+            logger.error("--- traceback ---")
+            import traceback
+            logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
     main()

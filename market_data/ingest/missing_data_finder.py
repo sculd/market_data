@@ -164,6 +164,7 @@ def check_missing_feature_resampled_data(
     # Split the range into daily intervals
     daily_ranges = split_t_range(t_from, t_to)
     
+    resample_params = resample_params or CumSumResampleParams()
     folder_path = cache_context.get_feature_resampled_path(
         feature_label_obj.feature_label, 
         feature_label_obj.params.get_params_dir(seq_param=seq_param), 
