@@ -8,8 +8,8 @@ import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
 import market_data.util.cache.time
 import setup_env  # needed for env variables
-from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.label import FeatureLabel, FeatureLabelCollection
+from market_data.feature.param import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
 from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
                                        EXPORT_MODE, CacheContext)

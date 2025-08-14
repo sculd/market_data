@@ -3,6 +3,7 @@ import typing
 
 from market_data.util.time import TimeRange
 
+
 def to_t(
         t_from: datetime.datetime = None,
         t_to: datetime.datetime = None,

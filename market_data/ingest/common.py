@@ -52,33 +52,35 @@ class CacheContext:
         aggregation_mode = params.get("aggregation_mode", self.aggregation_mode)
         return CacheContext(dataset_mode, export_mode, aggregation_mode)
 
-    def get_folder_path(self, labels, params_dir=None):
+    def get_folder_path(self, labels, params_dir=None) -> str:
         folder_path = os.path.join(market_data.util.cache.path.cache_base_path, *labels, self.base_label)
         if params_dir is not None:
             folder_path = os.path.join(folder_path, params_dir)
         return folder_path
     
-    def get_market_data_path(self):
+    def get_market_data_path(self) -> str:
         """Get path for raw market data cache"""
         return self.get_folder_path(["market_data"])
     
-    def get_feature_path(self, feature_label: str, params_dir: str):
+    def get_feature_path(self, feature_label: str, params_dir: str) -> str:
         """Get path for feature cache with specific feature label and params"""
         return self.get_folder_path(["feature_data", "features", feature_label], params_dir)
     
-    def get_target_path(self, params_dir: str):
+    def get_target_path(self, params_dir: str) -> str:
         """Get path for target data cache"""
         return self.get_folder_path(["feature_data", "targets"], params_dir)
     
-    def get_ml_data_path(self, params_dir: str):
+    def get_ml_data_path(self, params_dir: str) -> str:
         """Get path for ML data cache"""
         return self.get_folder_path(["feature_data", "ml_data"], params_dir)
     
-    def get_resampled_path(self, params_dir: str):
+    def get_resampled_path(self, params_dir: str) -> str:
         """Get path for resampled data cache"""
         return self.get_folder_path(["feature_data", "resampled"], params_dir)
     
-    def get_feature_resampled_path(self, params_dir: str):
+    def get_feature_resampled_path(self, feature_label: str, feature_params_dir: str, resample_param_dir: str) -> str:
         """Get path for feature resampled data cache"""
-        return self.get_folder_path(["feature_data", "feature_resampled"], params_dir)
+        path_str = self.get_folder_path(["feature_data", "feature_resampled", feature_label])
+        path_str = os.path.join(path_str, feature_params_dir, resample_param_dir)
+        return path_str
 

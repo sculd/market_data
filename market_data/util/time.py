@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 
 import pytz
 
+
 def _epoch_seconds_to_datetime(timestamp_seconds):
     t = datetime.datetime.utcfromtimestamp(timestamp_seconds)
     return pytz.utc.localize(t)

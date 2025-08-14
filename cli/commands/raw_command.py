@@ -83,8 +83,8 @@ class RawCommand(BaseCommand):
             print(f"  Skip First Day: {args.skip_first_day}")
         
         # Get enum values
-        from market_data.ingest.common import (DATASET_MODE,
-                                               EXPORT_MODE, CacheContext)
+        from market_data.ingest.common import (DATASET_MODE, EXPORT_MODE,
+                                               CacheContext)
         dataset_mode = getattr(DATASET_MODE, getattr(args, 'dataset_mode', 'OKX'))
         export_mode = getattr(EXPORT_MODE, getattr(args, 'export_mode', 'BY_MINUTE'))
         time_range = self.create_time_range(args)

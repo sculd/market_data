@@ -3,8 +3,8 @@ from typing import Optional
 
 import pandas as pd
 
-from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.label import FeatureLabelCollection
+from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.feature_resample.cache import \
     load_cached_feature_resampled

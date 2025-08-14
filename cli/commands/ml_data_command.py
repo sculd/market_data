@@ -7,7 +7,7 @@ import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
 import market_data.util.cache.time
 from cli.base import BaseCommand, handle_common_errors
-from market_data.feature.impl.common import SequentialFeatureParam
+from market_data.feature.param import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
 from market_data.machine_learning.ml_data.cache import (
     calculate_and_cache_ml_data, load_cached_ml_data)

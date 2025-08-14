@@ -6,13 +6,13 @@ allowing for sequential features to be created from non-sequential features.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Optional
 
 import numpy as np
 import pandas as pd
 from numba import jit
 
-from market_data.feature.impl.common import SequentialFeatureParam
+from market_data.feature.param import SequentialFeatureParam
 
 logger = logging.getLogger(__name__)
 

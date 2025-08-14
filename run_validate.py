@@ -22,7 +22,8 @@ logging.basicConfig(
 )
 
 import market_data.ingest.bq.cache
-from market_data.ingest.common import DATASET_MODE, EXPORT_MODE, AGGREGATION_MODE
+from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
+                                       EXPORT_MODE)
 
 if __name__ == '__main__':
     market_data.ingest.bq.cache.validate_df(

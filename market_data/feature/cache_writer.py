@@ -7,14 +7,13 @@ import pandas as pd
 
 import market_data.util.cache.read
 import market_data.util.cache.write
-from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.label import FeatureLabel
+from market_data.feature.param import SequentialFeatureParam
 from market_data.feature.registry import get_feature_by_label
 from market_data.feature.sequential_feature import sequentialize_feature
 from market_data.ingest.common import CacheContext
 from market_data.util.cache.time import split_t_range
 from market_data.util.time import TimeRange
-
 
 logger = logging.getLogger(__name__)
 

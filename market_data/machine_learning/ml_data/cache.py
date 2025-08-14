@@ -11,8 +11,8 @@ import pandas as pd
 
 import market_data.util.cache.read
 import market_data.util.cache.write
-from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.label import FeatureLabelCollection
+from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.ml_data.calc import prepare_ml_data
 from market_data.machine_learning.resample.calc import CumSumResampleParams

@@ -28,12 +28,11 @@ _PROJECT_ID = os.getenv('GOOGLE_CLOUD_PROJECT')
 if not _PROJECT_ID:
     logging.warning("GOOGLE_CLOUD_PROJECT environment variable not set. Please check your .env file.")
 
-import market_data.ingest.bq.cache
 import market_data.ingest.common
 import market_data.machine_learning.resample.calc
 import market_data.util
 import market_data.util.time
-from market_data.feature.impl.common import SequentialFeatureParam
+from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
                                        EXPORT_MODE)
 

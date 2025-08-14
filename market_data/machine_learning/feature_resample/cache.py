@@ -7,8 +7,8 @@ import pandas as pd
 
 import market_data.util.cache.read
 import market_data.util.cache.write
-from market_data.feature.impl.common import SequentialFeatureParam
 from market_data.feature.label import FeatureLabel
+from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.feature_resample.calc import (
     prepare_feature_resampled, prepare_sequential_feature_resampled)
@@ -20,63 +20,25 @@ from market_data.util.time import TimeRange
 logger = logging.getLogger(__name__)
 
 
-def _get_feature_resampled_params_dir(
-    resample_params: ResampleParam,
-    feature_label_params: Tuple[str, Any],
-    seq_params: Optional[SequentialFeatureParam] = None,
-) -> str:
-    """
-    Convert feature resampled parameters to a directory path structure.
-    
-    Creates a nested directory structure for caching feature resampled data.
-    Sequential and non-sequential data are cached separately.
-    
-    Args:
-        resample_params: Parameters for resampling
-        feature_label_params: Single feature label and parameters tuple
-        seq_params: Sequential feature parameters. If provided, creates separate cache path.
-        
-    Returns:
-        Path string with nested directories for parameters
-    """
-    # Start with base path for resample params
-    base_path = f"r_{resample_params.get_params_dir()}"
-    
-    # Add sequential params if provided
-    if seq_params is not None:
-        seq_dir = seq_params.get_params_dir()
-        base_path = os.path.join(base_path, f"seq_{seq_dir}")
-    
-    # Process the feature and its parameters
-    _, param = feature_label_params
-    params_dir = param.get_params_dir()
-    feature_dir = f"{params_dir}"
-    
-    # Create nested path
-    nested_path = os.path.join(base_path, feature_dir)
-    
-    return nested_path
-
-
 def _calculate_and_cache_daily_feature_resampled(
     date: datetime.datetime,
     cache_context: CacheContext,
     feature_label_obj: FeatureLabel,
     resample_params: ResampleParam,
-    seq_params: Optional[SequentialFeatureParam] = None,
+    seq_param: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
 ) -> None:
     """
     Calculate and cache feature resampled data for a single day.
     
-    Can handle both regular and sequential features based on seq_params.
+    Can handle both regular and sequential features based on seq_param.
     
     Args:
         date: The date to calculate data for
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         feature_label_obj: FeatureLabel object containing the feature label and parameters
         resample_params: Resampling parameters
-        seq_params: Sequential feature parameters. If provided, creates sequential features.
+        seq_param: Sequential feature parameters. If provided, creates sequential features.
         overwrite_cache: Whether to overwrite existing cache files
     """
     # Create time range for the specific day
@@ -85,13 +47,13 @@ def _calculate_and_cache_daily_feature_resampled(
     time_range = TimeRange(t_from, t_to)
 
     # Prepare feature data for the day (sequential or regular)
-    if seq_params is not None:
+    if seq_param is not None:
         feature_resampled_df = prepare_sequential_feature_resampled(
             cache_context=cache_context,
             time_range=time_range,
             feature_label_obj=feature_label_obj,
             resample_params=resample_params,
-            seq_params=seq_params,
+            seq_param=seq_param,
         )
     else:
         feature_resampled_df = prepare_feature_resampled(
@@ -106,12 +68,13 @@ def _calculate_and_cache_daily_feature_resampled(
         return
     
     # Cache the data
-    data_type = "sequential" if seq_params is not None else "regular"
+    data_type = "sequential" if seq_param is not None else "regular"
     logger.info(f"Caching {data_type} feature resampled data for {date}")
     
-    feature_label_params = (feature_label_obj.feature_label, feature_label_obj.params)
-    params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_params, seq_params)
-    folder_path = cache_context.get_folder_path(["feature_data", "feature_resampled", feature_label_obj.feature_label], params_dir)
+    folder_path = cache_context.get_feature_resampled_path(
+        feature_label_obj.feature_label, 
+        feature_label_obj.params.get_params_dir(seq_param=seq_param),  
+        resample_params.get_params_dir())
     
     market_data.util.cache.write.cache_locally_df(
         df=feature_resampled_df,
@@ -128,7 +91,7 @@ def calculate_and_cache_feature_resampled(
     time_range: TimeRange,
     feature_label_obj: FeatureLabel,
     resample_params: ResampleParam = None,
-    seq_params: Optional[SequentialFeatureParam] = None,
+    seq_param: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
 ) -> bool:
     """
@@ -136,7 +99,7 @@ def calculate_and_cache_feature_resampled(
     
     This function:
     1. Splits the time range into individual days
-    2. For each day, prepares feature resampled data (sequential or regular based on seq_params)
+    2. For each day, prepares feature resampled data (sequential or regular based on seq_param)
     3. Caches each daily piece separately for sequential vs regular features
     
     Args:
@@ -144,7 +107,7 @@ def calculate_and_cache_feature_resampled(
         time_range: TimeRange object specifying the time range
         feature_label_obj: FeatureLabel object containing the feature label and parameters
         resample_params: Resampling parameters. If None, uses default parameters.
-        seq_params: Sequential feature parameters. If provided, creates sequential features.
+        seq_param: Sequential feature parameters. If provided, creates sequential features.
         overwrite_cache: Whether to overwrite existing cache files
         
     Returns:
@@ -154,7 +117,7 @@ def calculate_and_cache_feature_resampled(
     t_from, t_to = time_range.to_datetime()
     current_date = t_from
     
-    data_type = "sequential" if seq_params is not None else "regular"
+    data_type = "sequential" if seq_param is not None else "regular"
     logger.info(f"Starting {data_type} feature resampled data processing for {feature_label_obj.feature_label}")
     
     try:
@@ -167,7 +130,7 @@ def calculate_and_cache_feature_resampled(
                 cache_context=cache_context,
                 feature_label_obj=feature_label_obj,
                 resample_params=resample_params,
-                seq_params=seq_params,
+                seq_param=seq_param,
                 overwrite_cache=overwrite_cache
             )
 
@@ -185,34 +148,36 @@ def load_cached_feature_resampled(
     time_range: TimeRange,
     feature_label_obj: FeatureLabel,
     resample_params: ResampleParam = None,
-    seq_params: Optional[SequentialFeatureParam] = None,
+    seq_param: Optional[SequentialFeatureParam] = None,
     columns: Optional[List[str]] = None,
         max_workers: int = 10,
 ) -> pd.DataFrame:
     """
     Load cached feature resampled data for a specific time range.
     
-    Can load both regular and sequential feature data based on seq_params.
+    Can load both regular and sequential feature data based on seq_param.
     
     Args:
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
         feature_label_obj: FeatureLabel object containing the feature label and parameters
         resample_params: Resampling parameters. If None, uses default parameters.
-        seq_params: Sequential feature parameters. If provided, loads sequential features.
+        seq_param: Sequential feature parameters. If provided, loads sequential features.
         columns: Optional list of columns to load. If None, loads all columns.
         
     Returns:
-        DataFrame with feature resampled data (regular or sequential based on seq_params),
+        DataFrame with feature resampled data (regular or sequential based on seq_param),
         or empty DataFrame if no data is available
     """
     resample_params = resample_params or ResampleParam()
-    feature_label_params = (feature_label_obj.feature_label, feature_label_obj.params)
-    params_dir = _get_feature_resampled_params_dir(resample_params, feature_label_params, seq_params)
-    
+
+    folder_path = cache_context.get_feature_resampled_path(
+        feature_label_obj.feature_label, 
+        feature_label_obj.params.get_params_dir(seq_param=seq_param), 
+        resample_params.get_params_dir())
+        
     # Create worker function that properly handles daily ranges
     def load(d_from, d_to):
-        folder_path = cache_context.get_feature_resampled_path(params_dir)
         df = market_data.util.cache.read.read_daily_from_local_cache(
                 folder_path,
                 d_from,
