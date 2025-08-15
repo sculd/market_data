@@ -67,7 +67,7 @@ import market_data.feature.cache_reader
 from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 
 feature_label_collection = FeatureLabelCollection().with_feature_label(FeatureLabel("returns")).with_feature_label(FeatureLabel("ema"))
-featuers_df = market_data.feature.cache_reader.read_multi_feature_cache(
+featuers_df = market_data.feature.cache_reader.read_multi_features(
     feature_label_collection=feature_label_collection,
     time_range=time_range,
     cache_context=cache_context,
@@ -96,7 +96,7 @@ time_range = market_data.util.time.TimeRange(
 
 '''
 feature_label_collection = FeatureLabelCollection().with_feature_label(FeatureLabel("returns")).with_feature_label(FeatureLabel("ema"))
-featuers_df = market_data.feature.cache_reader.read_multi_feature_cache(
+featuers_df = market_data.feature.cache_reader.read_multi_features(
     feature_label_collection=feature_label_collection,
     time_range=time_range,
     cache_context=cache_context,
@@ -125,7 +125,7 @@ import market_data.feature.cache_writer
 for label in sorted(registry.keys()):
     if label not in ["ema"]:
         continue
-    market_data.feature.cache_writer.cache_feature_cache(
+    market_data.feature.cache_writer.cache_feature(
         label,
         DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST,
         time_range=time_range,
@@ -140,7 +140,7 @@ import market_data.feature.cache_writer
 for label in sorted(registry.keys()):
     if label in ["bollinger"]:
         continue
-    market_data.feature.cache_writer.cache_seq_feature_cache(
+    market_data.feature.cache_writer.cache_seq(
         FeatureLabel(label),
         DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST,
         time_range=time_range,
@@ -155,7 +155,7 @@ import market_data.feature.cache_writer
 for label in sorted(registry.keys()):
     if label not in ["bollinger"]:
         continue
-    market_data.feature.cache_writer.cache_feature_cache(
+    market_data.feature.cache_writer.cache_feature(
         label,
         DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST,
         time_range=time_range,

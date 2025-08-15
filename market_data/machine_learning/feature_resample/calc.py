@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 import pandas as pd
 
-from market_data.feature.cache_reader import read_feature_cache
+from market_data.feature.cache_reader import read_feature
 from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
@@ -60,7 +60,7 @@ def prepare_feature_resampled(
     # Load the feature data
     logger.info(f"Processing feature: {feature_label_obj.feature_label}")
     
-    feature_df = read_feature_cache(
+    feature_df = read_feature(
         feature_label_obj=feature_label_obj,
         cache_context=cache_context,
         time_range=time_range
@@ -150,7 +150,7 @@ def prepare_sequential_feature_resampled(
     logger.info(f"Processing feature: {feature_label_obj.feature_label}")
     
     # Load feature data with extended time range
-    feature_df = read_feature_cache(
+    feature_df = read_feature(
         feature_label_obj=feature_label_obj,
         cache_context=cache_context,
         time_range=extended_time_range

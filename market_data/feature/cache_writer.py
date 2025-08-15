@@ -17,7 +17,8 @@ from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)
 
-def cache_feature_cache(
+
+def cache_non_seq(
         feature_label_obj: FeatureLabel,
         cache_context: CacheContext,
         time_range: TimeRange = None,
@@ -25,24 +26,6 @@ def cache_feature_cache(
         warm_up_days: Optional[int] = None,
         overwrite_cache: bool = True
     ) -> bool:
-    """
-    Cache a specific feature with given parameters.
-    
-    This function allows caching a single feature type with specific parameters,
-    which is useful for on-demand caching of features without recalculating all features.
-    
-    Args:
-        feature_label_obj: FeatureLabel object containing feature name and parameters
-        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode - required
-        time_range: TimeRange object specifying the time range to cache
-        calculation_batch_days: Number of days to calculate features for in each batch
-        warm_up_days: Number of warm-up days for calculation. If None, will attempt to use 
-                     params.get_warm_up_days() if available, otherwise defaults to 1 day
-        overwrite_cache: Whether to overwrite existing cache files
-        
-    Returns:
-        True if caching was successful, False otherwise
-    """
     feature_label, params = feature_label_obj.feature_label, feature_label_obj.params
 
     # Validate inputs
@@ -93,7 +76,7 @@ def cache_feature_cache(
         logger.error(f"[cache_writer] Error calculating/caching {feature_label}: {e}")
         return False
 
-def cache_seq_feature_cache(
+def cache_seq(
         feature_label_obj: FeatureLabel,
         cache_context: CacheContext,
         time_range: TimeRange,
@@ -189,3 +172,37 @@ def cache_seq_feature_cache(
     except Exception as e:
         logger.error(f"Error caching sequential feature: {e}")
         return False
+
+def cache_feature(
+        feature_label_obj: FeatureLabel,
+        cache_context: CacheContext,
+        time_range: TimeRange = None,
+        seq_param: SequentialFeatureParam = None,
+        calculation_batch_days: int = 1,
+        warm_up_days: Optional[int] = None,
+        overwrite_cache: bool = True
+    ) -> bool:
+    """
+    Cache a specific feature with given parameters.
+    
+    seq_param decides non_seq or seq.
+    calculation_batch_days is only valid for non_seq.
+    """
+    if seq_param:
+        return cache_seq(
+            feature_label_obj=feature_label_obj,
+            cache_context=cache_context,
+            time_range=time_range,
+            seq_param=seq_param,
+            warm_up_days=warm_up_days,
+            overwrite_cache=overwrite_cache,
+        )
+    else:
+        return cache_non_seq(
+            feature_label_obj=feature_label_obj,
+            cache_context=cache_context,
+            time_range=time_range,
+            calculation_batch_days=calculation_batch_days,
+            warm_up_days=warm_up_days,
+            overwrite_cache=overwrite_cache,
+        )

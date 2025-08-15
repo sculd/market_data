@@ -15,7 +15,7 @@ from market_data.util.time import TimeRange
 logger = logging.getLogger(__name__)
 
 
-def read_feature_cache(
+def read_feature(
         feature_label_obj: FeatureLabel,
         time_range: TimeRange = None,
         columns: typing.List[str] = None,
@@ -76,7 +76,7 @@ def read_feature_cache(
         return pd.DataFrame()
 
 
-def read_multi_feature_cache(
+def read_multi_features(
         feature_label_collection: FeatureLabelCollection,
         time_range: TimeRange = None,
         columns: typing.List[str] = None,
@@ -100,7 +100,7 @@ def read_multi_feature_cache(
     
     # Process each FeatureLabelCollection object
     for feature_label_obj in feature_label_collection:
-        df = read_feature_cache(feature_label_obj, time_range, columns, cache_context, max_workers)
+        df = read_feature(feature_label_obj, time_range, columns, cache_context, max_workers)
         if df is not None and not df.empty:
             all_dfs.append(df)
 

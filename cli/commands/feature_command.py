@@ -7,7 +7,7 @@ import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
 import market_data.util.cache.time
 from cli.base import BaseCommand, handle_common_errors
-from market_data.feature.cache_writer import cache_feature_cache
+from market_data.feature.cache_writer import cache_feature
 from market_data.feature.label import FeatureLabel
 from market_data.feature.registry import list_registered_features
 
@@ -165,7 +165,7 @@ class FeatureCommand(BaseCommand):
                     print(f"  Using parallel processing with {workers} workers")
 
                     cache_func = partial(
-                        cache_feature_cache,
+                        cache_feature,
                         feature_label_obj=feature_label_obj,
                         cache_context=cache_context,
                         calculation_batch_days=1,  # Process each range as single batch
@@ -194,7 +194,7 @@ class FeatureCommand(BaseCommand):
                         
                         calc_time_range = market_data.util.time.TimeRange(calc_t_from, calc_t_to)
                         
-                        success = cache_feature_cache(
+                        success = cache_feature(
                             feature_label_obj=feature_label_obj,
                             cache_context=cache_context,
                             time_range=calc_time_range,
