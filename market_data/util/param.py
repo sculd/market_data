@@ -1,6 +1,5 @@
 import abc
 
-
 class Param(abc.ABC):
     """
     Generic base class for all parameter objects.
@@ -32,3 +31,5 @@ class Param(abc.ABC):
         """Convert parameters to string representation"""
         pass
 
+    def __str__(self) -> str:
+        return self.to_str()

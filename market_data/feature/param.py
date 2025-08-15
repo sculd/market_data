@@ -64,7 +64,7 @@ class FeatureParam(Param):
     def get_params_dir(self, seq_param: SequentialFeatureParam = None) -> str:
         if seq_param is not None:
             seq_dir = f"seq_{seq_param.get_params_dir()}"
-            return os.path.join(self.to_str(), seq_dir)
+            return os.path.join(seq_dir, self.to_str())
         
         return self.to_str()
     

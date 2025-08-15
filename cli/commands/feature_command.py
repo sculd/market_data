@@ -9,6 +9,7 @@ import market_data.util.cache.time
 from cli.base import BaseCommand, handle_common_errors
 from market_data.feature.cache_writer import cache_feature
 from market_data.feature.label import FeatureLabel
+from market_data.feature.param import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
 
 
@@ -29,6 +30,8 @@ class FeatureCommand(BaseCommand):
         self.add_common_args(check_parser)
         check_parser.add_argument('--feature', type=str, required=True,
                                  help='Specific feature label to check')
+        check_parser.add_argument('--seq-param', type=str, default=None,
+                                help='Sequence parameter. Example: sequence_window:60')
         
         # Cache command
         cache_parser = subparsers.add_parser('cache', help='Cache feature data')
@@ -39,6 +42,8 @@ class FeatureCommand(BaseCommand):
                                  help='Number of days to calculate features for in each batch')
         cache_parser.add_argument('--warmup-days', type=int, default=None,
                                  help='Warm up days. Auto-detection if not provided.')
+        cache_parser.add_argument('--seq-param', type=str, default=None,
+                                help='Sequence parameter. Example: sequence_window:60')
     
     @handle_common_errors
     def handle(self, args: Namespace) -> int:
@@ -73,13 +78,15 @@ class FeatureCommand(BaseCommand):
         
         cache_context = self.create_cache_context(args)
         time_range = self.create_time_range(args)
-        
+        seq_param = SequentialFeatureParam.from_str(args.seq_param) if args.seq_param else None
+    
         print(f"\nChecking feature: {args.feature}")
         feature_label_obj = FeatureLabel(args.feature, None)
         missing_ranges = market_data.ingest.missing_data_finder.check_missing_feature_data(
             cache_context=cache_context,
             feature_label=feature_label_obj,
-            time_range=time_range
+            time_range=time_range,
+            seq_param=seq_param,
         )
         
         if not missing_ranges:
@@ -117,6 +124,7 @@ class FeatureCommand(BaseCommand):
         
         cache_context = self.create_cache_context(args)
         time_range = self.create_time_range(args)
+        seq_param = SequentialFeatureParam.from_str(args.seq_param) if args.seq_param else None
         
         # Determine features to process
         features_to_process = []
@@ -145,6 +153,7 @@ class FeatureCommand(BaseCommand):
                     market_data.ingest.missing_data_finder.check_missing_feature_data,
                     cache_context=cache_context,
                     feature_label=feature_label_obj,
+                    seq_param=seq_param,
                 )
 
                 calculation_ranges = market_data.util.cache.time.chop_missing_time_range(
@@ -171,6 +180,7 @@ class FeatureCommand(BaseCommand):
                         calculation_batch_days=1,  # Process each range as single batch
                         warm_up_days=args.warmup_days,
                         overwrite_cache=args.overwrite_cache,
+                        seq_param=seq_param,
                     )
 
                     time_ranges = [market_data.util.time.TimeRange(t_from=t_from, t_to=t_to) 
@@ -200,7 +210,8 @@ class FeatureCommand(BaseCommand):
                             time_range=calc_time_range,
                             calculation_batch_days=1,  # Process each range as single batch
                             warm_up_days=args.warmup_days,
-                            overwrite_cache=args.overwrite_cache
+                            overwrite_cache=args.overwrite_cache,
+                            seq_param=seq_param,
                         )
                         
                         if not success:

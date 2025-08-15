@@ -11,6 +11,7 @@ import market_data.util.cache.time
 import setup_env  # needed for env variables
 from market_data.feature.cache_writer import cache_feature
 from market_data.feature.label import FeatureLabel
+from market_data.feature.param import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
 from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
                                        EXPORT_MODE, CacheContext)
@@ -51,6 +52,9 @@ def main():
     parser.add_argument('--aggregation_mode', type=str, default='TAKE_LATEST',
                         choices=[mode.name for mode in AGGREGATION_MODE],
                         help='Aggregation mode')
+    
+    parser.add_argument('--seq-param', type=str, default=None,
+                        help='Sequence parameter. Example: sequence_window:60')
     
     # Time range arguments - can be specified as date strings
     parser.add_argument('--from', dest='date_from', type=str,
@@ -100,6 +104,8 @@ def main():
     export_mode = getattr(EXPORT_MODE, args.export_mode)
     aggregation_mode = getattr(AGGREGATION_MODE, args.aggregation_mode)
     
+    seq_param = SequentialFeatureParam.from_str(args.seq_param) if args.seq_param else None
+    
     # Create cache context
     cache_context = CacheContext(dataset_mode, export_mode, aggregation_mode)
     
@@ -113,6 +119,7 @@ def main():
     logger.info(f"  Export Mode: {str(export_mode)}")
     logger.info(f"  Aggregation Mode: {str(aggregation_mode)}")
     logger.info(f"  Time Range: {args.date_from} to {args.date_to}")
+    logger.info(f"  Seq Param: {seq_param!s}")
     
     # Determine features to process
     features_to_process = []
@@ -174,6 +181,7 @@ def main():
                     market_data.ingest.missing_data_finder.check_missing_feature_data,
                     cache_context=cache_context,
                     feature_label=feature_label_obj,
+                    seq_param=seq_param,
                     )
 
                 calculation_ranges = market_data.util.cache.time.chop_missing_time_range(
@@ -197,6 +205,7 @@ def main():
                         cache_feature,
                         feature_label_obj=feature_label_obj,
                         cache_context=cache_context,
+                        seq_param=seq_param,
                         calculation_batch_days=1,  # Process each range as single batch
                         warm_up_days=args.warmup_days,
                         overwrite_cache=args.overwrite_cache,
@@ -226,9 +235,10 @@ def main():
                             feature_label_obj=feature_label_obj,
                             cache_context=cache_context,
                             time_range=calc_time_range,
+                            seq_param=seq_param,
                             calculation_batch_days=1,  # Process each range as single batch
                             warm_up_days=args.warmup_days,
-                            overwrite_cache=args.overwrite_cache
+                            overwrite_cache=args.overwrite_cache,
                         )
                         
                         if not success:

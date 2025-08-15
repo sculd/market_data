@@ -3,6 +3,7 @@ from typing import Any
 
 import market_data.feature.impl  # Import to ensure all features are registered
 from market_data.feature.label import FeatureLabel, FeatureLabelCollection
+from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.target.calc import TargetParamsBatch
@@ -41,7 +42,8 @@ def check_missing_raw_data(
 def check_missing_feature_data(
         cache_context: CacheContext,
         feature_label: FeatureLabel,
-        time_range: TimeRange
+        time_range: TimeRange,
+        seq_param: SequentialFeatureParam = None,
 ) -> list:
     """
     Check which date ranges are missing from the feature cache.
@@ -49,7 +51,7 @@ def check_missing_feature_data(
     Returns a list of (start_date, end_date) tuples for missing days.
     """
     feature_name, params = feature_label.feature_label, feature_label.params
-    params_dir = params.get_params_dir()
+    params_dir = params.get_params_dir(seq_param=seq_param)
     
     t_from, t_to = time_range.to_datetime()
     

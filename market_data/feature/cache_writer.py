@@ -80,7 +80,7 @@ def cache_seq(
         feature_label_obj: FeatureLabel,
         cache_context: CacheContext,
         time_range: TimeRange,
-        seq_param: SequentialFeatureParam = SequentialFeatureParam(),
+        seq_param: SequentialFeatureParam,
         warm_up_days: Optional[int] = None,
         overwrite_cache: bool = True
     ) -> bool:
@@ -125,6 +125,11 @@ def cache_seq(
         t_from, t_to = time_range.to_datetime()
         t_ranges = split_t_range(t_from, t_to)
         
+        params_dir = params.get_params_dir()
+        folder_path = cache_context.get_feature_path(feature_label, params_dir)
+        seq_param_dir = params.get_params_dir(seq_param)
+        seq_folder_path = cache_context.get_feature_path(feature_label, seq_param_dir)
+
         for i, t_range in enumerate(t_ranges):
             # Calculate extended range for warm-up
             extended_range = TimeRange(
@@ -134,8 +139,6 @@ def cache_seq(
             
             # Try to read non-sequential feature cache
             try:
-                params_dir = params.get_params_dir()
-                folder_path = cache_context.get_feature_path(feature_label, params_dir)
                 feature_df = market_data.util.cache.read.read_from_local_cache(
                         folder_path,
                         time_range=extended_range,
@@ -152,8 +155,6 @@ def cache_seq(
                     continue
                 
                 # Cache sequential features
-                seq_param_dir = params.get_params_dir(seq_param)
-                seq_folder_path = cache_context.get_feature_path(feature_label, seq_param_dir)
                 market_data.util.cache.write.cache_locally_df(
                     df=seq_df,
                     folder_path=seq_folder_path,
@@ -188,21 +189,21 @@ def cache_feature(
     seq_param decides non_seq or seq.
     calculation_batch_days is only valid for non_seq.
     """
-    if seq_param:
-        return cache_seq(
-            feature_label_obj=feature_label_obj,
-            cache_context=cache_context,
-            time_range=time_range,
-            seq_param=seq_param,
-            warm_up_days=warm_up_days,
-            overwrite_cache=overwrite_cache,
-        )
-    else:
+    if not seq_param:
         return cache_non_seq(
             feature_label_obj=feature_label_obj,
             cache_context=cache_context,
             time_range=time_range,
             calculation_batch_days=calculation_batch_days,
+            warm_up_days=warm_up_days,
+            overwrite_cache=overwrite_cache,
+        )
+    else:
+        return cache_seq(
+            feature_label_obj=feature_label_obj,
+            cache_context=cache_context,
+            time_range=time_range,
+            seq_param=seq_param,
             warm_up_days=warm_up_days,
             overwrite_cache=overwrite_cache,
         )
