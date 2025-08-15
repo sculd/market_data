@@ -4,7 +4,6 @@ import json
 import logging
 import os
 from dataclasses import asdict
-from pathlib import Path
 from typing import List, Optional
 
 import pandas as pd
