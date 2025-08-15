@@ -32,9 +32,14 @@ import market_data.ingest.common
 import market_data.machine_learning.resample.calc
 import market_data.util
 import market_data.util.time
+from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
-                                       EXPORT_MODE)
+                                       EXPORT_MODE, CacheContext)
+from market_data.machine_learning.ml_data.cache import (
+    calculate_and_cache_ml_data, load_cached_ml_data)
+from market_data.machine_learning.resample.calc import CumSumResampleParams
+from market_data.target.param import TargetParams, TargetParamsBatch
 
 cache_context = market_data.ingest.common.CacheContext(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST)
@@ -57,7 +62,46 @@ time_range = market_data.util.time.TimeRange(
 
 #'''
 
+time_range = market_data.util.time.TimeRange(
+    #date_str_from='2024-01-01', date_str_to='2025-05-10',
+    date_str_from='2024-10-01', date_str_to='2025-07-01',
+    )
 
+target_params_batch = TargetParamsBatch(
+        target_params_list=[TargetParams(forward_period=int(period), tp_value=float(tp), sl_value=float(tp)) 
+            for period in [5, 10, 30]
+            for tp in [0.015, 0.03, 0.05]]
+        )
+
+
+feature_labels = market_data.feature.registry.list_registered_features('all')
+feature_collection = FeatureLabelCollection()
+for feature_label in feature_labels:
+    feature_collection = feature_collection.with_feature_label(FeatureLabel(feature_label))
+
+ml_data = load_cached_ml_data(
+    CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
+    time_range=time_range,
+    feature_collection = feature_collection,
+    target_params_batch=target_params_batch,
+    resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
+)
+print(ml_data.shape)
+
+'''
+ml_data = calculate_and_cache_ml_data(
+    CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
+    time_range=time_range,
+    feature_collection = feature_collection,
+    target_params_batch=target_params_batch,
+    resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
+    overwrite_cache = False,
+)
+
+print(ml_data.shape)
+#'''
+
+'''
 time_range = market_data.util.time.TimeRange(
     date_str_from='2024-01-01', date_str_to='2024-01-03',
     )
@@ -74,25 +118,6 @@ featuers_df = market_data.feature.cache_reader.read_multi_features(
 )
 print(featuers_df)
 #'''
-
-
-# Import the registry module directly
-registry_module = importlib.import_module('market_data.feature.registry')
-
-# Access the registry directly
-registry = getattr(registry_module, '_FEATURE_REGISTRY', {})
-
-print(f"Total registered features: {len(registry)}")
-
-# Print each registered feature
-for label in sorted(registry.keys()):
-    feature_class = registry[label]
-    print(f"- {label}: {feature_class.__name__}")
-
-
-time_range = market_data.util.time.TimeRange(
-    date_str_from='2024-01-01', date_str_to='2024-01-05',
-    )
 
 '''
 feature_label_collection = FeatureLabelCollection().with_feature_label(FeatureLabel("returns")).with_feature_label(FeatureLabel("ema"))
@@ -248,7 +273,7 @@ ml_data_df = market_data.machine_learning.ml_data.prepare_ml_data(
 print(ml_data_df)
 #'''
 
-#'''
+'''
 time_range = market_data.util.time.TimeRange(
     date_str_from='2024-01-01', date_str_to='2024-01-04',
     )

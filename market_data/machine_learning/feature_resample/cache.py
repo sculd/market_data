@@ -193,4 +193,7 @@ def load_cached_feature_resampled(
         max_workers=max_workers
     )
     
+    if feature_resampled_df.empty:
+        logging.error(f"feature resampled data {feature_label_obj} @ {time_range} is empty")
+        return feature_resampled_df
     return feature_resampled_df.sort_values(["timestamp", "symbol"])

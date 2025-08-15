@@ -1,3 +1,4 @@
+import dataclasses
 import datetime
 import importlib
 import inspect
@@ -27,6 +28,7 @@ def _find_param_class(feature_label: str) -> Optional[Any]:
         return None
 
 
+@dataclasses.dataclass
 class FeatureLabel:
     param_delim = '@'
 
@@ -41,6 +43,9 @@ class FeatureLabel:
 
         if not hasattr(params, 'get_params_dir'):
             raise ValueError(f"Parameters object for feature '{self.feature_label}' must have get_params_dir method")
+
+    def __str__(self):
+        return f"{self.feature_label} with {self.params}"
 
     @classmethod
     def from_str(cls, feature_label_str: str) -> 'FeatureLabel':
@@ -60,7 +65,7 @@ class FeatureLabel:
         """
         return max(datetime.timedelta(minutes=1), self.params.get_warm_up_period())
 
-
+@dataclasses.dataclass
 class FeatureLabelCollection:
     def __init__(self):
         self.feature_labels: List[FeatureLabel] = []

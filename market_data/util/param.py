@@ -1,5 +1,6 @@
 import abc
 
+
 class Param(abc.ABC):
     """
     Generic base class for all parameter objects.
