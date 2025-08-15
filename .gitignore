@@ -46,3 +46,5 @@ logs/
 # Documentation builds
 docs/build/
 docs/_build/ 
+
+.claude/
