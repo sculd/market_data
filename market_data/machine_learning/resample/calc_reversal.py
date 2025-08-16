@@ -5,8 +5,7 @@ from typing import List
 import pandas as pd
 
 from market_data.machine_learning.resample.param import ResampleParam
-from market_data.machine_learning.resample.resample_registry import (
-    register_resample_function, register_resample_param)
+from market_data.machine_learning.resample.resample_registry import register_resample_function, register_resample_param
 
 
 @register_resample_param("reversal")

@@ -10,12 +10,9 @@ import market_data.ingest.bq.candle as candle
 import market_data.ingest.bq.common as common
 import market_data.ingest.bq.orderbook1l as orderbook1l
 from market_data.ingest.common import AGGREGATION_MODE, CacheContext
-from market_data.ingest.gcs.util import (download_gcs_blob, if_blob_exist,
-                                         upload_file_to_gcs)
+from market_data.ingest.gcs.util import download_gcs_blob, if_blob_exist, upload_file_to_gcs
 from market_data.util.cache.path import get_cache_base_path
-from market_data.util.cache.time import (anchor_to_begin_of_day,
-                                         is_exact_cache_interval,
-                                         split_t_range)
+from market_data.util.cache.time import anchor_to_begin_of_day, is_exact_cache_interval, split_t_range
 from market_data.util.time import TimeRange
 
 # the cache will be stored per day.

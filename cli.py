@@ -13,8 +13,7 @@ Usage:
 """
 import os
 import sys
-from argparse import (ArgumentDefaultsHelpFormatter, ArgumentParser,
-                      RawDescriptionHelpFormatter)
+from argparse import ArgumentDefaultsHelpFormatter, ArgumentParser, RawDescriptionHelpFormatter
 from pathlib import Path
 
 # Add the project root to Python path for imports
@@ -22,8 +21,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Setup environment variables
 import setup_env
-from cli.commands import (FeatureCommand, MLDataCommand, RawCommand,
-                          ResampledCommand, TargetCommand)
+
+from cli.commands import FeatureCommand, MLDataCommand, RawCommand, ResampledCommand, TargetCommand
 
 
 class MarketDataCLI:

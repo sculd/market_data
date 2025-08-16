@@ -8,8 +8,7 @@ import pandas as pd
 import market_data.util.cache.read
 import market_data.util.cache.write
 from market_data.ingest.common import CacheContext
-from market_data.ingest.gcs.cache import \
-    read_from_local_cache_or_query_and_cache
+from market_data.ingest.gcs.cache import read_from_local_cache_or_query_and_cache
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.util.cache.parallel_processing import read_multithreaded

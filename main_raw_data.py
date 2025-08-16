@@ -2,13 +2,13 @@ import argparse
 import datetime
 import logging
 
+import setup_env  # needed for env variables
+
 import market_data.ingest.common
 import market_data.ingest.gcs.cache
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.time
-import setup_env  # needed for env variables
-from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
-                                       EXPORT_MODE, CacheContext)
+from market_data.ingest.common import AGGREGATION_MODE, DATASET_MODE, EXPORT_MODE, CacheContext
 from market_data.util.time import TimeRange
 
 # Configure logging

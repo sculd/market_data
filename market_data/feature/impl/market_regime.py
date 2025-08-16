@@ -14,8 +14,7 @@ import numba as nb
 import numpy as np
 import pandas as pd
 
-from market_data.feature.impl.common_calc import (
-    _calculate_rolling_mean_numba, _calculate_rolling_std_numba)
+from market_data.feature.impl.common_calc import _calculate_rolling_mean_numba, _calculate_rolling_std_numba
 from market_data.feature.impl.indicators import _calculate_zscore_numba
 from market_data.feature.impl.returns import _calculate_simple_returns_numba
 from market_data.feature.param import FeatureParam

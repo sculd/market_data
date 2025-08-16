@@ -8,9 +8,7 @@ import pandas as pd
 
 import market_data.util.cache.common
 import market_data.util.cache.path
-from market_data.util.cache.time import (anchor_to_begin_of_day,
-                                         is_exact_cache_interval,
-                                         split_t_range)
+from market_data.util.cache.time import anchor_to_begin_of_day, is_exact_cache_interval, split_t_range
 from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)

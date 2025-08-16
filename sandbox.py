@@ -34,10 +34,8 @@ import market_data.util
 import market_data.util.time
 from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
-from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
-                                       EXPORT_MODE, CacheContext)
-from market_data.machine_learning.ml_data.cache import (
-    calculate_and_cache_ml_data, load_cached_ml_data)
+from market_data.ingest.common import AGGREGATION_MODE, DATASET_MODE, EXPORT_MODE, CacheContext
+from market_data.machine_learning.ml_data.cache import calculate_and_cache_ml_data, load_cached_ml_data
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.target.param import TargetParams, TargetParamsBatch
 

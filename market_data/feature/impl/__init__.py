@@ -1,8 +1,18 @@
 # Import all feature implementations to ensure they are registered
-from market_data.feature.impl import (bollinger, btc_features, ema,
-                                      ffd_volatility_zscore, ffd_zscore, garch,
-                                      indicators, market_regime, returns,
-                                      time_of_day, volatility, volume)
+from market_data.feature.impl import (
+    bollinger,
+    btc_features,
+    ema,
+    ffd_volatility_zscore,
+    ffd_zscore,
+    garch,
+    indicators,
+    market_regime,
+    returns,
+    time_of_day,
+    volatility,
+    volume,
+)
 
 __all__ = [
     'returns',

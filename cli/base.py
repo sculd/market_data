@@ -4,8 +4,7 @@ from abc import ABC, abstractmethod
 from argparse import ArgumentParser, Namespace
 from typing import Optional
 
-from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
-                                       EXPORT_MODE, CacheContext)
+from market_data.ingest.common import AGGREGATION_MODE, DATASET_MODE, EXPORT_MODE, CacheContext
 from market_data.util.time import TimeRange
 
 

@@ -10,7 +10,9 @@ from market_data.feature.label import FeatureLabel
 from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.feature_resample.calc import (
-    prepare_feature_resampled, prepare_sequential_feature_resampled)
+    prepare_feature_resampled,
+    prepare_sequential_feature_resampled,
+)
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.util.cache.parallel_processing import read_multithreaded

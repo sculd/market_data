@@ -13,8 +13,7 @@ import numba as nb
 import numpy as np
 import pandas as pd
 
-from market_data.feature.fractional_difference import \
-    ZscoredFFDParams as BaseZscoredFFDParams
+from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams
 from market_data.feature.fractional_difference import get_zscored_ffd_series
 from market_data.feature.param import FeatureParam
 from market_data.feature.registry import register_feature

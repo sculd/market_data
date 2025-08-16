@@ -4,18 +4,19 @@ import logging
 import multiprocessing
 from functools import partial
 
+import setup_env  # needed for env variables
+
 import market_data.ingest.common
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
 import market_data.util.cache.time
-import setup_env  # needed for env variables
-from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
-                                       EXPORT_MODE, CacheContext)
+from market_data.ingest.common import AGGREGATION_MODE, DATASET_MODE, EXPORT_MODE, CacheContext
 from market_data.machine_learning.resample import (
-    get_resample_function, get_resample_params_class,
-    list_registered_resample_methods)
-from market_data.machine_learning.resample.cache import \
-    calculate_and_cache_resampled
+    get_resample_function,
+    get_resample_params_class,
+    list_registered_resample_methods,
+)
+from market_data.machine_learning.resample.cache import calculate_and_cache_resampled
 from market_data.util.time import TimeRange
 
 # Configure logging

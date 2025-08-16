@@ -198,8 +198,7 @@ def check_missing_ml_data(
     
     Returns a list of (start_date, end_date) tuples for missing days.
     """
-    from market_data.machine_learning.ml_data.cache import \
-        _get_mldata_params_dir
+    from market_data.machine_learning.ml_data.cache import _get_mldata_params_dir
 
     # Normalize parameters
     target_params_batch = target_params_batch or TargetParamsBatch()

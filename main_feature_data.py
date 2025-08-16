@@ -4,17 +4,17 @@ import logging
 import multiprocessing
 from functools import partial
 
+import setup_env  # needed for env variables
+
 import market_data.feature.impl  # Import to ensure all features are registered
 import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
 import market_data.util.cache.time
-import setup_env  # needed for env variables
 from market_data.feature.cache_writer import cache_feature
 from market_data.feature.label import FeatureLabel
 from market_data.feature.param import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
-from market_data.ingest.common import (AGGREGATION_MODE, DATASET_MODE,
-                                       EXPORT_MODE, CacheContext)
+from market_data.ingest.common import AGGREGATION_MODE, DATASET_MODE, EXPORT_MODE, CacheContext
 from market_data.util.time import TimeRange
 
 # Configure logging
