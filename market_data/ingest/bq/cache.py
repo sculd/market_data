@@ -125,7 +125,7 @@ def _fetch_from_daily_cache(
     if not os.path.exists(filename):
         blob_name = _to_gcsblobname(label, t_id, t_from, t_to)
         blob_exist = if_blob_exist(blob_name)
-        logging.info(f"{filename=} does not exist in local cache. For gcs, {blob_exist=}.")
+        logging.info(f"[bq] {filename=} does not exist in local cache. For gcs, {blob_exist=}.")
         if blob_exist:
             download_gcs_blob(blob_name, filename)
         else:
@@ -296,7 +296,7 @@ def validate_df(
         if not os.path.exists(filename):
             blob_name = _to_gcsblobname(label, t_id, t_from, t_to)
             blob_exist = if_blob_exist(blob_name)
-            logging.info(f"{filename=} does not exist in local cache. For gcs, {blob_exist=}.")
+            logging.info(f"[bq] {filename=} does not exist in local cache. For gcs, {blob_exist=}.")
             if blob_exist:
                 download_gcs_blob(blob_name, filename)
                 print(f'after download from gcs, file exist: {os.path.exists(filename)}')

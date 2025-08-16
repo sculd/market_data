@@ -87,7 +87,7 @@ case $CONFIG in
         warm_param=""
         ;;
     crypto)
-        dataset_aggregation_options=""
+        dataset_aggregation_options="--export_mode RAW"
         target_arg="--forward_periods=5,10,30 --tps=0.015,0.03,0.05"
         feature_type="crypto"
         warm_param=""

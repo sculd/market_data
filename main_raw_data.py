@@ -119,7 +119,7 @@ def main():
         gc.collect()
 
 if __name__ == "__main__":
-    #"""
+    """
     cache_context = CacheContext(DATASET_MODE.OKX, EXPORT_MODE.RAW, AGGREGATION_MODE.TAKE_LATEST)
     market_data.ingest.gcs.cache.cache(
         cache_context,
