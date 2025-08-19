@@ -82,7 +82,7 @@ def calculate_and_cache_resampled(
             )
             
         except Exception as e:
-            logging.error(f"Error resampling data for {calc_t_from} to {calc_t_to}: {e}")
+            logger.error(f"Error resampling data for {calc_t_from} to {calc_t_to}: {e}")
             continue
 
 def load_cached_resampled_data(

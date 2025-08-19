@@ -84,3 +84,9 @@ class CacheContext:
         path_str = os.path.join(path_str, feature_params_dir, resample_param_dir)
         return path_str
 
+    def get_target_resampled_path(self, targets_params_dir: str, resample_param_dir: str) -> str:
+        """Get path for feature resampled data cache"""
+        path_str = self.get_folder_path(["feature_data", "targets_resampled"])
+        path_str = os.path.join(path_str, targets_params_dir, resample_param_dir)
+        return path_str
+

@@ -62,7 +62,7 @@ time_range = market_data.util.time.TimeRange(
 #'''
 
 time_range = market_data.util.time.TimeRange(
-    date_str_from='2024-10-01', date_str_to='2025-07-01',
+    date_str_from='2024-01-01', date_str_to='2025-07-01',
     )
 
 target_params_batch = TargetParamsBatch(
@@ -72,15 +72,15 @@ target_params_batch = TargetParamsBatch(
         )
 
 
-ml_data = calculate_ml_data(
+calculate_and_cache_ml_data(
     CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
     time_range=time_range,
     feature_collection = FeatureLabelCollection(),
     target_params_batch=target_params_batch,
     resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
 )
-print(ml_data.shape)
 
+'''
 feature_labels = market_data.feature.registry.list_registered_features('all')
 feature_collection = FeatureLabelCollection()
 for feature_label in feature_labels:
@@ -94,6 +94,8 @@ ml_data = load_cached_ml_data(
     resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
 )
 print(ml_data.shape)
+#'''
+
 
 '''
 ml_data = calculate_and_cache_ml_data(

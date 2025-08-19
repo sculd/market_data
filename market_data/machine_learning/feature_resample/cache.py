@@ -116,7 +116,7 @@ def calculate_and_cache_feature_resampled(
             )
             success = success and s
         except Exception as e:
-            logging.error(f"Error resampling data for {calc_t_from} to {calc_t_to}: {e}")
+            logger.error(f"Error resampling data for {calc_t_from} to {calc_t_to}: {e}")
             success = False
             continue
 
@@ -137,14 +137,6 @@ def load_cached_feature_resampled(
     
     Can load both regular and sequential feature data based on seq_param.
     
-    Args:
-        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
-        time_range: TimeRange object specifying the time range
-        feature_label_obj: FeatureLabel object containing the feature label and parameters
-        resample_params: Resampling parameters. If None, uses default parameters.
-        seq_param: Sequential feature parameters. If provided, loads sequential features.
-        columns: Optional list of columns to load. If None, loads all columns.
-        
     Returns:
         DataFrame with feature resampled data (regular or sequential based on seq_param),
         or empty DataFrame if no data is available
@@ -174,6 +166,6 @@ def load_cached_feature_resampled(
     )
     
     if feature_resampled_df.empty:
-        logging.error(f"feature resampled data {feature_label_obj} @ {time_range} is empty")
+        logger.error(f"feature resampled data {feature_label_obj} @ {time_range} is empty")
         return feature_resampled_df
     return feature_resampled_df.sort_values(["timestamp", "symbol"])
