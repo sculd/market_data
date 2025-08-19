@@ -6,7 +6,7 @@ All resample methods are automatically registered when the module is imported.
 """
 
 # Import all resample implementations to register them
-from market_data.machine_learning.resample.calc import CumSumResampleParams, resample_at_events
+from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.calc_reversal import ResampleReversalParams
 # Import the registry functions
 from market_data.machine_learning.resample.resample_registry import (
@@ -40,7 +40,4 @@ __all__ = [
     # Parameter classes
     'CumSumResampleParams',
     'ResampleReversalParams',
-    
-    # Functions (for backward compatibility)
-    'resample_at_events',
 ] 

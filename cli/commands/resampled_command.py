@@ -179,7 +179,7 @@ class ResampledCommand(BaseCommand):
                 cache_func = partial(
                     calculate_and_cache_resampled,
                     cache_context=cache_context,
-                    resample_at_events_func=resample_function,
+                    resample_calculate_func=resample_function,
                     params=resample_params,
                     calculation_batch_days=1,  # Process each range as single batch
                     overwrite_cache=args.overwrite_cache,
@@ -202,7 +202,7 @@ class ResampledCommand(BaseCommand):
                     
                     calculate_and_cache_resampled(
                         cache_context=cache_context,
-                        resample_at_events_func=resample_function,
+                        resample_calculate_func=resample_function,
                         params=resample_params,
                         time_range=calc_time_range,
                         calculation_batch_days=1,  # Process each range as single batch

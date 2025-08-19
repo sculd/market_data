@@ -12,7 +12,7 @@ import pandas as pd
 import market_data.util.cache.read
 import market_data.util.cache.write
 from market_data.ingest.common import CacheContext
-from market_data.target.calc import TargetParamsBatch, create_targets
+from market_data.target.calc import TargetParamsBatch, calculate
 from market_data.util.cache.parallel_processing import read_multithreaded
 from market_data.util.time import TimeRange
 
@@ -86,7 +86,7 @@ def calculate_and_cache_targets(
         calculation_batch_days=calculation_batch_days,
         warm_up_days=warm_up_days,
         overwrite_cache=overwrite_cache,
-        calculate_batch_fn=create_targets,
+        calculate_batch_fn=calculate,
     )
 
 def load_cached_targets(

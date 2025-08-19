@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def calculate_and_cache_resampled(
     cache_context: CacheContext,
-    resample_at_events_func: Callable = None,
+    resample_calculate_func: Callable = None,
     params: ResampleParam = None,
     time_range: TimeRange = None,
     calculation_batch_days: int = 1,
@@ -34,7 +34,7 @@ def calculate_and_cache_resampled(
     3. Resamples data in batches
     4. Caches resampled results daily
     """
-    assert resample_at_events_func is not None, "resample_at_events_func must be provided"
+    assert resample_calculate_func is not None, "resample_calculate_func must be provided"
     
     params = params or CumSumResampleParams()
     
@@ -66,7 +66,7 @@ def calculate_and_cache_resampled(
                 logging.warning(f"No raw data available for {calc_t_from} to {calc_t_to}")
                 continue
                 
-            resampled_df = resample_at_events_func(raw_df, params)
+            resampled_df = resample_calculate_func(raw_df, params)
             
             if resampled_df is None or len(resampled_df) == 0:
                 logging.warning(f"Resampling returned empty result for {calc_t_from} to {calc_t_to}")

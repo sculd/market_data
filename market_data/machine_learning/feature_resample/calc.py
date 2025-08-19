@@ -14,7 +14,7 @@ from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)
 
-def prepare_feature_resampled(
+def calculate(
     cache_context: CacheContext,
     time_range: TimeRange,
     feature_label_obj: FeatureLabel,
@@ -81,7 +81,7 @@ def prepare_feature_resampled(
     return feature_resampled_df
 
 
-def prepare_sequential_feature_resampled(
+def calculate_sequential(
     cache_context: CacheContext,
     time_range: TimeRange,
     feature_label_obj: FeatureLabel,

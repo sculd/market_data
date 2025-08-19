@@ -10,8 +10,8 @@ from market_data.feature.label import FeatureLabel
 from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.feature_resample.calc import (
-    prepare_feature_resampled,
-    prepare_sequential_feature_resampled,
+    calculate,
+    calculate_sequential,
 )
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
@@ -50,7 +50,7 @@ def _calculate_and_cache_daily_feature_resampled(
 
     # Prepare feature data for the day (sequential or regular)
     if seq_param is not None:
-        feature_resampled_df = prepare_sequential_feature_resampled(
+        feature_resampled_df = calculate_sequential(
             cache_context=cache_context,
             time_range=time_range,
             feature_label_obj=feature_label_obj,
@@ -58,7 +58,7 @@ def _calculate_and_cache_daily_feature_resampled(
             seq_param=seq_param,
         )
     else:
-        feature_resampled_df = prepare_feature_resampled(
+        feature_resampled_df = calculate(
             cache_context=cache_context,
             time_range=time_range,
             feature_label_obj=feature_label_obj,

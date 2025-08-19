@@ -16,7 +16,7 @@ from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)
 
-def prepare_ml_data(
+def calculate(
     cache_context: CacheContext,
     time_range: TimeRange,
     feature_collection: FeatureLabelCollection,

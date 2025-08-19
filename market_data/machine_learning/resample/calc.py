@@ -199,7 +199,7 @@ def _get_events_t_multi(
     return events_df
 
 @register_resample_function("cumsum")
-def resample_at_events(
+def calculate(
     df: pd.DataFrame, 
     params: CumSumResampleParams = None,
 ) -> pd.DataFrame:

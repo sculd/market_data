@@ -236,7 +236,7 @@ class TargetEngineer:
 
 
 # Convenience functions
-def create_targets(df: pd.DataFrame, params: TargetParamsBatch = None) -> pd.DataFrame:
+def calculate(df: pd.DataFrame, params: TargetParamsBatch = None) -> pd.DataFrame:
     """
     Convenience function to create ML target features from market data.
     Includes forward returns and classification labels.

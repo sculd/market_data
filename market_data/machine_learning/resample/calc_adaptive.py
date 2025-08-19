@@ -113,7 +113,7 @@ def _get_events_t_multi(
 
     return events_df
 
-def resample_at_events(
+def calculate(
     df: pd.DataFrame, 
     params: AdaptiveResampleParams = None,
 ) -> pd.DataFrame:

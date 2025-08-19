@@ -13,7 +13,7 @@ import market_data.util.cache.write
 from market_data.feature.label import FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
-from market_data.machine_learning.ml_data.calc import prepare_ml_data
+from market_data.machine_learning.ml_data.calc import calculate
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.target.calc import TargetParamsBatch
@@ -127,8 +127,7 @@ def _get_mldata_params_dir(
     # Return just the UUID - dataset_id is handled separately
     return params_uuid
 
-
-def _calculate_daily_ml_data(
+def _calculate_and_cache__daily_ml_data(
     date: datetime.datetime,
     cache_context: CacheContext,
     feature_collection: FeatureLabelCollection,
@@ -157,7 +156,7 @@ def _calculate_daily_ml_data(
     t_to = date + datetime.timedelta(days=1)
     time_range = TimeRange(t_from, t_to)
     
-    ml_data_df = prepare_ml_data(
+    ml_data_df = calculate(
         cache_context=cache_context,
         time_range=time_range,
         feature_collection=feature_collection,
@@ -204,7 +203,7 @@ def calculate_and_cache_ml_data(
     
     This function:
     1. Splits the time range into individual days
-    2. For each day, prepares ML data using prepare_ml_data (sequential or regular based on seq_param)
+    2. For each day, prepares ML data using calculate (sequential or regular based on seq_param)
     3. Caches each daily piece in a UUID-based directory structure
     4. Creates a description.txt file with parameter details for easy debugging
     
@@ -240,7 +239,7 @@ def calculate_and_cache_ml_data(
     while current_date < t_to:
         logger.info(f"Processing day {current_date}")
         
-        _calculate_daily_ml_data(
+        _calculate_and_cache__daily_ml_data(
             date=current_date,
             cache_context=cache_context,
             feature_collection=feature_collection,
