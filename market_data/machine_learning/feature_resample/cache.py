@@ -25,7 +25,7 @@ def _calculate_and_cache_daily_feature_resampled(
     resample_params: ResampleParam,
     seq_param: Optional[SequentialFeatureParam] = None,
     overwrite_cache: bool = True
-) -> None:
+) -> bool:
     """
     Calculate and cache feature resampled data for a single day.
     

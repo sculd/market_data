@@ -26,8 +26,6 @@ def _calculate_and_cache_daily_targets_resampled(
 ) -> None:
     """
     Calculate and cache targets resampled data for a single day.
-    
-    Can handle both regular and sequential targetss based on seq_param.
     """
     folder_path = cache_context.get_target_resampled_path(
         target_params_batch.get_params_dir(), 
@@ -104,11 +102,8 @@ def load_cached_targets_resampled(
     """
     Load cached targets resampled data for a specific time range.
     
-    Can load both regular and sequential targets data based on seq_param.
-    
     Returns:
-        DataFrame with targets resampled data (regular or sequential based on seq_param),
-        or empty DataFrame if no data is available
+        DataFrame with targets resampled data, or empty DataFrame if no data is available
     """
     resample_params = resample_params or CumSumResampleParams()
 

@@ -10,7 +10,7 @@ from market_data.machine_learning.feature_resample.cache import load_cached_feat
 from market_data.machine_learning.resample.cache import load_cached_resampled_data
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
-from market_data.target.cache import load_cached_targets
+from market_data.machine_learning.target_resample.cache import load_cached_targets_resampled
 from market_data.target.calc import TargetParamsBatch
 from market_data.util.time import TimeRange
 
@@ -108,19 +108,19 @@ def calculate(
         return pd.DataFrame()
     
     # Ensure target data is present
-    targets_df = load_cached_targets(
+    targets_resampled_df = load_cached_targets_resampled(
         cache_context=cache_context,
-        params=target_params_batch,
         time_range=time_range,
+        target_params_batch=target_params_batch,
+        resample_params=resample_params,
     )
     
-    if targets_df is None or len(targets_df) == 0:
-        logger.error("No target data available")
+    if targets_resampled_df is None or len(targets_resampled_df) == 0:
+        logger.error("No resampled target data available")
         return pd.DataFrame()
 
     # Join targets with the combined feature data
-    targets_df_indexed = targets_df.reset_index().set_index(["timestamp", "symbol"])
-    ml_data_df = combined_df.join(targets_df_indexed).reset_index().set_index("timestamp")
+    ml_data_df = combined_df.join(targets_resampled_df).reset_index().set_index("timestamp")
     
     if len(ml_data_df) == 0:
         logger.error("No data after joining features, targets and resampled timestamps")
