@@ -37,6 +37,7 @@ from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import AGGREGATION_MODE, DATASET_MODE, EXPORT_MODE, CacheContext
 from market_data.machine_learning.ml_data.cache import calculate_and_cache_ml_data, load_cached_ml_data
 from market_data.machine_learning.ml_data.calc import calculate as calculate_ml_data
+from market_data.machine_learning.target_resample.cache import calculate_and_cache_targets_resampled
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.target.param import TargetParams, TargetParamsBatch
 
@@ -71,7 +72,30 @@ target_params_batch = TargetParamsBatch(
             for tp in [0.015, 0.03, 0.05]]
         )
 
+'''
+s = calculate_and_cache_targets_resampled(
+    cache_context=cache_context,
+    time_range=time_range,
+    target_params_batch=target_params_batch,
+    resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
+)
+print(s)
+#'''
 
+
+#'''
+ml_data = calculate_ml_data(
+    CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
+    time_range=time_range,
+    feature_collection = FeatureLabelCollection(),
+    target_params_batch=target_params_batch,
+    resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
+)
+print(ml_data.shape)
+#'''
+
+
+'''
 calculate_and_cache_ml_data(
     CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
     time_range=time_range,
@@ -79,6 +103,19 @@ calculate_and_cache_ml_data(
     target_params_batch=target_params_batch,
     resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
 )
+#'''
+
+
+#'''
+ml_data = load_cached_ml_data(
+    CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
+    time_range=time_range,
+    feature_collection = FeatureLabelCollection(),
+    target_params_batch=target_params_batch,
+    resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
+)
+print(ml_data.shape)
+#'''
 
 '''
 feature_labels = market_data.feature.registry.list_registered_features('all')

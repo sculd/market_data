@@ -2,8 +2,13 @@ import dataclasses
 import datetime
 import importlib
 import inspect
+import json
 import logging
+import os
+from pathlib import Path
 from typing import Any, List, Optional
+
+from market_data.util.cache.path import get_cache_base_path
 
 logger = logging.getLogger(__name__)
 
@@ -92,5 +97,140 @@ class FeatureLabelCollection:
         Get the maximum warm-up period required for a list of feature labels and parameters.
         """
         return max([fl.get_warmup_period() for fl in self.feature_labels])
+
+    def to_dict(self) -> dict:
+        """Convert FeatureLabelCollection to dictionary for serialization."""
+        return {
+            'feature_labels': [
+                {
+                    'feature_label': fl.feature_label,
+                    'params': fl.params.__dict__ if hasattr(fl.params, '__dict__') else str(fl.params)
+                }
+                for fl in self.feature_labels
+            ]
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'FeatureLabelCollection':
+        """Create FeatureLabelCollection from dictionary."""
+        collection = cls()
+        for fl_data in data['feature_labels']:
+            param_cls = _find_param_class(fl_data['feature_label'])
+            if param_cls and isinstance(fl_data['params'], dict):
+                params = param_cls(**fl_data['params'])
+            else:
+                params = param_cls()
+            
+            feature_label = FeatureLabel(fl_data['feature_label'], params)
+            collection.with_feature_label(feature_label)
+        
+        return collection
+
+
+class FeatureLabelCollectionsManager:
+    """Manager for saving and loading FeatureLabelCollection objects with tag-based organization."""
+    
+    def __init__(self, base_path: Optional[str] = None):
+        """
+        Initialize the manager.
+        
+        Args:
+            base_path: Base path for storage. If None, uses ALGO_CACHE_BASE from environment.
+        """
+        if base_path is None:
+            base_path = get_cache_base_path()
+        
+        self.base_path = Path(base_path)
+        self.feature_labels_dir = self.base_path / "feature_labels"
+        self.feature_labels_dir.mkdir(parents=True, exist_ok=True)
+    
+    def get_collection_path(self, tag: str) -> Path:
+        """Get the file path for a tagged collection."""
+        return self.feature_labels_dir / tag / "collection.json"
+    
+    def save(self, collection: FeatureLabelCollection, tag: str) -> None:
+        """
+        Save a FeatureLabelCollection with the given tag.
+        
+        Args:
+            collection: The FeatureLabelCollection to save
+            tag: Tag to identify this collection
+        """
+        collection_path = self.get_collection_path(tag)
+        collection_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        data = collection.to_dict()
+        
+        with open(collection_path, 'w') as f:
+            json.dump(data, f, indent=2)
+        
+        logger.info(f"Saved FeatureLabelCollection with tag '{tag}' to {collection_path}")
+    
+    def load(self, tag: str) -> FeatureLabelCollection:
+        """
+        Load a FeatureLabelCollection by tag.
+        
+        Args:
+            tag: Tag identifying the collection to load
+            
+        Returns:
+            The loaded FeatureLabelCollection
+            
+        Raises:
+            FileNotFoundError: If the collection doesn't exist
+        """
+        collection_path = self.get_collection_path(tag)
+        
+        if not collection_path.exists():
+            raise FileNotFoundError(f"No FeatureLabelCollection found with tag '{tag}' at {collection_path}")
+        
+        with open(collection_path, 'r') as f:
+            data = json.load(f)
+        
+        collection = FeatureLabelCollection.from_dict(data)
+        logger.info(f"Loaded FeatureLabelCollection with tag '{tag}' from {collection_path}")
+        
+        return collection
+    
+    def exists(self, tag: str) -> bool:
+        """Check if a collection with the given tag exists."""
+        return self.get_collection_path(tag).exists()
+    
+    def list_tags(self) -> List[str]:
+        """List all available tags."""
+        if not self.feature_labels_dir.exists():
+            return []
+        
+        tags = []
+        for item in self.feature_labels_dir.iterdir():
+            if item.is_dir() and (item / "collection.json").exists():
+                tags.append(item.name)
+        
+        return sorted(tags)
+    
+    def delete(self, tag: str) -> None:
+        """
+        Delete a collection by tag.
+        
+        Args:
+            tag: Tag identifying the collection to delete
+            
+        Raises:
+            FileNotFoundError: If the collection doesn't exist
+        """
+        collection_path = self.get_collection_path(tag)
+        
+        if not collection_path.exists():
+            raise FileNotFoundError(f"No FeatureLabelCollection found with tag '{tag}' at {collection_path}")
+        
+        collection_path.unlink()
+        
+        # Remove directory if empty
+        try:
+            collection_path.parent.rmdir()
+        except OSError:
+            pass  # Directory not empty
+        
+        logger.info(f"Deleted FeatureLabelCollection with tag '{tag}'")
 
 
