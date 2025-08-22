@@ -200,21 +200,6 @@ def calculate_and_cache_ml_data(
     
     Uses deterministic UUID-based caching for clean directory structure.
     Creates description.txt files with human-readable parameter information.
-    
-    This function:
-    1. Splits the time range into individual days
-    2. For each day, prepares ML data using calculate (sequential or regular based on seq_param)
-    3. Caches each daily piece in a UUID-based directory structure
-    4. Creates a description.txt file with parameter details for easy debugging
-    
-    Args:
-        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
-        time_range: TimeRange object specifying the time range
-        feature_collection: Collection of feature labels and their parameters.
-        target_params_batch: Target calculation parameters. If None, uses default parameters.
-        resample_params: Resampling parameters. If None, uses default parameters.
-        seq_param: Sequential feature parameters. If provided, creates sequential ML data.
-        overwrite_cache: Whether to overwrite existing cache files
     """
     target_params_batch = target_params_batch or TargetParamsBatch()
     resample_params = resample_params or CumSumResampleParams()
@@ -269,15 +254,6 @@ def load_cached_ml_data(
     Uses deterministic UUID-based caching for clean directory structure.
     Parameter descriptions are stored in description.txt files.
     
-    Args:
-        cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
-        time_range: TimeRange object specifying the time range
-        feature_collection: Collection of feature labels and their parameters
-        target_params_batch: Target calculation parameters. If None, uses default parameters.
-        resample_params: Resampling parameters. If None, uses default parameters.
-        seq_param: Sequential feature parameters. If provided, loads sequential ML data.
-        columns: Optional list of columns to load. If None, loads all columns.
-        
     Returns:
         DataFrame with ML data (regular or sequential based on seq_param),
         or empty DataFrame if no data is available
@@ -305,3 +281,34 @@ def load_cached_ml_data(
     logger.debug(f"Loaded ML data from UUID: {params_dir}")
     
     return ml_data_df.sort_values(["timestamp", "symbol"])
+
+
+def calculate_and_cache_and_load_ml_data(
+    cache_context: CacheContext,
+    time_range: TimeRange,
+    feature_collection: FeatureLabelCollection,
+    target_params_batch: TargetParamsBatch = None,
+    resample_params: ResampleParam = None,
+    seq_param: Optional[SequentialFeatureParam] = None,
+    overwrite_cache: bool = True
+) -> None:
+    """
+    Cache if needed and then load.
+    """
+    calculate_and_cache_ml_data(
+        cache_context,
+        time_range,
+        feature_collection,
+        target_params_batch = target_params_batch,
+        resample_params = resample_params,
+        seq_param = seq_param,
+        overwrite_cache = overwrite_cache)
+
+    return load_cached_ml_data(
+        cache_context,
+        time_range,
+        feature_collection,
+        target_params_batch = target_params_batch,
+        resample_params = resample_params,
+        seq_param = seq_param,
+        overwrite_cache = overwrite_cache)

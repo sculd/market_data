@@ -75,6 +75,9 @@ class FeatureLabelCollection:
     def __init__(self):
         self.feature_labels: List[FeatureLabel] = []
 
+    def __str__(self):
+        return '\n'.join([str(label) for label in self.feature_labels])
+
     def __iter__(self):
         return iter(self.feature_labels)
 
