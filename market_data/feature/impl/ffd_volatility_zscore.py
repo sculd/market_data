@@ -39,7 +39,6 @@ class ZscoredFFDVolatilityParams(FeatureParam):
         )
         return datetime.timedelta(minutes=warm_up)
 
-    
     def to_str(self) -> str:
         """Convert parameters to string format: price_col:close,volatility_window:20,log_returns:true,d:0.5,threshold:0.01,zscore_window:100"""
         return f"price_col:{self.price_col},volatility_window:{self.volatility_window},log_returns:{str(self.log_returns).lower()},d:{self.zscored_ffd_params.ffd_params.d},threshold:{self.zscored_ffd_params.ffd_params.threshold},zscore_window:{self.zscored_ffd_params.zscore_window}"

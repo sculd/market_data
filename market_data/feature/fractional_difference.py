@@ -13,12 +13,12 @@ class FFDParams:
     # note the minimal window size for 0.4 d and 1e-3 thresh is 61+1
     d: int = 0.40
     threshold: float = _threshold_default
-
+    
 @dataclass
 class ZscoredFFDParams:
     ffd_params: FFDParams = field(default_factory=FFDParams)
     zscore_window: int = _default_zscore_window
-
+    
 
 @nb.njit(cache=True)
 def _get_weights_ffd_numba(d: float, threshold: float = _threshold_default):

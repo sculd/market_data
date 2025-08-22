@@ -107,11 +107,28 @@ class FeatureLabelCollection:
             'feature_labels': [
                 {
                     'feature_label': fl.feature_label,
-                    'params': fl.params.__dict__ if hasattr(fl.params, '__dict__') else str(fl.params)
+                    'params': self._serialize_params(fl.params)
                 }
                 for fl in self.feature_labels
             ]
         }
+    
+    def _serialize_params(self, params) -> dict:
+        """Helper method to properly serialize parameters."""
+        # First check if it has a custom to_dict method
+        if hasattr(params, 'to_dict') and callable(getattr(params, 'to_dict')):
+            return params.to_dict()
+        
+        # For dataclass objects, use asdict which handles nested dataclasses properly
+        if hasattr(params, '__dataclass_fields__'):
+            return dataclasses.asdict(params)
+        
+        # Fallback to __dict__ for regular objects
+        if hasattr(params, '__dict__'):
+            return params.__dict__
+        
+        # Last resort: convert to string representation
+        return {'_str_repr': str(params)}
 
     @classmethod
     def from_dict(cls, data: dict) -> 'FeatureLabelCollection':

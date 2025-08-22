@@ -135,7 +135,6 @@ class VolumeParams(FeatureParam):
     def get_warm_up_period(self) -> datetime.timedelta:
         return datetime.timedelta(minutes=self._get_warm_up_len())
 
-    
     def to_str(self) -> str:
         """Convert parameters to string format: ratio_period:100,price_col:close,d:0.5,threshold:0.01,zscore_window:100"""
         return f"ratio_period:{self.ratio_period},price_col:{self.price_col},d:{self.zscored_ffd_params.ffd_params.d},threshold:{self.zscored_ffd_params.ffd_params.threshold},zscore_window:{self.zscored_ffd_params.zscore_window}"

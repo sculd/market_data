@@ -37,7 +37,6 @@ class ZscoredFFDParams(FeatureParam):
         )
         return datetime.timedelta(minutes=warm_up)
 
-    
     def to_str(self) -> str:
         """Convert parameters to string format: cols:[close,volume],d:0.5,threshold:0.01,zscore_window:100"""
         cols_str = '[' + ','.join(self.cols) + ']'
