@@ -21,12 +21,21 @@ if __name__ == '__main__':
     
     print(labels_manager.list_tags())
 
-    print(labels_manager.load("returns_with_time_of_day"))
+    print(labels_manager.load("ffd_zscore"))
     
     feature_collection = FeatureLabelCollection()
     feature_labels = market_data.feature.registry.list_registered_features('all')
+    print(f"Found {len(feature_labels)} registered features: {feature_labels}")
+    
     feature_collection = FeatureLabelCollection()
 
     for feature_label in feature_labels:
         feature_collection = feature_collection.with_feature_label(FeatureLabel(feature_label))
+
+    # Save the collection with all features
+    labels_manager.save(feature_collection, "all_features")
+    print(f"Saved collection with all {len(feature_collection.feature_labels)} features")
+    
+    # List all available tags
+    print(f"All available tags: {labels_manager.list_tags()}")
 

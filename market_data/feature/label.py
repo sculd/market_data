@@ -130,6 +130,33 @@ class FeatureLabelCollection:
         # Last resort: convert to string representation
         return {'_str_repr': str(params)}
 
+    def _reconstruct_dataclass(self, cls, data_dict):
+        """Recursively reconstruct a dataclass from a dictionary."""
+        if not hasattr(cls, '__dataclass_fields__'):
+            return cls(**data_dict) if data_dict else cls()
+        
+        reconstructed_params = {}
+        fields = dataclasses.fields(cls)
+        
+        for field in fields:
+            field_name = field.name
+            if field_name in data_dict:
+                field_value = data_dict[field_name]
+                field_type = field.type
+                
+                # Handle nested dataclass objects
+                if hasattr(field_type, '__dataclass_fields__') and isinstance(field_value, dict):
+                    # Recursively reconstruct nested dataclass
+                    reconstructed_params[field_name] = self._reconstruct_dataclass(field_type, field_value)
+                else:
+                    reconstructed_params[field_name] = field_value
+            elif field.default != dataclasses.MISSING:
+                reconstructed_params[field_name] = field.default
+            elif field.default_factory != dataclasses.MISSING:
+                reconstructed_params[field_name] = field.default_factory()
+        
+        return cls(**reconstructed_params)
+
     @classmethod
     def from_dict(cls, data: dict) -> 'FeatureLabelCollection':
         """Create FeatureLabelCollection from dictionary."""
@@ -137,9 +164,9 @@ class FeatureLabelCollection:
         for fl_data in data['feature_labels']:
             param_cls = _find_param_class(fl_data['feature_label'])
             if param_cls and isinstance(fl_data['params'], dict):
-                params = param_cls(**fl_data['params'])
+                params = collection._reconstruct_dataclass(param_cls, fl_data['params'])
             else:
-                params = param_cls()
+                params = param_cls() if param_cls else None
             
             feature_label = FeatureLabel(fl_data['feature_label'], params)
             collection.with_feature_label(feature_label)
