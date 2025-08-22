@@ -290,7 +290,9 @@ def calculate_and_cache_and_load_ml_data(
     target_params_batch: TargetParamsBatch = None,
     resample_params: ResampleParam = None,
     seq_param: Optional[SequentialFeatureParam] = None,
-    overwrite_cache: bool = True
+    overwrite_cache: bool = True,
+    columns: Optional[List[str]] = None,
+    max_workers: int = 10,
 ) -> None:
     """
     Cache if needed and then load.
@@ -311,4 +313,5 @@ def calculate_and_cache_and_load_ml_data(
         target_params_batch = target_params_batch,
         resample_params = resample_params,
         seq_param = seq_param,
-        overwrite_cache = overwrite_cache)
+        columns = columns,
+        max_workers = max_workers)
