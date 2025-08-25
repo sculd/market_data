@@ -52,6 +52,9 @@ class FeatureLabel:
     def __str__(self):
         return f"{self.feature_label} with {self.params}"
 
+    def __repr__(self):
+        return f"{self.feature_label}"
+
     @classmethod
     def from_str(cls, feature_label_str: str) -> 'FeatureLabel':
         feature_label, params_str = feature_label_str.split(cls.param_delim)
@@ -77,6 +80,9 @@ class FeatureLabelCollection:
 
     def __str__(self):
         return '\n'.join([str(label) for label in self.feature_labels])
+
+    def __repr__(self):
+        return repr([f"{label.feature_label}()" for label in self.feature_labels])
 
     def __iter__(self):
         return iter(self.feature_labels)

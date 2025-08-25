@@ -1,3 +1,4 @@
+import copy
 import logging
 import sys
 import os, datetime, pprint, itertools
@@ -27,6 +28,23 @@ if __name__ == '__main__':
     feature_labels = market_data.feature.registry.list_registered_features('all')
     print(f"Found {len(feature_labels)} registered features: {feature_labels}")
     
+
+    # generate all possible combinations of collections
+    feature_collection_list = [FeatureLabelCollection()]
+    for feature_label in feature_labels:
+        feature_label_obj = FeatureLabel(feature_label)
+        l = len(feature_collection_list) 
+        for i in range(l):
+            feature_collection = feature_collection_list[i]
+            feature_collection_list.append(copy.deepcopy(feature_collection).with_feature_label(feature_label_obj))
+
+    for feature_collection in feature_collection_list:
+        tag = '__'.join([feature_label_obj.feature_label for feature_label_obj in feature_collection.feature_labels])
+        if not tag:
+            continue
+        labels_manager.save(feature_collection, tag)
+        print(f"Saved collection with {len(feature_collection.feature_labels)} features {tag[:10]}...")
+
     feature_collection = FeatureLabelCollection()
 
     for feature_label in feature_labels:
