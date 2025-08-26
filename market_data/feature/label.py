@@ -1,3 +1,4 @@
+import copy
 import dataclasses
 import datetime
 import importlib
@@ -41,6 +42,8 @@ class FeatureLabel:
         self.feature_label = feature_label
         if params is None:
             param_cls = _find_param_class(self.feature_label)
+            if param_cls is None:
+                raise ValueError(f"Failed to find parameters class for feature '{self.feature_label}'")
             params = param_cls()
             if params is None:
                 raise ValueError(f"Failed to create default parameters for feature '{self.feature_label}'")
@@ -118,7 +121,7 @@ class FeatureLabelCollection:
                 for fl in self.feature_labels
             ]
         }
-    
+
     def _serialize_params(self, params) -> dict:
         """Helper method to properly serialize parameters."""
         # First check if it has a custom to_dict method
@@ -286,4 +289,17 @@ class FeatureLabelCollectionsManager:
         
         logger.info(f"Deleted FeatureLabelCollection with tag '{tag}'")
 
+    @staticmethod
+    def get_tag(feature_label_collection: FeatureLabelCollection) -> str:
+        return '__'.join([feature_label_obj.feature_label for feature_label_obj in feature_label_collection.feature_labels])
+
+    @staticmethod
+    def get_super_set_collections(feature_labels: List[FeatureLabel]) -> List[FeatureLabelCollection]:
+        feature_collection_list = [FeatureLabelCollection()]
+        for feature_label_obj in feature_labels:
+            l = len(feature_collection_list) 
+            for i in range(l):
+                feature_collection = feature_collection_list[i]
+                feature_collection_list.append(copy.deepcopy(feature_collection).with_feature_label(feature_label_obj))
+        return feature_collection_list
 

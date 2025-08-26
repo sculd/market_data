@@ -30,16 +30,11 @@ if __name__ == '__main__':
     
 
     # generate all possible combinations of collections
-    feature_collection_list = [FeatureLabelCollection()]
-    for feature_label in feature_labels:
-        feature_label_obj = FeatureLabel(feature_label)
-        l = len(feature_collection_list) 
-        for i in range(l):
-            feature_collection = feature_collection_list[i]
-            feature_collection_list.append(copy.deepcopy(feature_collection).with_feature_label(feature_label_obj))
+    feature_label_objs = [FeatureLabel(feature_label) for feature_label in feature_labels]        
+    feature_collection_list = FeatureLabelCollectionsManager.get_super_set_collections(feature_label_objs)
 
     for feature_collection in feature_collection_list:
-        tag = '__'.join([feature_label_obj.feature_label for feature_label_obj in feature_collection.feature_labels])
+        tag = FeatureLabelCollectionsManager.get_tag(feature_collection)
         if not tag:
             continue
         labels_manager.save(feature_collection, tag)
