@@ -72,7 +72,7 @@ class CacheContext:
     
     def get_ml_data_path(self, params_dir: str) -> str:
         """Get path for ML data cache"""
-        return self.get_folder_path(["feature_data", "ml_data"], params_dir)
+        return self.get_folder_path(["ml_data"], params_dir)
     
     def get_resampled_path(self, params_dir: str) -> str:
         """Get path for resampled data cache"""
