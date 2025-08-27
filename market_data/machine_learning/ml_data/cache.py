@@ -108,7 +108,7 @@ def _generate_params_uuid(
     # Use SHA256 and take first 12 characters for a short but unique identifier
     return hashlib.sha256(params_str.encode()).hexdigest()[:12]
 
-def _get_mldata_params_dir(
+def _get_ml_data_params_dir(
     resample_params: ResampleParam,
     feature_collection: FeatureLabelCollection,
     target_params_batch: TargetParamsBatch,
@@ -173,9 +173,9 @@ def _calculate_and_cache__daily_ml_data(
     data_type = "sequential" if seq_param is not None else "regular"
     logger.info(f"Caching {data_type} ML data for {date}")
     
-    params_dir = _get_mldata_params_dir(resample_params, feature_collection, target_params_batch, seq_param)
+    params_dir = _get_ml_data_params_dir(resample_params, feature_collection, target_params_batch, seq_param)
     folder_path = cache_context.get_ml_data_path(params_dir)
-    market_data.util.cache.write.cache_locally_df(
+    market_data.util.cache.write.split_and_cache_daily_df(
         df=ml_data_df,
         folder_path=folder_path,
         overwrite=overwrite_cache,
@@ -206,7 +206,7 @@ def calculate_and_cache_ml_data(
     t_from, t_to = time_range.to_datetime()
     current_date = t_from
     
-    params_dir = _get_mldata_params_dir(resample_params, feature_collection, target_params_batch, seq_param)
+    params_dir = _get_ml_data_params_dir(resample_params, feature_collection, target_params_batch, seq_param)
     folder_path = cache_context.get_ml_data_path(params_dir)
 
     data_type = "sequential" if seq_param is not None else "regular"
@@ -260,7 +260,7 @@ def load_cached_ml_data(
     """
     target_params_batch = target_params_batch or TargetParamsBatch()
     resample_params = resample_params or CumSumResampleParams()
-    params_dir = _get_mldata_params_dir(resample_params, feature_collection, target_params_batch, seq_param)
+    params_dir = _get_ml_data_params_dir(resample_params, feature_collection, target_params_batch, seq_param)
 
     def load(d_from, d_to):
         folder_path = cache_context.get_ml_data_path(params_dir)

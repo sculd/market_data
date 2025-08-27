@@ -45,7 +45,7 @@ def _calculate_and_cache_daily_targets_resampled(
     # Cache the data
     logger.info(f"Caching targets resampled data for {time_range}")
     
-    market_data.util.cache.write.cache_locally_df(
+    market_data.util.cache.write.split_and_cache_daily_df(
         df=targets_resampled_df,
         folder_path=folder_path,
         overwrite=overwrite_cache,

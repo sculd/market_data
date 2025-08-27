@@ -18,7 +18,7 @@ from market_data.util.time import TimeRange
 logger = logging.getLogger(__name__)
 
 
-def cache_non_seq(
+def cache_non_sequential(
         feature_label_obj: FeatureLabel,
         cache_context: CacheContext,
         time_range: TimeRange = None,
@@ -76,7 +76,7 @@ def cache_non_seq(
         logger.error(f"[cache_writer] Error calculating/caching {feature_label}: {e}")
         return False
 
-def cache_seq(
+def cache_sequential(
         feature_label_obj: FeatureLabel,
         cache_context: CacheContext,
         time_range: TimeRange,
@@ -155,7 +155,7 @@ def cache_seq(
                     continue
                 
                 # Cache sequential features
-                market_data.util.cache.write.cache_locally_df(
+                market_data.util.cache.write.split_and_cache_daily_df(
                     df=seq_df,
                     folder_path=seq_folder_path,
                     overwrite=overwrite_cache,
@@ -190,7 +190,7 @@ def cache_feature(
     calculation_batch_days is only valid for non_seq.
     """
     if not seq_param:
-        return cache_non_seq(
+        return cache_non_sequential(
             feature_label_obj=feature_label_obj,
             cache_context=cache_context,
             time_range=time_range,
@@ -199,7 +199,7 @@ def cache_feature(
             overwrite_cache=overwrite_cache,
         )
     else:
-        return cache_seq(
+        return cache_sequential(
             feature_label_obj=feature_label_obj,
             cache_context=cache_context,
             time_range=time_range,

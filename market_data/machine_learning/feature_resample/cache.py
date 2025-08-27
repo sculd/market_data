@@ -61,7 +61,7 @@ def _calculate_and_cache_daily_feature_resampled(
     data_type = "sequential" if seq_param is not None else "regular"
     logger.info(f"Caching {data_type} feature resampled data for {time_range}")
     
-    market_data.util.cache.write.cache_locally_df(
+    market_data.util.cache.write.split_and_cache_daily_df(
         df=feature_resampled_df,
         folder_path=folder_path,
         overwrite=overwrite_cache,

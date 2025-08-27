@@ -74,7 +74,7 @@ def calculate_and_cache_resampled(
                 
             # 4. Cache resampled data daily
             folder_path = cache_context.get_resampled_path(params.get_params_dir())
-            market_data.util.cache.write.cache_locally_df(
+            market_data.util.cache.write.split_and_cache_daily_df(
                 df=resampled_df,
                 folder_path=folder_path,
                 overwrite=overwrite_cache,

@@ -211,7 +211,7 @@ import market_data.feature.cache_writer
 for label in sorted(registry.keys()):
     if label in ["bollinger"]:
         continue
-    market_data.feature.cache_writer.cache_seq(
+    market_data.feature.cache_writer.cache_sequential(
         FeatureLabel(label),
         DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST,
         time_range=time_range,

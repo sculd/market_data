@@ -44,7 +44,7 @@ def cache_locally_daily_df(
         df.to_parquet(filename)
 
 
-def cache_locally_df(
+def split_and_cache_daily_df(
         df: pd.DataFrame,
         folder_path: str,
         overwrite = False,
