@@ -53,10 +53,10 @@ class FeatureLabel:
             raise ValueError(f"Parameters object for feature '{self.feature_label}' must have get_params_dir method")
 
     def __str__(self):
-        return f"{self.feature_label} with {self.params}"
+        return f"{self.feature_label}"
 
     def __repr__(self):
-        return f"{self.feature_label}"
+        return f"FeatureLabel({self.feature_label}, params={self.params})"
 
     @classmethod
     def from_str(cls, feature_label_str: str) -> 'FeatureLabel':
@@ -82,7 +82,7 @@ class FeatureLabelCollection:
         self.feature_labels: List[FeatureLabel] = []
 
     def __str__(self):
-        return '\n'.join([str(label) for label in self.feature_labels])
+        return ', '.join([str(label) for label in self.feature_labels])
 
     def __repr__(self):
         return repr([f"{label.feature_label}()" for label in self.feature_labels])
