@@ -18,6 +18,7 @@ from market_data.feature.impl.common_calc import _calculate_rolling_mean_numba, 
 from market_data.feature.impl.indicators import _calculate_zscore_numba
 from market_data.feature.impl.returns import _calculate_simple_returns_numba
 from market_data.feature.param import FeatureParam
+from market_data.feature.common import Feature
 from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
@@ -339,7 +340,7 @@ class MarketRegimeParams(FeatureParam):
 
 # disable for now
 #@register_feature(FEATURE_LABEL)
-class MarketRegimeFeature:
+class MarketRegimeFeature(Feature):
     """Market regime feature implementation."""
     
     @staticmethod

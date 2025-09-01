@@ -15,6 +15,7 @@ import pandas as pd
 
 from market_data.feature.impl.returns import _calculate_simple_returns_numba
 from market_data.feature.param import FeatureParam
+from market_data.feature.common import Feature
 from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
@@ -149,7 +150,7 @@ class GARCHParams(FeatureParam):
         return cls(**params)
 
 @register_feature(FEATURE_LABEL)
-class GARCHFeature:
+class GARCHFeature(Feature):
     """GARCH volatility feature implementation."""
     
     @staticmethod

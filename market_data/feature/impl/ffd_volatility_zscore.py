@@ -16,6 +16,7 @@ import pandas as pd
 from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZscoredFFDParams
 from market_data.feature.fractional_difference import get_zscored_ffd_series
 from market_data.feature.param import FeatureParam
+from market_data.feature.common import Feature
 from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
@@ -70,7 +71,7 @@ class ZscoredFFDVolatilityParams(FeatureParam):
 
 
 @register_feature(FEATURE_LABEL)
-class ZscoredFFDVolatilityFeature:
+class ZscoredFFDVolatilityFeature(Feature):
     """FFD volatility zscore feature implementation."""
     
     @staticmethod

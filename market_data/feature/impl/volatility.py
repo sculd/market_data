@@ -16,6 +16,7 @@ import pandas as pd
 from market_data.feature.impl.common_calc import _calculate_rolling_std_numba
 from market_data.feature.impl.returns import _calculate_simple_returns_numba
 from market_data.feature.param import FeatureParam
+from market_data.feature.common import Feature
 from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
@@ -84,7 +85,7 @@ class VolatilityParams(FeatureParam):
         return cls(**params)
 
 @register_feature(FEATURE_LABEL)
-class VolatilityFeature:
+class VolatilityFeature(Feature):
     """Volatility feature implementation."""
     
     @staticmethod

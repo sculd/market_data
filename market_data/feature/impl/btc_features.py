@@ -12,6 +12,7 @@ from typing import List, Optional
 
 import pandas as pd
 
+from market_data.feature.common import Feature
 from market_data.feature.param import FeatureParam
 from market_data.feature.registry import register_feature
 
@@ -59,7 +60,7 @@ class BTCParams(FeatureParam):
         return cls(**params)
 
 @register_feature(FEATURE_LABEL)
-class BTCFeature:
+class BTCFeature(Feature):
     """Bitcoin feature implementation."""
     
     @staticmethod

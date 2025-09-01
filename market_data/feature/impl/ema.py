@@ -14,6 +14,7 @@ import numba as nb
 import numpy as np
 import pandas as pd
 
+from market_data.feature.common import Feature
 from market_data.feature.param import FeatureParam
 from market_data.feature.registry import register_feature
 
@@ -117,7 +118,7 @@ class EMAParams(FeatureParam):
         return cls(**params)
 
 @register_feature(FEATURE_LABEL)
-class EMAFeature:
+class EMAFeature(Feature):
     """EMA feature implementation."""
     
     @staticmethod

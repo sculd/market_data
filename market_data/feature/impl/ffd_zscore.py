@@ -17,6 +17,7 @@ from market_data.feature.fractional_difference import ZscoredFFDParams as BaseZs
 from market_data.feature.fractional_difference import get_zscored_ffd_series
 from market_data.feature.impl.returns import _calculate_log_returns_numba, _calculate_simple_returns_numba
 from market_data.feature.param import FeatureParam
+from market_data.feature.common import Feature
 from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
@@ -68,7 +69,7 @@ class ZscoredFFDParams(FeatureParam):
 
 
 @register_feature(FEATURE_LABEL)
-class ZscoredFFDsFeature:
+class ZscoredFFDsFeature(Feature):
     """FFD zscore feature implementation."""
     
     @staticmethod

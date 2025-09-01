@@ -15,6 +15,7 @@ import pandas as pd
 import pytz
 
 from market_data.feature.param import FeatureParam
+from market_data.feature.common import Feature
 from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
@@ -76,7 +77,7 @@ def _get_time_bin_vectorized(dt_series: pd.Series) -> pd.Series:
     return pd.Series(np.select(conditions, choices, default=6), index=dt_series)
 
 @register_feature(FEATURE_LABEL)
-class TimeOfDayFeature:
+class TimeOfDayFeature(Feature):
     """Time of day feature implementation."""
     
     @staticmethod

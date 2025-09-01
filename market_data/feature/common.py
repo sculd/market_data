@@ -8,8 +8,8 @@ import pandas as pd
 class Feature(metaclass=abc.ABCMeta):
     """Base feature class."""
     
-    @abc.abstractmethod
     @staticmethod
+    @abc.abstractmethod
     def calculate(df: pd.DataFrame, params: Optional[FeatureParam] = None) -> pd.DataFrame:
         """
         Calculate feature.
