@@ -44,6 +44,12 @@ from market_data.target.param import TargetParams, TargetParamsBatch
 cache_context = market_data.ingest.common.CacheContext(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST)
 
+from market_data.feature.impl.btc_features import BTCFeature, BTCParams
+print(BTCFeature.get_columns(BTCParams()))
+
+from market_data.feature.impl.ema import EMAFeature, EMAParams
+print(EMAFeature.get_columns(EMAParams()))
+
 '''
 df = market_data.ingest.bq.cache.query_and_cache(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST,
@@ -83,7 +89,7 @@ print(s)
 #'''
 
 
-#'''
+'''
 ml_data = calculate_ml_data(
     CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
     time_range=time_range,
@@ -106,7 +112,7 @@ calculate_and_cache_ml_data(
 #'''
 
 
-#'''
+'''
 ml_data = load_cached_ml_data(
     CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
     time_range=time_range,

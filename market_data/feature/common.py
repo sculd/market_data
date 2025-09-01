@@ -36,20 +36,22 @@ class Feature(metaclass=abc.ABCMeta):
         """
         # Create a minimal dummy DataFrame with required columns
         # Using more rows to handle calculations that need sufficient data
-        periods = 100
-        dummy_data = {
-            'timestamp': pd.date_range('2024-01-01', periods=periods, freq='1min'),
-            'symbol': ['TEST'] * periods,
-            'open': np.random.uniform(99, 101, periods),
-            'high': np.random.uniform(101, 103, periods),
-            'low': np.random.uniform(97, 99, periods),
-            'close': np.random.uniform(99, 101, periods),
-            'volume': np.random.uniform(900000, 1100000, periods)
-        }
+        def get_dummy_df(symbol,periods = 100):
+            dummy_data = {
+                'timestamp': pd.date_range('2024-01-01', periods=periods, freq='1min'),
+                'symbol': [symbol] * periods,
+                'open': np.random.uniform(99, 101, periods),
+                'high': np.random.uniform(101, 103, periods),
+                'low': np.random.uniform(97, 99, periods),
+                'close': np.random.uniform(99, 101, periods),
+                'volume': np.random.uniform(900000, 1100000, periods)
+            }
+            
+            dummy_df = pd.DataFrame(dummy_data)
+            dummy_df = dummy_df.set_index('timestamp')
+            return dummy_df
         
-        dummy_df = pd.DataFrame(dummy_data)
-        dummy_df = dummy_df.set_index('timestamp')
-        
+        dummy_df = pd.concat([get_dummy_df('TEST'), get_dummy_df('BTCUSDT')])
         # Calculate features with the dummy data
         result_df = cls.calculate(dummy_df, params)
         
