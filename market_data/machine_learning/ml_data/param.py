@@ -73,6 +73,7 @@ class MlDataParam(Param):
     target_params_batch: TargetParamsBatch
     resample_params: ResampleParam
     seq_param: Optional[SequentialFeatureParam] = None
+    resample_columns: list[str] = dataclasses.field(default_factory=list)
     
     def to_str(self) -> str:
         lines = []
@@ -97,6 +98,12 @@ class MlDataParam(Param):
             lines.append(f"params: {self.seq_param.get_params_dir()}")
             lines.append("")
         
+        # Resample columns
+        if self.resample_columns:
+            lines.append("Resample Columns:")
+            lines.append(f"columns: {','.join(self.resample_columns)}")
+            lines.append("")
+        
         # Feature parameters
         lines.append("Feature Parameters:")
         for feature_label_obj in sorted(self.feature_collection.feature_labels, key=lambda x: x.feature_label):
@@ -116,6 +123,7 @@ class MlDataParam(Param):
         feature_collection = FeatureLabelCollection()
         target_params_batch = None
         seq_param = None
+        resample_columns = []
         
         lines = param_str.split('\n')
         current_section = None
@@ -133,6 +141,9 @@ class MlDataParam(Param):
                 continue
             elif line_stripped == "Sequential Parameters:":
                 current_section = "sequential"
+                continue
+            elif line_stripped == "Resample Columns:":
+                current_section = "resample_columns"
                 continue
             elif line_stripped == "Feature Parameters:":
                 current_section = "features"
@@ -176,6 +187,11 @@ class MlDataParam(Param):
                 # TODO: Implement proper from_str for SequentialFeatureParam
                 seq_param = SequentialFeatureParam()
                 
+            elif current_section == "resample_columns" and line_stripped.startswith("columns:"):
+                columns_str = line_stripped.split("columns:", 1)[1].strip()
+                if columns_str:
+                    resample_columns = [col.strip() for col in columns_str.split(',')]
+                
             elif current_section == "features" and ':' in line_stripped:
                 # Parse feature label and params
                 feature_label, params_str = line_stripped.split(':', 1)
@@ -198,7 +214,8 @@ class MlDataParam(Param):
             feature_collection=feature_collection,
             target_params_batch=target_params_batch,
             resample_params=resample_params,
-            seq_param=seq_param
+            seq_param=seq_param,
+            resample_columns=resample_columns
         )
 
 

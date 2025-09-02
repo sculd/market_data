@@ -52,17 +52,9 @@ def _generate_params_uuid(ml_data_param: MlDataParam) -> str:
 
 def _get_ml_data_params_dir(ml_data_param: MlDataParam) -> str:
     """
-    Generate a clean directory path using deterministic UUID for ML data parameters.
-    
-    Instead of concatenating all parameter descriptions (which creates very long paths),
-    this function generates a deterministic UUID based on all parameters and stores
-    the parameter descriptions in a description.txt file.
+    Use uuid for params_dir.
     """
-    # Generate deterministic UUID from all parameters
-    params_uuid = _generate_params_uuid(ml_data_param)
-    
-    # Return just the UUID - dataset_id is handled separately
-    return params_uuid
+    return _generate_params_uuid(ml_data_param)
 
 
 def _calculate_and_cache__daily_ml_data(
@@ -255,11 +247,10 @@ def load_cached_and_select_columns_ml_data(
         raise ValueError(f"Columns not found in ML data: {missing_columns}")
 
     label_columns = [col for col in ml_data_df.columns if col.startswith("label_")]
-    resample_columns = ["breakout_side"]
 
     # Remove duplicates
     result_columns = list(set(requested_columns))
-    result_df = ml_data_df[result_columns + label_columns + resample_columns]
+    result_df = ml_data_df[result_columns + label_columns + ml_data_param.resample_columns]
     logger.info(f"Returning {len(result_columns)} df from {len(ml_data_df.columns)} available columns")
 
     return result_df

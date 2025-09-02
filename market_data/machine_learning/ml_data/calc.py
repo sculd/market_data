@@ -11,6 +11,7 @@ from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)
 
+
 def calculate(
     cache_context: CacheContext,
     time_range: TimeRange,

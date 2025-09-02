@@ -116,6 +116,7 @@ ml_data_param = MlDataParam(
     feature_collection=FeatureLabelCollection(),
     target_params_batch=target_params_batch,
     resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
+    resample_columns=["breakout_side"],
 )
 ml_data = load_cached_and_select_columns_ml_data(
     CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
@@ -128,6 +129,7 @@ ml_data_param = MlDataParam(
     feature_collection=FeatureLabelCollection().with_feature_label(FeatureLabel("bollinger")),
     target_params_batch=target_params_batch,
     resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
+    resample_columns=["breakout_side"],
 )
 ml_data = load_cached_and_select_columns_ml_data(
     CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),

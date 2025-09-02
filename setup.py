@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="market_data",
-    version="0.6.6",
+    version="0.6.7",
     packages=find_packages(),
     install_requires=[
         "pandas",
