@@ -8,26 +8,23 @@ This module tests the MlDataParam functionality including:
 """
 
 import datetime
+import logging
 import os
 import shutil
 import tempfile
-import logging
 from typing import Optional
 from unittest.mock import MagicMock, patch
-
-import setup_env  # needed for env variables
 
 import pandas as pd
 import pytest
 
-from market_data.feature.label import FeatureLabel, FeatureLabelCollection
+import setup_env  # needed for env variables
+
 from market_data.feature.impl.ema import EMAParams
+from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
-from market_data.machine_learning.ml_data.param import (
-    MlDataParam,
-    verify_parsed_params_match,
-)
+from market_data.machine_learning.ml_data.param import MlDataParam, verify_parsed_params_match
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.machine_learning.resample.param import ResampleParam
 from market_data.target.calc import TargetParamsBatch

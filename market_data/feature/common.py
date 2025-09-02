@@ -1,9 +1,10 @@
 import abc
 from typing import List, Optional
-from market_data.feature.param import FeatureParam
 
 import numpy as np
 import pandas as pd
+
+from market_data.feature.param import FeatureParam
 
 
 class Feature(metaclass=abc.ABCMeta):

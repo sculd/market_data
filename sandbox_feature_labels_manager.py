@@ -1,12 +1,15 @@
 import copy
+import datetime
+import itertools
 import logging
+import os
+import pprint
 import sys
-import os, datetime, pprint, itertools
-import setup_env # needed for the environment variables
+
+import setup_env  # needed for the environment variables
 
 import market_data.feature.registry
 from market_data.feature.label import FeatureLabel, FeatureLabelCollection, FeatureLabelCollectionsManager
-
 
 if __name__ == '__main__':
     labels_manager = FeatureLabelCollectionsManager()

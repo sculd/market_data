@@ -14,8 +14,8 @@ import numpy as np
 import pandas as pd
 import pytz
 
-from market_data.feature.param import FeatureParam
 from market_data.feature.common import Feature
+from market_data.feature.param import FeatureParam
 from market_data.feature.registry import register_feature
 
 logger = logging.getLogger(__name__)
