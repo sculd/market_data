@@ -1,0 +1,15 @@
+ML Data Cache Parameters
+==============================
+
+Resample Parameters:
+class: market_data.machine_learning.resample.calc.CumSumResampleParams
+params: price_col:close,threshold:0.05
+
+Target Parameters:
+params: fp:5,10,30|tp:0.015,0.03,0.05|sl:0.015,0.03,0.05
+
+Feature Parameters:
+bollinger: period:20,std_dev:2.0,price_col:close
+ema: periods:[5,15,30,60,120],price_col:close,include_price_relatives:true
+
+Generated: 2025-09-01T18:14:48.357519

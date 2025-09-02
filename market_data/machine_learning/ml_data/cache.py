@@ -4,13 +4,13 @@ import json
 import logging
 import os
 from dataclasses import asdict
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import pandas as pd
 
 import market_data.util.cache.read
 import market_data.util.cache.write
-from market_data.feature.label import FeatureLabelCollection
+from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.ml_data.calc import calculate
@@ -21,59 +21,13 @@ from market_data.util.cache.parallel_processing import read_multithreaded
 from market_data.util.cache.time import anchor_to_begin_of_day
 from market_data.util.time import TimeRange
 
+from market_data.machine_learning.ml_data.cache_description import (
+    find_cached_ml_data_with_features,
+    write_description_file,
+)
 logger = logging.getLogger(__name__)
 
 
-def _write_description_file(
-    params_dir: str,
-    resample_params: ResampleParam,
-    feature_collection: FeatureLabelCollection,
-    target_params_batch: TargetParamsBatch,
-    seq_param: Optional[SequentialFeatureParam] = None,
-) -> None:
-    """
-    Write parameter description to description.txt file in the cache directory.
-    """
-    lines = []
-    lines.append("ML Data Cache Parameters")
-    lines.append("=" * 30)
-    lines.append("")
-    
-    # Resample parameters
-    lines.append("Resample Parameters:")
-    for key, value in asdict(resample_params).items():
-        lines.append(f"{key}: {value}")
-    lines.append("")
-    
-    # Target parameters
-    lines.append("Target Parameters:")
-    lines.append(f"{target_params_batch.get_params_dir()}")
-    lines.append("")
-    
-    # Sequential parameters
-    if seq_param is not None:
-        lines.append("Sequential Parameters:")
-        lines.append(f"{seq_param.get_params_dir()}")
-        lines.append("")
-    
-    # Feature parameters
-    lines.append("Feature Parameters:")
-    for feature_label_obj in sorted(feature_collection.feature_labels, key=lambda x: x.feature_label):
-        lines.append(f"{feature_label_obj.feature_label}: {feature_label_obj.params.get_params_dir()}")
-    lines.append("")
-    
-    # Add timestamp
-    lines.append(f"Generated: {datetime.datetime.now().isoformat()}")
-    
-    description = "\n".join(lines)    
-    description_path = os.path.join(params_dir, "description.txt")
-    
-    # Create directory if it doesn't exist
-    os.makedirs(params_dir, exist_ok=True)
-    
-    # Write description file
-    with open(description_path, 'w') as f:
-        f.write(description)
 
 def _generate_params_uuid(
     resample_params: ResampleParam,
@@ -217,7 +171,7 @@ def calculate_and_cache_ml_data(
     description_path = os.path.join(folder_path, "description.txt")
     print(f"{description_path=}")
     if not os.path.exists(description_path):
-        _write_description_file(folder_path, resample_params, feature_collection, target_params_batch, seq_param)
+        write_description_file(folder_path, resample_params, feature_collection, target_params_batch, seq_param)
         logger.info(f"Created parameter description file: {description_path}")
     
     # Process each day
@@ -236,6 +190,36 @@ def calculate_and_cache_ml_data(
 
         current_date = anchor_to_begin_of_day(current_date + datetime.timedelta(days=1))
 
+
+def _load_ml_data_at_params_dir(
+    cache_context: CacheContext,
+    time_range: TimeRange,
+    params_dir: str,
+    columns: Optional[List[str]] = None,
+    max_workers: int = 10,
+) -> pd.DataFrame:
+    """
+    Load cached ML data at a specific params_dir.
+    """
+    def load(d_from, d_to):
+        folder_path = cache_context.get_ml_data_path(params_dir)
+        return d_from, market_data.util.cache.read.read_daily_from_local_cache(
+                folder_path,
+                d_from,
+                d_to,
+                columns=columns,
+        )
+
+    ml_data_df = read_multithreaded(
+        read_func=load,
+        time_range=time_range,
+        max_workers=max_workers
+    )
+    # Log cache information for debugging
+    logger.debug(f"Loaded ML data from UUID: {params_dir}")
+    
+    return ml_data_df.sort_values(["timestamp", "symbol"])
+    
 
 def load_cached_ml_data(
     cache_context: CacheContext,
@@ -262,25 +246,66 @@ def load_cached_ml_data(
     resample_params = resample_params or CumSumResampleParams()
     params_dir = _get_ml_data_params_dir(resample_params, feature_collection, target_params_batch, seq_param)
 
-    def load(d_from, d_to):
-        folder_path = cache_context.get_ml_data_path(params_dir)
-        return d_from, market_data.util.cache.read.read_daily_from_local_cache(
-                folder_path,
-                d_from,
-                d_to,
-                columns=columns,
-        )
+    return _load_ml_data_at_params_dir(cache_context, time_range, params_dir, columns, max_workers)
 
-    ml_data_df = read_multithreaded(
-        read_func=load,
-        time_range=time_range,
-        max_workers=max_workers
+
+def load_cached_and_select_columns_ml_data(
+    cache_context: CacheContext,
+    time_range: TimeRange,
+    feature_collection: FeatureLabelCollection,
+    target_params_batch: TargetParamsBatch = None,
+    resample_params: ResampleParam = None,
+    seq_param: Optional[SequentialFeatureParam] = None,
+    columns: Optional[List[str]] = None,
+    max_workers: int = 10,
+) -> pd.DataFrame:
+    """
+    Load cached ML data that contains all requested features and select only the needed columns.
+    
+    This function finds a cached ML dataset that includes all the requested feature labels
+    (possibly with additional features), loads it, and returns only the columns corresponding
+    to the requested features.
+    """
+    target_params_batch = target_params_batch or TargetParamsBatch()
+    resample_params = resample_params or CumSumResampleParams()
+
+    # Find a cache folder containing all requested features
+    params_dir = find_cached_ml_data_with_features(
+        cache_context,
+        feature_collection,
+        target_params_batch,
+        resample_params,
+        seq_param
     )
-    
-    # Log cache information for debugging
-    logger.debug(f"Loaded ML data from UUID: {params_dir}")
-    
-    return ml_data_df.sort_values(["timestamp", "symbol"])
+
+    if params_dir is None:
+        logger.error("No cached ML data found with all requested features. Falling back to exact match.")
+        return pd.DataFrame()
+
+    ml_data_df = _load_ml_data_at_params_dir(cache_context, time_range, params_dir, columns, max_workers)
+    logger.info(f"Loaded ML data from matched cache UUID: {params_dir}")
+
+    if ml_data_df is None or ml_data_df.empty:
+        logger.warning("No ML data loaded")
+        return pd.DataFrame()
+
+    # Get columns for requested features
+    requested_columns = []
+    for feature_label_obj in feature_collection.feature_labels:
+        feature_columns = feature_label_obj.params.get_columns()
+        requested_columns.extend(feature_columns)
+
+    # Ensure all requested columns exist
+    missing_columns = [col for col in requested_columns if col not in ml_data_df.columns]
+    if missing_columns:
+        raise ValueError(f"Columns not found in ML data: {missing_columns}")
+
+    # Remove duplicates
+    result_columns = list(set(requested_columns))
+    result_df = ml_data_df[result_columns]
+    logger.info(f"Returning {len(result_columns)} columns from {len(ml_data_df.columns)} available columns")
+
+    return result_df
 
 
 def calculate_and_cache_and_load_ml_data(

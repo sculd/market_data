@@ -9,6 +9,7 @@ numba
 polars
 dask
 distributed
+pytest
 
 # Documentation
 sphinx>=7.2.6

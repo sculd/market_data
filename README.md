@@ -116,6 +116,22 @@ View at `docs/build/html/index.html` or serve locally with `python -m http.serve
   - `machine_learning/`: ML utilities and resampling
   - `util/`: Common utilities and caching
 
+## Testing
+
+### Running Unit Tests
+
+This project uses `pytest` for unit testing. Tests are located in the `tests/` directory.
+
+#### Command Line
+
+```bash
+# Run all tests
+pytest
+
+# Run a specific test file
+pytest tests/unit/machine_learning/ml_data/test_cache.py
+```
+
 ## Environment Variables
 
 - `GOOGLE_CLOUD_PROJECT`: Your Google Cloud Project ID (required for BigQuery operations)
