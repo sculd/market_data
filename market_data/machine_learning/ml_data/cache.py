@@ -4,7 +4,7 @@ import json
 import logging
 import os
 from dataclasses import asdict
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import pandas as pd
 
@@ -19,7 +19,6 @@ from market_data.util.cache.time import anchor_to_begin_of_day
 from market_data.util.time import TimeRange
 
 logger = logging.getLogger(__name__)
-
 
 
 def _generate_params_uuid(ml_data_param: MlDataParam) -> str:
@@ -50,6 +49,7 @@ def _generate_params_uuid(ml_data_param: MlDataParam) -> str:
     # Use SHA256 and take first 12 characters for a short but unique identifier
     return hashlib.sha256(params_str.encode()).hexdigest()[:12]
 
+
 def _get_ml_data_params_dir(ml_data_param: MlDataParam) -> str:
     """
     Generate a clean directory path using deterministic UUID for ML data parameters.
@@ -63,6 +63,7 @@ def _get_ml_data_params_dir(ml_data_param: MlDataParam) -> str:
     
     # Return just the UUID - dataset_id is handled separately
     return params_uuid
+
 
 def _calculate_and_cache__daily_ml_data(
     date: datetime.datetime,
@@ -254,11 +255,12 @@ def load_cached_and_select_columns_ml_data(
         raise ValueError(f"Columns not found in ML data: {missing_columns}")
 
     label_columns = [col for col in ml_data_df.columns if col.startswith("label_")]
+    resample_columns = ["breakout_side"]
 
     # Remove duplicates
     result_columns = list(set(requested_columns))
-    result_df = ml_data_df[result_columns + label_columns]
-    logger.info(f"Returning {result_columns.shape} df from {len(ml_data_df.columns)} available columns")
+    result_df = ml_data_df[result_columns + label_columns + resample_columns]
+    logger.info(f"Returning {len(result_columns)} df from {len(ml_data_df.columns)} available columns")
 
     return result_df
 
