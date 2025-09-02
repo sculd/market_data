@@ -1,28 +1,20 @@
 import logging
-from typing import Optional
 
 import pandas as pd
 
-from market_data.feature.label import FeatureLabelCollection
-from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import CacheContext
 from market_data.machine_learning.feature_resample.cache import load_cached_feature_resampled
 from market_data.machine_learning.resample.cache import load_cached_resampled_data
-from market_data.machine_learning.resample.calc import CumSumResampleParams
-from market_data.machine_learning.resample.param import ResampleParam
 from market_data.machine_learning.target_resample.cache import load_cached_targets_resampled
-from market_data.target.calc import TargetParamsBatch
 from market_data.util.time import TimeRange
+from market_data.machine_learning.ml_data.param import MlDataParam
 
 logger = logging.getLogger(__name__)
 
 def calculate(
     cache_context: CacheContext,
     time_range: TimeRange,
-    feature_collection: FeatureLabelCollection,
-    target_params_batch: TargetParamsBatch = None,
-    resample_params: ResampleParam = None,
-    seq_param: Optional[SequentialFeatureParam] = None,
+    ml_data_param: MlDataParam,
 ) -> pd.DataFrame:
     """
     Prepare machine learning data by loading cached feature_resampled data and joining with targets.
@@ -40,21 +32,17 @@ def calculate(
     Args:
         cache_context: Cache context containing dataset_mode, export_mode, aggregation_mode
         time_range: TimeRange object specifying the time range
-        feature_label_params: List of either:
-            - feature labels (str) - will use default parameters
-            - (label, params) tuples - will use the provided parameters
-            If None, uses all available features with default parameters
-        target_params_batch: Target calculation parameters. If None, uses default parameters.
-        resample_params: Resampling parameters. If None, uses default parameters.
-        seq_param: Sequential feature parameters. If provided, loads sequential features.
+        ml_data_param: MlDataParam object containing all parameters
         
     Returns:
         DataFrame with features and targets, resampled at significant price movements.
         Features can be regular or sequential based on seq_param.
     """
-    # Use default parameters if none provided
-    target_params_batch = target_params_batch or TargetParamsBatch()
-    resample_params = resample_params or CumSumResampleParams()
+    # Extract parameters from MlDataParam
+    feature_collection = ml_data_param.feature_collection
+    target_params_batch = ml_data_param.target_params_batch
+    resample_params = ml_data_param.resample_params
+    seq_param = ml_data_param.seq_param
     
     # Ensure resampled data is present
     resampled_df = load_cached_resampled_data(

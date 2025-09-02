@@ -35,7 +35,7 @@ import market_data.util.time
 from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
 from market_data.ingest.common import AGGREGATION_MODE, DATASET_MODE, EXPORT_MODE, CacheContext
-from market_data.machine_learning.ml_data.cache import calculate_and_cache_ml_data, load_cached_ml_data
+from market_data.machine_learning.ml_data.cache import calculate_and_cache_ml_data, load_cached_ml_data, load_cached_and_select_columns_ml_data
 from market_data.machine_learning.ml_data.calc import calculate as calculate_ml_data
 from market_data.machine_learning.target_resample.cache import calculate_and_cache_targets_resampled
 from market_data.machine_learning.resample.calc import CumSumResampleParams
@@ -43,12 +43,6 @@ from market_data.target.param import TargetParams, TargetParamsBatch
 
 cache_context = market_data.ingest.common.CacheContext(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST)
-
-from market_data.feature.impl.btc_features import BTCFeature, BTCParams
-print(BTCFeature.get_columns(BTCParams()))
-
-from market_data.feature.impl.ema import EMAFeature, EMAParams
-print(EMAFeature.get_columns(EMAParams()))
 
 '''
 df = market_data.ingest.bq.cache.query_and_cache(
@@ -112,11 +106,20 @@ calculate_and_cache_ml_data(
 #'''
 
 
-'''
-ml_data = load_cached_ml_data(
+#'''
+ml_data = load_cached_and_select_columns_ml_data(
     CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
     time_range=time_range,
     feature_collection = FeatureLabelCollection(),
+    target_params_batch=target_params_batch,
+    resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
+)
+print(ml_data.shape)
+
+ml_data = load_cached_and_select_columns_ml_data(
+    CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
+    time_range=time_range,
+    feature_collection = FeatureLabelCollection().with_feature_label(FeatureLabel("bollinger")),
     target_params_batch=target_params_batch,
     resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
 )
@@ -129,14 +132,14 @@ feature_collection = FeatureLabelCollection()
 for feature_label in feature_labels:
     feature_collection = feature_collection.with_feature_label(FeatureLabel(feature_label))
 
-ml_data = load_cached_ml_data(
+    
+calculate_and_cache_ml_data(
     CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
     time_range=time_range,
     feature_collection = feature_collection,
     target_params_batch=target_params_batch,
     resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
 )
-print(ml_data.shape)
 #'''
 
 
