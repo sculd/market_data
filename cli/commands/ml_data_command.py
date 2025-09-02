@@ -10,7 +10,7 @@ from cli.base import BaseCommand, handle_common_errors
 from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
-from market_data.machine_learning.ml_data.cache import calculate_and_cache_ml_data, load_cached_ml_data
+from market_data.machine_learning.ml_data.cache import calculate_and_cache_ml_data, load_cached_exact_spec_ml_data
 from market_data.machine_learning.ml_data.param import MlDataParam
 from market_data.machine_learning.resample import get_resample_params_class, list_registered_resample_methods
 from market_data.target.calc import TargetParams, TargetParamsBatch
@@ -274,7 +274,7 @@ class MLDataCommand(BaseCommand):
             
             # Load a sample to show details
             print("\nLoading sample of cached data to verify...")
-            ml_data = load_cached_ml_data(
+            ml_data = load_cached_exact_spec_ml_data(
                 cache_context=cache_context,
                 time_range=time_range,
                 ml_params=ml_params,

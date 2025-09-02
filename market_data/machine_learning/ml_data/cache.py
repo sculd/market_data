@@ -180,7 +180,7 @@ def _load_ml_data_at_params_dir(
     return ml_data_df.sort_values(["timestamp", "symbol"])
     
 
-def load_cached_ml_data(
+def load_cached_exact_spec_ml_data(
     cache_context: CacheContext,
     time_range: TimeRange,
     ml_data_param: MlDataParam,
@@ -256,7 +256,7 @@ def load_cached_and_select_columns_ml_data(
     return result_df
 
 
-def calculate_and_cache_and_load_ml_data(
+def load_cached_ml_data(
     cache_context: CacheContext,
     time_range: TimeRange,
     ml_data_param: MlDataParam,
@@ -274,7 +274,7 @@ def calculate_and_cache_and_load_ml_data(
         overwrite_cache=overwrite_cache
     )
 
-    return load_cached_ml_data(
+    return load_cached_exact_spec_ml_data(
         cache_context=cache_context,
         time_range=time_range,
         ml_data_param=ml_data_param,
