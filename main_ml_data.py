@@ -13,6 +13,7 @@ from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
 from market_data.ingest.common import AGGREGATION_MODE, DATASET_MODE, EXPORT_MODE, CacheContext
+from market_data.machine_learning.ml_data.param import MlDataParam
 from market_data.machine_learning.ml_data.cache import calculate_and_cache_ml_data, load_cached_ml_data
 from market_data.machine_learning.resample import get_resample_params_class, list_registered_resample_methods
 from market_data.target.param import TargetParams, TargetParamsBatch
@@ -140,6 +141,7 @@ def main():
     for feature in features_to_process:
         feature_label = FeatureLabel(feature)
         feature_collection = feature_collection.with_feature_label(feature_label)
+
     target_params_batch = TargetParamsBatch()
     if args.forward_periods and args.tps:
         target_params_batch = TargetParamsBatch(
@@ -155,7 +157,14 @@ def main():
     seq_param = None
     if args.sequential:
         seq_param = SequentialFeatureParam(sequence_window=args.sequence_window)
-    
+
+    ml_params = MlDataParam(
+        feature_collection=feature_collection,
+        target_params_batch=target_params_batch,
+        resample_params=resample_params,
+        seq_param=seq_param
+    )
+
     logger.info("Processing with parameters:")
     logger.info(f"  Action: {args.action}")
     logger.info(f"  Dataset Mode: {str(dataset_mode)}")
@@ -254,10 +263,7 @@ def main():
                 cache_func = partial(
                     calculate_and_cache_ml_data,
                     cache_context=cache_context,
-                    feature_collection=feature_collection,
-                    target_params_batch=target_params_batch,
-                    resample_params=resample_params,
-                    seq_param=seq_param,
+                    ml_params=ml_params,
                     overwrite_cache=args.overwrite_cache,
                 )
 
@@ -279,10 +285,7 @@ def main():
                     calculate_and_cache_ml_data(
                         cache_context=cache_context,
                         time_range=calc_time_range,
-                        feature_collection=feature_collection,
-                        target_params_batch=target_params_batch,
-                        resample_params=resample_params,
-                        seq_param=seq_param,
+                        ml_params=ml_params,
                         overwrite_cache=args.overwrite_cache
                     )
             
@@ -293,10 +296,7 @@ def main():
             ml_data = load_cached_ml_data(
                 cache_context=cache_context,
                 time_range=time_range,
-                feature_collection=feature_collection,
-                target_params_batch=target_params_batch,
-                resample_params=resample_params,
-                seq_param=seq_param
+                ml_params=ml_params,
             )
             
             if ml_data is not None and not ml_data.empty:

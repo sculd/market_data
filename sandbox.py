@@ -40,6 +40,7 @@ from market_data.machine_learning.ml_data.calc import calculate as calculate_ml_
 from market_data.machine_learning.target_resample.cache import calculate_and_cache_targets_resampled
 from market_data.machine_learning.resample.calc import CumSumResampleParams
 from market_data.target.param import TargetParams, TargetParamsBatch
+from market_data.machine_learning.ml_data.param import MlDataParam
 
 cache_context = market_data.ingest.common.CacheContext(
     DATASET_MODE.OKX, EXPORT_MODE.BY_MINUTE, AGGREGATION_MODE.TAKE_LATEST)
@@ -107,21 +108,27 @@ calculate_and_cache_ml_data(
 
 
 #'''
-ml_data = load_cached_and_select_columns_ml_data(
-    CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
-    time_range=time_range,
-    feature_collection = FeatureLabelCollection(),
+ml_params = MlDataParam(
+    feature_collection=FeatureLabelCollection(),
     target_params_batch=target_params_batch,
     resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
 )
-print(ml_data.shape)
-
 ml_data = load_cached_and_select_columns_ml_data(
     CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
     time_range=time_range,
-    feature_collection = FeatureLabelCollection().with_feature_label(FeatureLabel("bollinger")),
+    ml_params = ml_params,
+)
+print(ml_data.shape)
+
+ml_params = MlDataParam(
+    feature_collection=FeatureLabelCollection().with_feature_label(FeatureLabel("bollinger")),
     target_params_batch=target_params_batch,
     resample_params=CumSumResampleParams(price_col = 'close', threshold = 0.1),
+)
+ml_data = load_cached_and_select_columns_ml_data(
+    CacheContext(market_data.ingest.common.DATASET_MODE.OKX, market_data.ingest.common.EXPORT_MODE.BY_MINUTE, market_data.ingest.common.AGGREGATION_MODE.TAKE_LATEST),
+    time_range=time_range,
+    ml_params = ml_params,
 )
 print(ml_data.shape)
 #'''

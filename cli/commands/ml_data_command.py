@@ -7,10 +7,12 @@ import market_data.ingest.missing_data_finder
 import market_data.util.cache.parallel_processing
 import market_data.util.cache.time
 from cli.base import BaseCommand, handle_common_errors
+from market_data.feature.label import FeatureLabel, FeatureLabelCollection
 from market_data.feature.param import SequentialFeatureParam
 from market_data.feature.registry import list_registered_features
 from market_data.machine_learning.ml_data.cache import calculate_and_cache_ml_data, load_cached_ml_data
 from market_data.machine_learning.resample import get_resample_params_class, list_registered_resample_methods
+from market_data.machine_learning.ml_data.param import MlDataParam
 from market_data.target.calc import TargetParams, TargetParamsBatch
 
 
@@ -192,7 +194,20 @@ class MLDataCommand(BaseCommand):
         cache_context = self.create_cache_context(args)
         time_range = self.create_time_range(args)
         feature_label_params, target_params_batch, resample_params, seq_param = self._create_ml_params(args)
-        
+            
+        # Create FeatureLabelCollection from feature labels
+        feature_collection = FeatureLabelCollection()
+        for feature in feature_label_params:
+            feature_label = FeatureLabel(feature)
+            feature_collection = feature_collection.with_feature_label(feature_label)
+
+        ml_params = MlDataParam(
+            feature_collection=feature_collection,
+            target_params_batch=target_params_batch,
+            resample_params=resample_params,
+            seq_param=seq_param
+        )
+
         print("\nCalculating and caching ML data...")
         
         try:
@@ -202,7 +217,7 @@ class MLDataCommand(BaseCommand):
             missing_range_finder_func = partial(
                 market_data.ingest.missing_data_finder.check_missing_ml_data,
                 cache_context=cache_context,
-                feature_label_params=feature_label_params,
+                feature_collection=feature_collection,
                 target_params_batch=target_params_batch,
                 resample_params=resample_params,
                 seq_param=seq_param
@@ -228,10 +243,7 @@ class MLDataCommand(BaseCommand):
                 cache_func = partial(
                     calculate_and_cache_ml_data,
                     cache_context=cache_context,
-                    feature_label_params=feature_label_params,
-                    target_params_batch=target_params_batch,
-                    resample_params=resample_params,
-                    seq_param=seq_param,
+                    ml_params=ml_params,
                     overwrite_cache=args.overwrite_cache,
                 )
 
@@ -254,10 +266,7 @@ class MLDataCommand(BaseCommand):
                     calculate_and_cache_ml_data(
                         cache_context=cache_context,
                         time_range=calc_time_range,
-                        feature_label_params=feature_label_params,
-                        target_params_batch=target_params_batch,
-                        resample_params=resample_params,
-                        seq_param=seq_param,
+                        ml_params=ml_params,
                         overwrite_cache=args.overwrite_cache
                     )
             
@@ -268,10 +277,7 @@ class MLDataCommand(BaseCommand):
             ml_data = load_cached_ml_data(
                 cache_context=cache_context,
                 time_range=time_range,
-                feature_label_params=feature_label_params,
-                target_params_batch=target_params_batch,
-                resample_params=resample_params,
-                seq_param=seq_param
+                ml_params=ml_params,
             )
             
             if ml_data is not None and not ml_data.empty:
