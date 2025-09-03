@@ -260,21 +260,13 @@ def load_cached_ml_data(
     cache_context: CacheContext,
     time_range: TimeRange,
     ml_data_param: MlDataParam,
-    overwrite_cache: bool = True,
     columns: Optional[List[str]] = None,
     max_workers: int = 10,
 ) -> pd.DataFrame:
     """
-    Cache if needed and then load.
+    load_cached_and_select_columns_ml_data.
     """
-    calculate_and_cache_ml_data(
-        cache_context=cache_context,
-        time_range=time_range,
-        ml_data_param=ml_data_param,
-        overwrite_cache=overwrite_cache
-    )
-
-    return load_cached_exact_spec_ml_data(
+    return load_cached_and_select_columns_ml_data(
         cache_context=cache_context,
         time_range=time_range,
         ml_data_param=ml_data_param,
