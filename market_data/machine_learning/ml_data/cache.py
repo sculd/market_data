@@ -250,7 +250,7 @@ def load_cached_and_select_columns_ml_data(
 
     # Remove duplicates
     result_columns = list(set(requested_columns))
-    result_df = ml_data_df[result_columns + label_columns + ml_data_param.resample_columns]
+    result_df = ml_data_df[["symbol"] + result_columns + label_columns + ml_data_param.resample_columns]
     logger.info(f"Returning {len(result_columns)} df from {len(ml_data_df.columns)} available columns")
 
     return result_df
